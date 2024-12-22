@@ -10,21 +10,19 @@ The package provides functions for:
 - **Polsby-Popper Index**: A measure of shape compactness (similarity to a circle).
   - #### Function: `calc_polsby_popper(geoms: gpd.GeoDataFrame) -> gpd.GeoDataFrame`
    - Formula:  
-    \[
-    \text{Polsby-Popper Index} = \frac{4 \pi A}{P^2}
-    \]
+     $\text{Polsby-Popper Index} = \frac{4 \pi A}{P^2}$
     where:
-    - \( A \): Area of the polygon.
-    - \( P \): Perimeter of the polygon.
+    - $A$: Area of the polygon.
+    - $P$: Perimeter of the polygon.
     - **Parameters**:
       - `geoms`: GeoDataFrame with building footprint polygon geometries.
     - **Output**: Returns the same GeoDataFrame with a new column `"polsby_popper"`.
 
 - **Custom Irregularity Index**: Our own index to quantify the irregularity of building footprints.
-  - Formula: \( \frac{l \cdot d}{L} \), where:
-    - \( l \): Length of the shapes outside the convex hull.
-    - \( d \): Distance of the center of gravity of the shapes outside the hull to the hull.
-    - \( L \): Total length of the convex hull.
+  - Formula: $\frac{l \cdot d}{L}$, where:
+    - $l$: Length of the shapes outside the convex hull.
+    - $d$: Distance of the center of gravity of the shapes outside the hull to the hull.
+    - $L$: Total length of the convex hull.
   - #### Function: `calc_shape_irregularity(geoms: gpd.GeoDataFrame) -> gpd.GeoDataFrame`
     - **Parameters**:
       - `geoms`: GeoDataFrame with building footprint polygon geometries.
@@ -44,24 +42,20 @@ Determines if the building touches other structures (relative position in the ci
 - **Output**:
   Returns a GeoDataFrame with the following new columns:
   - **"moment"**: Moment of the resultant force with respect to the centroid of the footprint.
-  - **"force"**: Magnitude of the sum of all forces on each footprint (resultant force). \( |\sum(\text{force}_i)| \)
+  - **"force"**: Magnitude of the sum of all forces on each footprint (resultant force). $|\sum(\text{force}_i)|$
   - **"confinement"**: A measure of the amount of force from the total forces that is confined (has an opposing force).  
     Formula:  
-    \[
-    \frac{\sum(|\text{force}_i|) - |\sum(\text{force}_i)|}{|\sum(\text{force}_i)|}
-    \]
+    $\frac{\sum(|\text{force}_i|) - |\sum(\text{force}_i)|}{|\sum(\text{force}_i)|}$
   - **"angle"**: Sum of angles of forces with respect to the resultant force, normalized by force magnitude.  
     Formula:  
-    \[
-    \frac{\sum(|\text{force}_i| \cdot \text{angle}(\text{force}_i, \sum(\text{force}_j)))}{|\sum(\text{force}_i)|}
-    \]
+    $\frac{\sum(|\text{force}_i| \cdot \text{angle}(\text{force}_i, \sum(\text{force}_j)))}{|\sum(\text{force}_i)|}$
 
 #### Function: `relative_position(footprints: gpd.GeoDataFrame, min_momentum: float = 0.0825, min_confinement: float = 1, min_angle: float = 0.78, min_force: float = 0.166) -> gpd.GeoDataFrame`
 
 - **Parameters**:
     - `footprints`: GeoDataFrame outputted by `calc_forces()` with `force`, `confinement`, and `angle` columns.
     - `min_force`: Significance threshold for the resultant force. Default: `0.166`. (E.g., for a square building with height 1 and side length 1, if a touching structure covers only 1/6 of one side, the resultant force would be 1/6.)
-    - `min_angle`: Angle threshold (in radians). Default: \( \pi / 4 \) (45 degrees).
+    - `min_angle`: Angle threshold (in radians). Default: $\pi / 4$ (45 degrees).
     - `min_confinement`: Threshold for confinement. Default: `1` (indicating equal amounts of confined and resultant forces).
     - `min_momentum`: Threshold for momentum. Default: `0.0825`. (E.g., for a square building with height 1 and side length 1, if a touching structure covers only 1/6 of two sides, in the worst case the momentum would be 0.0825.)
 
