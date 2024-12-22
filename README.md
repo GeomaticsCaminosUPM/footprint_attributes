@@ -40,7 +40,7 @@ Determines if the building touches other structures (relative position in the ci
 
 - **Output**:
   Returns a GeoDataFrame with the following new columns:
-  - **"momentum"**: Momentum of the resultant force with respect to the centroid of the footprint. $\sum(d*\text{force}_i)$
+  - **"momentum"**: Momentum of the resultant force with respect to the centroid of the footprint. $\sum(d*|\text{force}_i|)$
   - **"force"**: Magnitude of the sum of all forces on each footprint (resultant force). $|\sum(\text{force}_i)|$
   - **"confinement"**: A measure of the amount of force from the total forces that is confined (has an opposing force).  
     Formula: $\frac{\sum(|\text{force}_i|) - |\sum(\text{force}_i)|}{|\sum(\text{force}_i)|}$
