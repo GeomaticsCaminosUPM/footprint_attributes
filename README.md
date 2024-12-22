@@ -8,7 +8,7 @@ The package provides functions for:
 
 ### 1. **Shape Irregularity**
 - **Polsby-Popper Index**: A measure of shape compactness (similarity to a circle).
-  - #### Function: `calc_polsby_popper(geoms: gpd.GeoDataFrame)`
+  - #### Function: `calc_polsby_popper(geoms: gpd.GeoDataFrame) -> gpd.GeoDataFrame`
     - **Parameters**:
       - `geoms`: GeoDataFrame with building footprint polygon geometries.
     - **Output**: Returns the same GeoDataFrame with a new column `"polsby_popper"`.
@@ -18,7 +18,7 @@ The package provides functions for:
     - \( l \): Length of the shapes outside the convex hull.
     - \( d \): Distance of the center of gravity of the shapes outside the hull to the hull.
     - \( L \): Total length of the convex hull.
-  - #### Function: `calc_shape_irregularity(geoms: gpd.GeoDataFrame)`
+  - #### Function: `calc_shape_irregularity(geoms: gpd.GeoDataFrame) -> gpd.GeoDataFrame`
     - **Parameters**:
       - `geoms`: GeoDataFrame with building footprint polygon geometries.
     - **Output**: Returns the same GeoDataFrame with a new column `"shape_irregularity"`.
@@ -58,10 +58,10 @@ Determines if the building touches other structures (relative position in the ci
 
 - **Output**:
   Returns the same GeoDataFrame with a new column `"relative_position"`. Classifies buildings into the following categories (priority order):
-  1. **Confined**: Structures touching on both the left and right lateral sides.
-  2. **Corner**: Structures touching at a corner (determined by force and angle thresholds).
-  3. **Partial**: Structures touching on either the left or right side.
-  4. **Isolated**: No touching structures.
+  1. **"confined"**: Structures touching on both the left and right lateral sides.
+  2. **"corner"**: Structures touching at a corner (determined by force and angle thresholds).
+  3. **"partial"**: Structures touching on either the left or right side.
+  4. **"isolated"**: No touching structures.
 
 
 
