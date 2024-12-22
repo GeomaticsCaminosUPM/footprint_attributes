@@ -9,6 +9,13 @@ The package provides functions for:
 ### 1. **Shape Irregularity**
 - **Polsby-Popper Index**: A measure of shape compactness (similarity to a circle).
   - #### Function: `calc_polsby_popper(geoms: gpd.GeoDataFrame) -> gpd.GeoDataFrame`
+   - Formula:  
+    \[
+    \text{Polsby-Popper Index} = \frac{4 \pi A}{P^2}
+    \]
+    where:
+    - \( A \): Area of the polygon.
+    - \( P \): Perimeter of the polygon.
     - **Parameters**:
       - `geoms`: GeoDataFrame with building footprint polygon geometries.
     - **Output**: Returns the same GeoDataFrame with a new column `"polsby_popper"`.
@@ -49,19 +56,23 @@ Determines if the building touches other structures (relative position in the ci
     \frac{\sum(|\text{force}_i| \cdot \text{angle}(\text{force}_i, \sum(\text{force}_j)))}{|\sum(\text{force}_i)|}
     \]
 
-#### Function: `relative_position(footprints: gpd.GeoDataFrame, force_significance: float = 0.333, confinement_significance: float = 1, angle_significance: float = 0.78) -> gpd.GeoDataFrame`
+#### Function: `relative_position(footprints: gpd.GeoDataFrame, min_momentum: float = 0.0825, min_confinement: float = 1, min_angle: float = 0.78, min_force: float = 0.166) -> gpd.GeoDataFrame`
+
 - **Parameters**:
-  - `footprints`: GeoDataFrame outputted by `calc_forces()` with `force`, `confinement`, and `angle` columns.
-  - `force_significance`: Significance threshold for the resultant force. Default: `0.333`. (E.g., for a square building with height 1 and side length 1, if a touching structure covers only 1/3 of one side, the resultant force would be 1/3.)
-  - `angle_significance`: Angle threshold (in radians). Default: \( \pi / 4 \) (45 degrees).
-  - `confinement_significance`: Threshold for confinement. Default: `1` (indicating equal amounts of confined and resultant forces).
+    - `footprints`: GeoDataFrame outputted by `calc_forces()` with `force`, `confinement`, and `angle` columns.
+    - `min_force`: Significance threshold for the resultant force. Default: `0.166`. (E.g., for a square building with height 1 and side length 1, if a touching structure covers only 1/6 of one side, the resultant force would be 1/6.)
+    - `min_angle`: Angle threshold (in radians). Default: \( \pi / 4 \) (45 degrees).
+    - `min_confinement`: Threshold for confinement. Default: `1` (indicating equal amounts of confined and resultant forces).
+    - `min_momentum`: Threshold for momentum. Default: `0.0825`. (E.g., for a square building with height 1 and side length 1, if a touching structure covers only 1/6 of two sides, in the worst case the momentum would be 0.0825.)
 
 - **Output**:
   Returns the same GeoDataFrame with a new column `"relative_position"`. Classifies buildings into the following categories (priority order):
-  1. **"confined"**: Structures touching on both the left and right lateral sides.
-  2. **"corner"**: Structures touching at a corner (determined by force and angle thresholds).
-  3. **"partial"**: Structures touching on either the left or right side.
-  4. **"isolated"**: No touching structures.
+  1. **"torque"**: Buildings of class **confined** or **corner** with a momentum exceeding the minimum momentum.
+  2. **"confined"**: Structures touching on both the left and right lateral sides.
+  3. **"corner"**: Structures touching at a corner (determined by force and angle thresholds).
+  4. **"partial"**: Structures touching on either the left or right side.
+  5. **"isolated"**: No touching structures.
+
 
 
 
