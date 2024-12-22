@@ -14,18 +14,12 @@ def calc_forces(geoms:gpd.GeoDataFrame,buffer:float=0,height_column:str=None) ->
 
     - **Output**:
         Returns a GeoDataFrame with the following new columns:
-            - **"moment"**: Moment of the resultant force with respect to the centroid of the footprint.
-            - **"force"**: Magnitude of the sum of all forces on each footprint (resultant force). \( |\sum(\text{force}_i)| \)
+            - **"momentum"**: Momentum of the resultant force with respect to the centroid of the footprint. $\sum(d*|\text{force}_i|)$
+            - **"force"**: Magnitude of the sum of all forces on each footprint (resultant force). $|\sum(\text{force}_i)|$
             - **"confinement"**: A measure of the amount of force from the total forces that is confined (has an opposing force).  
-                Formula:  
-                \[
-                \frac{\sum(|\text{force}_i|) - |\sum(\text{force}_i)|}{|\sum(\text{force}_i)|}
-                \]
+                Formula: $\frac{\sum(|\text{force}_i|) - |\sum(\text{force}_i)|}{|\sum(\text{force}_i)|}$
             - **"angle"**: Sum of angles of forces with respect to the resultant force, normalized by force magnitude.  
-                Formula:  
-                \[
-                \frac{\sum(|\text{force}_i| \cdot \text{angle}(\text{force}_i, \sum(\text{force}_j)))}{|\sum(\text{force}_i)|}
-                \]
+                Formula: $\frac{\sum(|\text{force}_i| \cdot \text{angle}(\text{force}_i, \sum(\text{force}_j)))}{|\sum(\text{force}_i)|}$
     """
     if "force" in geoms.columns:
         warnings.warn("The 'force' column already exists and will be overwritten.", UserWarning)
@@ -118,21 +112,22 @@ def calc_forces(geoms:gpd.GeoDataFrame,buffer:float=0,height_column:str=None) ->
     return result
 
 def relative_position(footprints: gpd.GeoDataFrame, min_momentum: float = 0.0825, min_confinement: float = 1, min_angle: float = 0.78, min_force: float = 0.166) -> gpd.GeoDataFrame:
-    """ 
+    """
     - **Parameters**:
-        - `footprints`: GeoDataFrame outputted by `calc_forces()` with `force`, `confinement`, and `angle` columns.
-        - `min_force`: Significance threshold for the resultant force. Default: `0.166`. (E.g., for a square building with height 1 and side length 1, if a touching structure covers only 1/6 of one side, the resultant force would be 1/6.)
-        - `angle_significance`: Angle threshold (in radians). Default: \( \pi / 4 \) (45 degrees).
-        - `confinement_significance`: Threshold for confinement. Default: `1` (indicating equal amounts of confined and resultant forces).
-        - `min_momentum`: Threshold for momentum. Default: `0.0825` (E.g., for a square building with height 1 and side length 1, if a touching structure covers only 1/6 two sides. In the worst case the momentum would be 0.0825.) 
+            - `footprints`: GeoDataFrame outputted by `calc_forces()` with `force`, `confinement`, and `angle` columns.
+            - `min_force`: Significance threshold for the resultant force. Default: `0.166`. (E.g., for a square building with height 1 and side length 1, if a touching structure covers only 1/6 of one side, the resultant force would be 1/6.)
+            - `min_angle`: Angle threshold (in radians). Default: $\pi / 4$ (45 degrees).
+            - `min_confinement`: Threshold for confinement. Default: `1` (indicating equal amounts of confined and resultant forces).
+            - `min_momentum`: Threshold for momentum. Default: `0.0825`. (E.g., for a square building with height 1 and side length 1, if a touching structure covers only 1/6 of two sides, in the worst case the momentum would be 0.0825.)
 
     - **Output**:
         Returns the same GeoDataFrame with a new column `"relative_position"`. Classifies buildings into the following categories (priority order):
-        1. **"confined"**: Structures touching on both the left and right lateral sides.
-        2. **"corner"**: Structures touching at a corner (determined by force and angle thresholds).
-        3. **"partial"**: Structures touching on either the left or right side.
-        4. **"isolated"**: No touching structures.
-    """ 
+        1. **"torque"**: Buildings of class **confined** or **corner** with a momentum exceeding the minimum momentum.
+        2. **"confined"**: Structures touching on both the left and right lateral sides.
+        3. **"corner"**: Structures touching at a corner (determined by force and angle thresholds).
+        4. **"partial"**: Structures touching on either the left or right side.
+        5. **"isolated"**: No touching structures.
+    """
     #footprints['relative_position'] = 'isolated'
     #footprints.loc[(footprints['force'] / footprints['area_sqrt']) > 0.05,'relative_position'] = 'lateral'
     #footprints.loc[(footprints['angle_normalized'] > 0.6) & ((footprints['force'] / footprints['area_sqrt']) > 0.35),'relative_position'] = 'corner'

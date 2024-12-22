@@ -9,10 +9,10 @@ from .utils import get_scaled_normal_vector_at_center, explode_edges
 def calc_shape_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
     Our own index to quantify the irregularity of building footprints.
-    - Formula: \( \frac{l \cdot d}{L} \), where:
-        - \( l \): Length of the shapes outside the convex hull.
-        - \( d \): Distance of the center of gravity of the shapes outside the hull to the hull.
-        - \( L \): Total length of the convex hull.
+    - Formula: $\frac{l \cdot d}{L}$, where:
+        - $l$: Length of the shapes outside the convex hull.
+        - $d$: Distance of the center of gravity of the shapes outside the hull to the hull.
+        - $L$: Total length of the convex hull.
 
     - **Parameters**:
         - `geoms`: GeoDataFrame with building footprint polygon geometries.
@@ -74,13 +74,10 @@ def calc_shape_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 def calc_polsby_popper(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
     Calculates the polsby popper index https://en.wikipedia.org/wiki/Polsby%E2%80%93Popper_test.
-    - Formula:  
-        \[
-        \text{Polsby-Popper Index} = \frac{4 \pi A}{P^2}
-        \]
+    - Formula: $\text{Polsby-Popper Index} = \frac{4 \pi A}{P^2}$
         where:
-        - \( A \): Area of the polygon.
-        - \( P \): Perimeter of the polygon.
+        - $A$: Area of the polygon.
+        - $P$: Perimeter of the polygon.
     - **Parameters**:
       - `geoms`: GeoDataFrame with building footprint polygon geometries.
     - **Output**: Returns the same GeoDataFrame with a new column `"polsby_popper"`.
