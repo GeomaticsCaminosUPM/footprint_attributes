@@ -9,8 +9,7 @@ The package provides functions for:
 ### 1. **Shape Irregularity**
 - **Polsby-Popper Index**: A measure of shape compactness (similarity to a circle).
   - #### Function: `calc_polsby_popper(geoms: gpd.GeoDataFrame) -> gpd.GeoDataFrame`
-   - Formula:  
-     $\text{Polsby-Popper Index} = \frac{4 \pi A}{P^2}$
+   - Formula: $\text{Polsby-Popper Index} = \frac{4 \pi A}{P^2}$
     where:
     - $A$: Area of the polygon.
     - $P$: Perimeter of the polygon.
@@ -44,11 +43,9 @@ Determines if the building touches other structures (relative position in the ci
   - **"momentum"**: Momentum of the resultant force with respect to the centroid of the footprint. $\sum(d*\text{force}_i)$
   - **"force"**: Magnitude of the sum of all forces on each footprint (resultant force). $|\sum(\text{force}_i)|$
   - **"confinement"**: A measure of the amount of force from the total forces that is confined (has an opposing force).  
-    Formula:  
-    $\frac{\sum(|\text{force}_i|) - |\sum(\text{force}_i)|}{|\sum(\text{force}_i)|}$
+    Formula: $\frac{\sum(|\text{force}_i|) - |\sum(\text{force}_i)|}{|\sum(\text{force}_i)|}$
   - **"angle"**: Sum of angles of forces with respect to the resultant force, normalized by force magnitude.  
-    Formula:  
-    $\frac{\sum(|\text{force}_i| \cdot \text{angle}(\text{force}_i, \sum(\text{force}_j)))}{|\sum(\text{force}_i)|}$
+    Formula: $\frac{\sum(|\text{force}_i| \cdot \text{angle}(\text{force}_i, \sum(\text{force}_j)))}{|\sum(\text{force}_i)|}$
 
 #### Function: `relative_position(footprints: gpd.GeoDataFrame, min_momentum: float = 0.0825, min_confinement: float = 1, min_angle: float = 0.78, min_force: float = 0.166) -> gpd.GeoDataFrame`
 
