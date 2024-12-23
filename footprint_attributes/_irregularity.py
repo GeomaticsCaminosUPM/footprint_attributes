@@ -3,21 +3,28 @@ import pandas as pd
 import shapely 
 import numpy as np
 import warnings
-from ._utils import get_scaled_normal_vector_at_center, explode_edges
+from ._utils import get_normal, explode_edges, explode_exterior_and_interior_rings
 
 
 def calc_shape_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
-    Our own index to quantify the irregularity of building footprints.
-    - Formula: $\frac{l \cdot d}{L}$, where:
-        - $l$: Length of the shapes outside the convex hull.
-        - $d$: Distance of the center of gravity of the shapes outside the hull to the hull.
-        - $L$: Total length of the convex hull.
+    Calculates an index to quantify the irregularity of building footprints.
 
-    - **Parameters**:
-        - `geoms`: GeoDataFrame with building footprint polygon geometries.
-    - **Output**: Returns the same GeoDataFrame with a new column `"shape_irregularity"`.
+    The irregularity index is computed using the formula:
+        Irregularity = (l * d) / L
+    where:
+        - `l`: Length of the segments outside the convex hull of the shape.
+        - `d`: Distance from the center of gravity of the segments outside the hull to the hull.
+        - `L`: Total perimeter length of the convex hull.
+
+    Parameters:
+        geoms (gpd.GeoDataFrame): A GeoDataFrame containing building footprint geometries as polygons.
+
+    Returns:
+        gpd.GeoDataFrame: The input GeoDataFrame with an added column `"shape_irregularity"`,
+                          which contains the computed irregularity index for each geometry.
     """
+
     if "shape_irregularity" in geoms.columns:
         warnings.warn("The 'shape_irregularity' column already exists and will be overwritten.", UserWarning)
         
@@ -29,26 +36,34 @@ def calc_shape_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     if not geoms_copy.crs.is_projected:
         geoms_copy = geoms_copy.to_crs(geoms_copy.geometry.estimate_utm_crs())
 
-    boundary = geoms_copy.geometry.boundary
-    convex_hull = geoms_copy.geometry.convex_hull.boundary
+
+    geoms_copy = explode_exterior_and_interior_rings(irregularity)
+    boundary = geoms_copy.geometry.copy()
+    convex_hull = geoms_copy.geometry.convex_hull.boundary.copy()
+
+    irregularity.geometry = shapely.difference(boundary, convex_hull.buffer(0.005)) #Path through irregularity
+    irregularity['hull_geom'] = shapely.difference(convex_hull, boundary.buffer(0.005)) #Path through hull
+    irregularity = irregularity.loc[irregularity.geometry.is_empty == False]
+
     geoms_copy['irregularity_geom'] = shapely.difference(boundary,convex_hull) #Path through irregularity
     geoms_copy = geoms_copy.loc[geoms_copy['irregularity_geom'].is_empty == False,:]
     geoms_copy['hull'] = shapely.difference(convex_hull,boundary) #Path through hull
     geoms_copy['irregularity_length'] = geoms_copy['irregularity_geom'].length - irregularity['hull'].length
     
-    geoms_copy['orig_polygon'] = geoms_copy.geometry.copy()
-    geoms_copy = geoms_copy.set_geometry('irregularity_geom',crs=crs).explode(index_parts=False).reset_index(drop=True)
+    geoms_copy = geoms_copy.explode(index_parts=False).reset_index(drop=True)
 
-    geoms_copy = explode_edges(geoms_copy,geometry_column='irregularity_geom')
-    geoms_copy[['edge_center','normal']] = geoms_copy.apply(lambda x: pd.Series(get_scaled_normal_vector_at_center(x['edges'],1)),axis=1)
+    geoms_copy = explode_edges(geoms_copy,min_length=0)
 
-    geoms_copy['dist_to_hull'] = geoms_copy.apply(lambda x: shapely.distance(x['edge_center'],x['irregularity_geom']),axis=1)
+    geoms_copy[['edge_center','normal_vector']] = geoms_copy.apply(lambda x: pd.Series(get_normal(x['edges'],1)),axis=1)
 
-    geoms_copy.loc[0:len(geoms_copy)-1,'normal_1'] = geoms_copy.loc[1:len(geoms_copy),'normal'].reset_index(drop=True)
-    geoms_copy.loc[0:len(geoms_copy)-1,'geom_id_1'] = geoms_copy.loc[1:len(geoms_copy),'geom_id'].reset_index(drop=True)
+    geoms_copy['distance_to_hull'] = geoms_copy.apply(lambda x: shapely.distance(x['edge_center'],x['hull_geom']),axis=1)
+    geoms_copy['edge_length'] = geoms_copy['edges'].length
+
+    geoms_copy['shape_irregularity'] = geoms_copy['distance_to_hull'] * geoms_copy['edge_length']
+
+    #geoms_copy.loc[0:len(geoms_copy)-1,'normal_1'] = geoms_copy.loc[1:len(geoms_copy),'normal'].reset_index(drop=True)
+    #geoms_copy.loc[0:len(geoms_copy)-1,'geom_id_1'] = geoms_copy.loc[1:len(geoms_copy),'geom_id'].reset_index(drop=True)
     #geoms_copy['angle_irregularity'] = geoms_copy.apply(lambda x: pd.Series(get_angle_sharp(x['normal'],x['normal_1'],x['geom_id'],x['geom_id_1'])),axis=1)
-
-    geoms_copy['shape_irregularity'] = geoms_copy['dist_to_hull'] * geoms_copy['edges'].length
 
     geoms_copy = geoms_copy.groupby('geom_id').agg({
         'shape_irregularity':'sum',
@@ -61,7 +76,7 @@ def calc_shape_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
     #geoms_copy['angle_irregularity'] = geoms_copy['angle_irregularity'] / (np.pi / 2)
     #geoms_copy['angle_irregularity_length'] = geoms_copy['angle_irregularity'] * geoms_copy['irregularity_length']
-    geoms_copy = geoms_copy.reset_index()
+    geoms_copy = geoms_copy.reset_index(drop=True)
 
     result = geoms.merge(geoms_copy[['shape_irregularity','geom_id']],on='geom_id',how='left')
     result.loc[result['shape_irregularity'].isna(),'shape_irregularity'] = 0 
@@ -73,15 +88,22 @@ def calc_shape_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
 def calc_polsby_popper(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
-    Calculates the polsby popper index https://en.wikipedia.org/wiki/Polsby%E2%80%93Popper_test.
-    - Formula: $\text{Polsby-Popper Index} = \frac{4 \pi A}{P^2}$
-        where:
-        - $A$: Area of the polygon.
-        - $P$: Perimeter of the polygon.
-    - **Parameters**:
-      - `geoms`: GeoDataFrame with building footprint polygon geometries.
-    - **Output**: Returns the same GeoDataFrame with a new column `"polsby_popper"`.
+    Calculates the Polsby-Popper index for building footprint polygons.
+
+    The Polsby-Popper index is a measure of shape compactness, defined by the formula:
+        Polsby-Popper Index = (4 * π * A) / P²
+    where:
+        - `A`: The area of the polygon.
+        - `P`: The perimeter of the polygon.
+
+    Parameters:
+        geoms (gpd.GeoDataFrame): A GeoDataFrame containing building footprint geometries as polygons.
+
+    Returns:
+        gpd.GeoDataFrame: The input GeoDataFrame with an added column `"polsby_popper"`,
+                          which contains the calculated Polsby-Popper index for each geometry.
     """
+
     # Warn if Polsby-Popper column already exists
     if "polsby_popper" in geoms.columns:
         warnings.warn("The 'polsby_popper' column already exists and will be overwritten.", UserWarning)

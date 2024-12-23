@@ -3,24 +3,34 @@ import pandas as pd
 import shapely 
 import numpy as np
 import warnings
-from ._utils import get_scaled_normal_vector_at_center, get_angle_90, explode_edges, calculate_momentum
+from ._utils import get_normal, explode_edges, calculate_momentum, select_touching_edges, resultant_angle
 
 def calc_forces(geoms:gpd.GeoDataFrame,buffer:float=0,height_column:str=None) -> gpd.GeoDataFrame:
     """
-    - **Parameters**:
-        - `geoms`: GeoDataFrame containing building footprints as polygon geometries.
-        - `buffer`: Buffer in meters to consider when determining if two buildings are touching each other.
-        - `height_column`: Column in the `geoms` DataFrame specifying the height of the building in meters. If `None`, all buildings are assumed to have height 1.
+    Calculates force-based metrics for building footprints based on their geometry and proximity.
 
-    - **Output**:
-        Returns a GeoDataFrame with the following new columns:
-            - **"momentum"**: Momentum of the resultant force with respect to the centroid of the footprint. $\sum(d*|\text{force}_i|)$
-            - **"force"**: Magnitude of the sum of all forces on each footprint (resultant force). $|\sum(\text{force}_i)|$
-            - **"confinement"**: A measure of the amount of force from the total forces that is confined (has an opposing force).  
-                Formula: $\frac{\sum(|\text{force}_i|) - |\sum(\text{force}_i)|}{|\sum(\text{force}_i)|}$
-            - **"angle"**: Sum of angles of forces with respect to the resultant force, normalized by force magnitude.  
-                Formula: $\frac{\sum(|\text{force}_i| \cdot \text{angle}(\text{force}_i, \sum(\text{force}_j)))}{|\sum(\text{force}_i)|}$
+    Parameters:
+        geoms (gpd.GeoDataFrame): A GeoDataFrame containing building footprints as polygon geometries.
+        buffer (float): Buffer distance in meters to determine if two buildings are considered touching.
+        height_column (str, optional): Column name in `geoms` specifying the building height in meters.
+                                       If `None`, all buildings are assumed to have a uniform height of 1.
+
+    Returns:
+        gpd.GeoDataFrame: The input GeoDataFrame with the following new columns:
+            - "momentum": Momentum of the resultant force with respect to the footprint centroid.
+              Formula: sum(distance * |force_i|)
+            - "force": Magnitude of the resultant force acting on the footprint.
+              Formula: |sum(force_i)|
+            - "confinement": Proportion of total forces that are confined (counterbalanced by opposing forces).
+              Formula: (sum(|force_i|) - |sum(force_i)|) / |sum(force_i)|
+            - "angle": Normalized sum of the angles between individual forces and the resultant force.
+              Formula: sum(|force_i| * angle(force_i, sum(force_j))) / |sum(force_i)|
+
+    Notes:
+        - This method assumes that forces are calculated based on proximity and building height.
+        - The buffer determines which buildings are close enough to interact.
     """
+
     if "force" in geoms.columns:
         warnings.warn("The 'force' column already exists and will be overwritten.", UserWarning)
         
@@ -49,32 +59,21 @@ def calc_forces(geoms:gpd.GeoDataFrame,buffer:float=0,height_column:str=None) ->
     if not geoms_copy.crs.is_projected:
         geoms_copy = geoms_copy.to_crs(geoms_copy.geometry.estimate_utm_crs())
 
-    geoms_union = geoms_copy.geometry.union_all().buffer(buffer,cap_style='square',join_style='mitre')
-    geoms_union = geoms_union.buffer(-buffer,cap_style='square',join_style='mitre')
-    
-    geoms_copy.geometry = geoms_copy.geometry.buffer(buffer,cap_style='square',join_style='mitre')
-    geoms_copy.geometry = geoms_copy.geometry.buffer(-buffer,cap_style='square',join_style='mitre')
-    geoms_copy.geometry = geoms_copy.geometry.boundary.intersection(geoms_union)
+    geoms_copy = select_touching_edges(geoms_copy,buffer=buffer)
+    geoms_copy = explode_edges(geoms_copy,min_length=buffer)
 
-    geoms_copy = geoms_copy.loc[geoms_copy.geometry.is_empty == False]
+    geoms_copy[['edge_center','normal_vector']] = geoms_copy.apply(lambda x: pd.Series(get_normal(x['edges'],scale=x['height'])),axis=1)
 
-    geoms_copy = explode_edges(geoms_copy,geometry_column='geometry')
-    geoms_copy = geoms_copy.loc[geoms_copy['edges'].length > buffer,:]
+    geoms_copy['momentum'] = geoms_copy.apply(lambda x:calculate_momentum(x['edge_center'],x['normal_vector'],x['centroid']),axis=1)
 
-    geoms_copy[['edge_center','normal']] = geoms_copy.apply(lambda x: pd.Series(get_scaled_normal_vector_at_center(x['edges'],x['height'])),axis=1)
-
-    geoms_copy['momentum'] = geoms_copy.apply(lambda x:calculate_momentum(x['edge_center'],x['normal'],x['centroid']),axis=1)
-
-    geoms_copy['abs_foce'] = geoms_copy.apply(lambda x: np.sqrt(x['normal'][0]**2+x['normal'][1]**2),axis=1)
+    geoms_copy['abs_foce'] = geoms_copy.apply(lambda x: np.sqrt(x['normal_vector'][0]**2+x['normal_vector'][1]**2),axis=1)
     geoms_copy['sum_of_squares'] = geoms_copy['abs_foce'] ** 2
 
-    res_normal = geoms_copy.copy()
-    res_normal = res_normal.groupby('geom_id').agg({'normal':'sum'}).reset_index()
-    res_normal = res_normal.rename(columns={'normal':'res_normal'})
-    geoms_copy = geoms_copy.merge(res_normal,on='geom_id',how='left')
+    geoms_copy = resultant_angle(geoms_copy,vector_column='normal_vector',id_column='geom_id')
 
-    geoms_copy['angle'] = geoms_copy.apply(lambda x: pd.Series(get_angle_90(x['normal'],x['res_normal'],x['geom_id'],x['geom_id'])),axis=1)
+    geoms_copy['angle'] = geoms_copy['angle'] * 2
     geoms_copy['angle'] = geoms_copy['angle'] * geoms_copy['abs_foce']
+
     geoms_copy = geoms_copy.groupby('geom_id').agg({
         'height':'first',
         'normal':'sum',
@@ -113,21 +112,32 @@ def calc_forces(geoms:gpd.GeoDataFrame,buffer:float=0,height_column:str=None) ->
 
 def relative_position(footprints: gpd.GeoDataFrame, min_momentum: float = 0.0825, min_confinement: float = 1, min_angle: float = 0.78, min_force: float = 0.166) -> gpd.GeoDataFrame:
     """
-    - **Parameters**:
-            - `footprints`: GeoDataFrame outputted by `calc_forces()` with `force`, `confinement`, and `angle` columns.
-            - `min_force`: Significance threshold for the resultant force. Default: `0.166`. (E.g., for a square building with height 1 and side length 1, if a touching structure covers only 1/6 of one side, the resultant force would be 1/6.)
-            - `min_angle`: Angle threshold (in radians). Default: $\pi / 4$ (45 degrees).
-            - `min_confinement`: Threshold for confinement. Default: `1` (indicating equal amounts of confined and resultant forces).
-            - `min_momentum`: Threshold for momentum. Default: `0.0825`. (E.g., for a square building with height 1 and side length 1, if a touching structure covers only 1/6 of two sides, in the worst case the momentum would be 0.0825.)
+    Classifies building footprints based on their relative position and interaction with surrounding structures.
 
-    - **Output**:
-        Returns the same GeoDataFrame with a new column `"relative_position"`. Classifies buildings into the following categories (priority order):
-        1. **"torque"**: Buildings of class **confined** or **corner** with a momentum exceeding the minimum momentum.
-        2. **"confined"**: Structures touching on both the left and right lateral sides.
-        3. **"corner"**: Structures touching at a corner (determined by force and angle thresholds).
-        4. **"partial"**: Structures touching on either the left or right side.
-        5. **"isolated"**: No touching structures.
+    Parameters:
+        footprints (gpd.GeoDataFrame): GeoDataFrame outputted by `calc_forces()` containing `force`, `confinement`, and `angle` columns.
+        min_force (float, optional): Threshold for the significance of the resultant force.
+                                     Default: 0.166 (e.g., for a square building with height 1 and side length 1, 
+                                     a touching structure covering 1/6 of one side would have a resultant force of 1/6).
+        min_angle (float, optional): Angle threshold in radians. Default: pi / 4 (45 degrees).
+        min_confinement (float, optional): Threshold for confinement. Default: 1 (equal amounts of confined and resultant forces).
+        min_momentum (float, optional): Threshold for momentum. Default: 0.0825 
+                                        (e.g., for a square building with height 1 and side length 1, 
+                                        a touching structure covering 1/6 of two sides in the worst case 
+                                        would have a momentum of 0.0825).
+
+    Returns:
+        gpd.GeoDataFrame: The input GeoDataFrame with a new column `relative_position`, classifying buildings into the following categories (priority order):
+            1. "torque": Buildings classified as *confined* or *corner* with momentum exceeding the minimum momentum.
+            2. "confined": Structures touching on both the left and right lateral sides.
+            3. "corner": Structures touching at a corner, based on force and angle thresholds.
+            4. "partial": Structures touching on either the left or right side.
+            5. "isolated": Structures with no touching neighbors.
+
+    Notes:
+        - The classification prioritizes categories in the order listed above.
     """
+
     #footprints['relative_position'] = 'isolated'
     #footprints.loc[(footprints['force'] / footprints['area_sqrt']) > 0.05,'relative_position'] = 'lateral'
     #footprints.loc[(footprints['angle_normalized'] > 0.6) & ((footprints['force'] / footprints['area_sqrt']) > 0.35),'relative_position'] = 'corner'
