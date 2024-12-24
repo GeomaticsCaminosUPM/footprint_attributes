@@ -65,7 +65,7 @@ Determines if the building touches other structures (relative position in the ci
 The function returns the input `gpd.GeoDataFrame`, which includes the following new columns:
 
 1. **`angular_acc`**  
-   Angular acceleration calculated as: $ \text{angular\_acc} = \frac{\text{momentum} \cdot \text{area}}{\text{inertia}} $
+   Angular acceleration calculated as: $\text{angular\_acc} = \frac{\text{momentum} \cdot \text{area}}{\text{inertia}}$
    - **Momentum** is calculated as: $\text{momentum} = \sum (\text{distance} \cdot |\text{force}_i|)$
 
 2. **`force`**  
