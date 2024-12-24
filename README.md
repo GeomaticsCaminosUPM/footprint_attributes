@@ -12,17 +12,17 @@ The package provides functions for:
 
 ### 1. **Shape Irregularity**
 - **Polsby-Popper Index**: A measure of shape compactness (similarity to a circle).
-  - #### Function: `calc_polsby_popper(geoms: gpd.GeoDataFrame) -> gpd.GeoDataFrame`
-   - Formula: $\text{Polsby-Popper Index} = \frac{4 \pi A}{P^2}$
+  - **Formula**: $\text{Polsby-Popper Index} = \frac{4 \pi A}{P^2}$
     where:
     - $A$: Area of the polygon.
     - $P$: Perimeter of the polygon.
+  - #### Function: `calc_polsby_popper(geoms: gpd.GeoDataFrame) -> gpd.GeoDataFrame`
     - **Parameters**:
       - `geoms`: GeoDataFrame with building footprint polygon geometries.
     - **Output**: Returns the same GeoDataFrame with a new column `"polsby_popper"`.
 
 - **Custom Irregularity Index**: Our own index to quantify the irregularity of building footprints.
-  - Formula: $\frac{l \cdot d}{L}$, where:
+  - **Formula**: $\frac{l \cdot d}{L}$, where:
     - $l$: Length of the shapes outside the convex hull.
     - $d$: Distance of the center of gravity of the shapes outside the hull to the hull.
     - $L$: Total length of the convex hull.
@@ -32,8 +32,8 @@ The package provides functions for:
     - **Output**: Returns the same GeoDataFrame with a new column `"shape_irregularity"`.
    
 - **Inertia Irregularity**: Inertia of a circle with the same area as the polygon geometry divided by the inertia of the polygon.
+    - **Formula**: $\text{intertia irregularity} = \frac{\text{intertia eq circle}}{\text{itertia}}$
     - #### Function: `calc_inertia_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame`
-        - Formula: $\text{intertia irregularity} = \frac{\text{intertia eq circle}}{\text{itertia}}$
         - **Parameters**:
           - `geoms`: GeoDataFrame with building footprint polygon geometries.
         - **Output**: Returns the same GeoDataFrame with a new column `"inertia_irregularity"`.
