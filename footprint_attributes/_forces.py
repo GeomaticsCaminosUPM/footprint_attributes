@@ -5,7 +5,7 @@ import numpy as np
 import warnings
 from ._utils import get_normal, explode_edges, calculate_momentum, select_touching_edges, resultant_angle, calc_inertia
 
-def calc_forces(geoms:gpd.GeoDataFrame,buffer:float=0,height_column:str=None,min_dist_momentum:float=0) -> gpd.GeoDataFrame:
+def calc_forces(geoms:gpd.GeoDataFrame,buffer:float=0,height_column:str=None,min_radius:float=0) -> gpd.GeoDataFrame:
     """
     Calculates force-based metrics for building footprints based on their geometry and proximity.
 
@@ -14,11 +14,17 @@ def calc_forces(geoms:gpd.GeoDataFrame,buffer:float=0,height_column:str=None,min
         buffer (float): Buffer distance in meters to determine if two buildings are considered touching.
         height_column (str, optional): Column name in `geoms` specifying the building height in meters.
                                        If `None`, all buildings are assumed to have a uniform height of 1.
+        min_radius (float, optional): Minimum distance multiplier used to exclude forces that would otherwise 
+                                        increase momentum. Forces with a distance below a threshold 
+                                        (`min_radius * equivalent radius`) will contribute to the momentum 
+                                        calculation only if they decrease the momentum. The equivalent radius 
+                                        of a building is defined as the radius of a circle with the same area 
+                                        as the building's footprint.
 
     Returns:
         gpd.GeoDataFrame: The input GeoDataFrame with the following new columns:
             - "angular_acc": Angular acceleration calculated as (momentum * area / inertia). Momentum of the resultant force with respect to the footprint centroid.
-              Formula: sum(distance * |force_i|)
+              Formula for momentum: sum(distance * |force_i|) Formula for angular acceleration: momentum * area / inertia
             - "force": Magnitude of the resultant force acting on the footprint. Normalized (divided) by the sqrt of the area. 
               Formula: |sum(force_i)|
             - "confinement_ratio": Proportion of total forces that are confined (counterbalanced by opposing forces).
@@ -68,7 +74,7 @@ def calc_forces(geoms:gpd.GeoDataFrame,buffer:float=0,height_column:str=None,min
 
     geoms_copy[['edge_center','normal_vector']] = geoms_copy.apply(lambda x: pd.Series(get_normal(x['edges'],scale=x['height'])),axis=1)
 
-    geoms_copy['momentum'] = geoms_copy.apply(lambda x:calculate_momentum(x['edge_center'],x['normal_vector'],x['centroid'],min_dist=min_dist_momentum*np.sqrt(x['area']/np.pi)),axis=1)
+    geoms_copy['momentum'] = geoms_copy.apply(lambda x:calculate_momentum(x['edge_center'],x['normal_vector'],x['centroid'],min_dist=min_radius*np.sqrt(x['area']/np.pi)),axis=1)
 
     geoms_copy['abs_force'] = geoms_copy.apply(lambda x: np.sqrt(x['normal_vector'][0]**2+x['normal_vector'][1]**2),axis=1)
 
