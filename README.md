@@ -65,32 +65,17 @@ Determines if the building touches other structures (relative position in the ci
 The function returns the input `gpd.GeoDataFrame`, which includes the following new columns:
 
 1. **`angular_acc`**  
-   Angular acceleration calculated as:  
-   \[
-   \text{angular\_acc} = \frac{\text{momentum} \cdot \text{area}}{\text{inertia}}
-   \]  
-   - **Momentum**:  
-     \[
-     \text{momentum} = \sum (\text{distance} \cdot |\text{force}_i|)
-     \]
+   Angular acceleration calculated as: $\text{angular\_acc} = \frac{\text{momentum} \cdot \text{area}}{\text{inertia}}$
+   - **Momentum** is calculated as: $\text{momentum} = \sum (\text{distance} \cdot |\text{force}_i|)$
 
 2. **`force`**  
-   Magnitude of the resultant force acting on the footprint, normalized by the square root of the area:  
-   \[
-   \text{force} = \left| \sum \text{force}_i \right|
-   \]
+   Magnitude of the resultant force acting on the footprint, normalized by the square root of the area: $\text{force} = \left| \sum \text{force}_i \right|$
 
 3. **`confinement_ratio`**  
-   Proportion of total forces that are confined (counterbalanced by opposing forces):  
-   \[
-   \text{confinement\_ratio} = \frac{\sum |\text{force}_i| - \left| \sum \text{force}_i \right|}{\left| \sum \text{force}_i \right|}
-   \]
+   Proportion of total forces that are confined (counterbalanced by opposing forces): $\text{confinement\_ratio} = \frac{\sum |\text{force}_i| - \left| \sum \text{force}_i \right|}{\left| \sum \text{force}_i \right|}$
 
 4. **`angle`**  
-   Normalized sum of the angles between individual forces and the resultant force:  
-   \[
-   \text{angle} = \frac{\sum \left( |\text{force}_i| \cdot \text{angle}(\text{force}_i, \sum \text{force}_j) \right)}{\left| \sum \text{force}_i \right|}
-   \]
+   Normalized sum of the angles between individual forces and the resultant force: $\text{angle} = \frac{\sum \left( |\text{force}_i| \cdot \text{angle}(\text{force}_i, \sum \text{force}_j) \right)}{\left| \sum \text{force}_i \right|}$
 
 #### Function: `relative_position(footprints: gpd.GeoDataFrame, min_angular_acc: float = 0.0825, min_confinement: float = 1, min_angle: float = 0.78, min_force: float = 0.166) -> gpd.GeoDataFrame`
 
