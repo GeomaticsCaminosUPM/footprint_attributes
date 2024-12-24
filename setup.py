@@ -12,7 +12,7 @@ setup(
     license="MIT",
     packages=find_packages(),
     install_requires=[
-        "geopandas>=0.12.0",
+        "geopandas>=1.0.0",
         "pandas>=1.3.0",
         "shapely>=1.8.0",
         "numpy>=1.21.0",
@@ -22,5 +22,5 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.6',
+    python_requires='>=3.9',
 )
