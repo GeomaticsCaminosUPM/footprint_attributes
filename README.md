@@ -80,11 +80,11 @@ The function returns the input `gpd.GeoDataFrame`, which includes the following 
 #### Function: `relative_position(footprints: gpd.GeoDataFrame, min_angular_acc: float = 0.0825, min_confinement: float = 1, min_angle: float = 0.78, min_force: float = 0.166) -> gpd.GeoDataFrame`
 
 ##### Parameters
-    - `footprints`: GeoDataFrame outputted by `calc_forces()` with `force`, `confinement`, and `angle` columns.
-    - `min_force`: Significance threshold for the resultant force. Default: `0.166`. (E.g., for a square building with height 1 and side length 1, if a touching structure covers only 1/6 of one side, the resultant force would be 1/6.)
-    - `min_angle`: Angle threshold (in radians). Default: $\pi / 4$ (45 degrees).
-    - `min_confinement`: Threshold for confinement. Default: `1` (indicating equal amounts of confined and resultant forces).
-    - `min_angular_acc`: Threshold for angular acceleration $\frac{momentum * area}{inertia}$. Default: 2.133 (e.g., for a rectangular building with height 1 and sides of length 1 and 0.5, 
+    - **`footprints` (`gpd.GeoDataFrame`)**: GeoDataFrame outputted by `calc_forces()` with `force`, `confinement`, and `angle` columns.
+    - **`min_force` (`float`, optional)**: Significance threshold for the resultant force. Default: `0.166`. (E.g., for a square building with height 1 and side length 1, if a touching structure covers only 1/6 of one side, the resultant force would be 1/6.)
+    - **`min_angle` (`float`, optional)**: Angle threshold (in radians). Default: $\pi / 4$ (45 degrees).
+    - **`min_confinement` (`float`, optional)**: Threshold for confinement. Default: `1` (indicating equal amounts of confined and resultant forces).
+    - **`min_angular_acc` (`float`, optional)**: Threshold for angular acceleration $\frac{momentum * area}{inertia}$. Default: 2.133 (e.g., for a rectangular building with height 1 and sides of length 1 and 0.5, 
                             a touching structure covering 1/3 of two sides in the worst case would have an anuglar acceleration of 2.133)
 
 ##### Output
