@@ -22,7 +22,9 @@ def calc_forces(geoms:gpd.GeoDataFrame,buffer:float=0,height_column:str=None,min
                                         as the building's footprint.
 
     Returns:
-        gpd.GeoDataFrame: The input GeoDataFrame with the following new columns:
+        gpd.GeoDataFrame: A GeoDataFrame with the same rows as geoms and the following columns:
+            - "geometry": Geometry column of type `shapely.Polygon`.
+            - "height": The building height. If `height_column` is `None` the height will be 1.
             - "angular_acc": Angular acceleration calculated as (momentum * area / inertia). Momentum of the resultant force with respect to the footprint centroid.
               Formula for momentum: sum(distance * |force_i|) Formula for angular acceleration: momentum * area / inertia
             - "force": Magnitude of the resultant force acting on the footprint. Normalized (divided) by the sqrt of the area. 
@@ -37,53 +39,54 @@ def calc_forces(geoms:gpd.GeoDataFrame,buffer:float=0,height_column:str=None,min
         - The buffer determines which buildings are close enough to interact.
     """
 
-    if "force" in geoms.columns:
-        warnings.warn("The 'force' column already exists and will be overwritten.", UserWarning)
+    #if "force" in geoms.columns:
+    #    warnings.warn("The 'force' column already exists and will be overwritten.", UserWarning)
         
-    if "confinement_ratio" in geoms.columns:
-        warnings.warn("The 'confinement_ratio' column already exists and will be overwritten.", UserWarning)
+    #if "confinement_ratio" in geoms.columns:
+    #    warnings.warn("The 'confinement_ratio' column already exists and will be overwritten.", UserWarning)
         
-    if "angular_acc" in geoms.columns:
-        warnings.warn("The 'angular_acc' column already exists and will be overwritten.", UserWarning)
+    #if "angular_acc" in geoms.columns:
+    #    warnings.warn("The 'angular_acc' column already exists and will be overwritten.", UserWarning)
         
-    if "angle" in geoms.columns:
-        warnings.warn("The 'angle' column already exists and will be overwritten.", UserWarning)
+    #if "angle" in geoms.columns:
+    #    warnings.warn("The 'angle' column already exists and will be overwritten.", UserWarning)
 
-    geoms = geoms.drop(columns=['angle','angular_acc','confinement_ratio','force'],errors='ignore')
+    #geoms = geoms.drop(columns=['angle','angular_acc','confinement_ratio','force'],errors='ignore')
 
+    geoms = geoms.copy()
+    orig_geometry = geoms.geometry
     orig_crs = geoms.crs
-    geoms_copy = geoms.copy() 
-    geoms_copy['geom_id'] = geoms_copy.index.copy()
-    geoms_copy.geometry = geoms_copy.geometry.force_2d()
+    geoms['geom_id'] = geoms.index.copy()
+    geoms.geometry = geoms.geometry.force_2d()
 
     if type(height_column) == type(None):
-        geoms_copy['height'] = 1
+        geoms['height'] = 1
     else:
-        geoms_copy['height'] = geoms_copy[height_column].astype(float)
+        geoms['height'] = geoms[height_column].astype(float)
 
-    if not geoms_copy.crs.is_projected:
-        geoms_copy = geoms_copy.to_crs(geoms_copy.geometry.estimate_utm_crs())
+    if not geoms.crs.is_projected:
+        geoms = geoms.to_crs(geoms.geometry.estimate_utm_crs())
 
-    geoms_copy['inertia'] = calc_inertia(geoms_copy.geometry)
-    geoms_copy['area'] = geoms_copy.geometry.area
-    crs = geoms_copy.crs
-    geoms_copy['centroid'] = geoms_copy.geometry.centroid.copy()
+    geoms['inertia'] = calc_inertia(geoms.geometry)
+    geoms['area'] = geoms.geometry.area
+    crs = geoms.crs
+    geoms['centroid'] = geoms.geometry.centroid.copy()
 
-    geoms_copy = select_touching_edges(geoms_copy,buffer=buffer)
-    geoms_copy = explode_edges(geoms_copy,min_length=buffer)
+    geoms = select_touching_edges(geoms,buffer=buffer)
+    geoms = explode_edges(geoms,min_length=buffer)
 
-    geoms_copy[['edge_center','normal_vector']] = geoms_copy.apply(lambda x: pd.Series(get_normal(x['edges'],scale=x['height'])),axis=1)
+    geoms[['edge_center','normal_vector']] = geoms.apply(lambda x: pd.Series(get_normal(x['edges'],scale=x['height'])),axis=1)
 
-    geoms_copy['momentum'] = geoms_copy.apply(lambda x:calculate_momentum(x['edge_center'],x['normal_vector'],x['centroid'],min_dist=min_radius*np.sqrt(x['area']/np.pi)),axis=1)
+    geoms['momentum'] = geoms.apply(lambda x:calculate_momentum(x['edge_center'],x['normal_vector'],x['centroid'],min_dist=min_radius*np.sqrt(x['area']/np.pi)),axis=1)
 
-    geoms_copy['abs_force'] = geoms_copy.apply(lambda x: np.sqrt(x['normal_vector'][0]**2+x['normal_vector'][1]**2),axis=1)
+    geoms['abs_force'] = geoms.apply(lambda x: np.sqrt(x['normal_vector'][0]**2+x['normal_vector'][1]**2),axis=1)
 
-    geoms_copy = resultant_angle(geoms_copy,vector_column='normal_vector',id_column='geom_id')
+    geoms = resultant_angle(geoms,vector_column='normal_vector',id_column='geom_id')
 
-    geoms_copy['angle'] = geoms_copy['angle'] * 2
-    geoms_copy['angle'] = geoms_copy['angle'] * geoms_copy['abs_force']
+    geoms['angle'] = geoms['angle'] * 2
+    geoms['angle'] = geoms['angle'] * geoms['abs_force']
 
-    geoms_copy = geoms_copy.groupby('geom_id').agg({
+    geoms = geoms.groupby('geom_id').agg({
         'height':'first',
         'normal_vector':'sum',
         'abs_force':'sum',
@@ -93,27 +96,30 @@ def calc_forces(geoms:gpd.GeoDataFrame,buffer:float=0,height_column:str=None,min
         'area':'first'
     })
 
-    geoms_copy = geoms_copy.rename(columns={'normal_vector':'res_normal'})
+    geoms = geoms.rename(columns={'normal_vector':'res_normal'})
 
-    geoms_copy['force'] = geoms_copy.apply(lambda x: np.sqrt(x['res_normal'][0]**2 + x['res_normal'][1]**2),axis=1)
-    geoms_copy['confinement_ratio'] = (geoms_copy['abs_force'] - geoms_copy['force']) / geoms_copy['force']
-    geoms_copy['momentum'] = np.abs(geoms_copy['momentum']).apply(min)
-    geoms_copy['angle'] = geoms_copy['angle'] / geoms_copy['abs_force']
-    geoms_copy['angular_acc'] = geoms_copy['momentum'] / geoms_copy['inertia']
+    geoms['force'] = geoms.apply(lambda x: np.sqrt(x['res_normal'][0]**2 + x['res_normal'][1]**2),axis=1)
+    geoms['confinement_ratio'] = (geoms['abs_force'] - geoms['force']) / geoms['force']
+    geoms['momentum'] = np.abs(geoms['momentum']).apply(min)
+    geoms['angle'] = geoms['angle'] / geoms['abs_force']
+    geoms['angular_acc'] = geoms['momentum'] / geoms['inertia']
 
-    geoms_copy['force'] = geoms_copy['force'] / np.sqrt(geoms_copy['area'])
-    geoms_copy['angular_acc'] = geoms_copy['angular_acc'] * geoms_copy['area']
+    geoms['force'] = geoms['force'] / np.sqrt(geoms['area'])
+    geoms['angular_acc'] = geoms['angular_acc'] * geoms['area']
 
-    result = geoms.merge(geoms_copy[['force','confinement_ratio','angular_acc','angle']],left_index=True,right_index=True,how='left')
-    result.loc[result['force'].isna(),'force'] = 0 
-    result.loc[result['confinement_ratio'].isna(),'confinement_ratio'] = 0 
-    result.loc[result['angular_acc'].isna(),'angular_acc'] = 0 
-    result.loc[result['angle'].isna(),'angle'] = 0 
-    result[['force','confinement_ratio','angular_acc','angle']] = result[['force','confinement_ratio','angular_acc','angle']].astype(float)
+    #result = geoms_orig[['geometry']].merge(geoms[['force','confinement_ratio','angular_acc','angle']],left_index=True,right_index=True,how='left')
+    geoms = geoms[['height','force','confinement_ratio','angular_acc','angle','geometry']]
+    geoms.geometry = orig_geometry 
+    geoms.crs = orig_crs
+    geoms.loc[geoms['force'].isna(),'force'] = 0 
+    geoms.loc[geoms['confinement_ratio'].isna(),'confinement_ratio'] = 0 
+    geoms.loc[geoms['angular_acc'].isna(),'angular_acc'] = 0 
+    geoms.loc[geoms['angle'].isna(),'angle'] = 0 
+    geoms[['force','confinement_ratio','angular_acc','angle']] = geoms[['force','confinement_ratio','angular_acc','angle']].astype(float)
 
-    return result
+    return geoms
 
-def relative_position(footprints: gpd.GeoDataFrame, min_angular_acc: float = 2.133, min_confinement: float = 1, min_angle: float = 0.78, min_force: float = 0.166) -> gpd.GeoDataFrame:
+def relative_position(footprints: gpd.GeoDataFrame, min_angular_acc: float = 2.133, min_confinement: float = 1, min_angle: float = 0.78, min_force: float = 0.166) -> list:
     """
     Classifies building footprints based on their relative position and interaction with surrounding structures.
 
@@ -130,7 +136,7 @@ def relative_position(footprints: gpd.GeoDataFrame, min_angular_acc: float = 2.1
                                         would have an anuglar acceleration of 2.133).
 
     Returns:
-        gpd.GeoDataFrame: The input GeoDataFrame with a new column `relative_position`, classifying buildings into the following categories (priority order):
+        list: A list classifying buildings (same order as footprints geodataframe) into the following categories (priority order):
             1. "torque": Buildings classified as *confined* or *corner* with momentum exceeding the minimum momentum.
             2. "confined": Structures touching on both the left and right lateral sides.
             3. "corner": Structures touching at a corner, based on force and angle thresholds.
@@ -140,15 +146,16 @@ def relative_position(footprints: gpd.GeoDataFrame, min_angular_acc: float = 2.1
     Notes:
         - The classification prioritizes categories in the order listed above.
     """
+    footprints = footprints.copy()
     # Warn if relative_position column already exists
 
-    if "relative_position" in footprints.columns:
-        warnings.warn(
-            "The 'relative_position' column already exists and will be overwritten.", UserWarning
-        )
+    #if "relative_position" in footprints.columns:
+    #    warnings.warn(
+    #        "The 'relative_position' column already exists and will be overwritten.", UserWarning
+    #    )
     
     # Preserve original CRS for re-projection if needed
-    orig_crs = footprints.crs
+    #orig_crs = footprints.crs
     
     # Ensure the geometries are in a projected CRS for accurate calculations
     if not footprints.crs.is_projected:
@@ -180,7 +187,7 @@ def relative_position(footprints: gpd.GeoDataFrame, min_angular_acc: float = 2.1
     ] = 'torque'
     
     # Return to the original CRS if needed
-    if orig_crs is not None and orig_crs != footprints.crs:
-        footprints = footprints.to_crs(orig_crs)
+    #if orig_crs is not None and orig_crs != footprints.crs:
+    #    footprints = footprints.to_crs(orig_crs)
     
-    return footprints
+    return list(footprints['relative_position'])

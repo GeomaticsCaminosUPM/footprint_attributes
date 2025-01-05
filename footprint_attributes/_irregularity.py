@@ -6,8 +6,8 @@ import warnings
 from ._utils import get_normal, explode_edges, explode_exterior_and_interior_rings, calc_inertia, eq_circle_intertia
 
 
-def calc_shape_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    """TODO: Explore normalize by the boundary and not by the hull and some type ofnormalization 0-1. Explore polsby + shape"""
+def shape_irregularity(geoms:gpd.GeoDataFrame) -> list:
+    """TODO: Explore normalize by the boundary and not by the hull and some type of normalization 0-1. Explore polsby + shape"""
     """
     Calculates an index to quantify the irregularity of building footprints.
 
@@ -22,12 +22,11 @@ def calc_shape_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         geoms (gpd.GeoDataFrame): A GeoDataFrame containing building footprint geometries as polygons.
 
     Returns:
-        gpd.GeoDataFrame: The input GeoDataFrame with an added column `"shape_irregularity"`,
-                          which contains the computed irregularity index for each geometry.
+        list: A list with the same order as geoms which contains the computed irregularity index for each geometry.
     """
 
-    if "shape_irregularity" in geoms.columns:
-        warnings.warn("The 'shape_irregularity' column already exists and will be overwritten.", UserWarning)
+    #if "shape_irregularity" in geoms.columns:
+    #    warnings.warn("The 'shape_irregularity' column already exists and will be overwritten.", UserWarning)
  
     geoms = geoms.drop(columns=['shape_irregularity'],errors='ignore')
     geoms_copy = geoms.copy()
@@ -68,9 +67,9 @@ def calc_shape_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     result.loc[result['shape_irregularity'].isna(),'shape_irregularity'] = 0 
     result['shape_irregularity'] = result['shape_irregularity'].astype(float)
 
-    return result
+    return list(result['shape_irregularity'])
 
-def calc_polsby_popper(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+def polsby_popper(geoms:gpd.GeoDataFrame, convex_hull:bool=False) -> list:
     """TODO: Polsby popper donut shape. boundary.length takes both inner and outer circle into accout so that the perimeter is very large"""
     """
     Calculates the Polsby-Popper index for building footprint polygons.
@@ -83,15 +82,15 @@ def calc_polsby_popper(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
     Parameters:
         geoms (gpd.GeoDataFrame): A GeoDataFrame containing building footprint geometries as polygons.
+        convex_hull (bool, optional): Use the convex hull of the geometries instead to compute the index. Defaults to False.
 
     Returns:
-        gpd.GeoDataFrame: The input GeoDataFrame with an added column `"polsby_popper"`,
-                          which contains the calculated Polsby-Popper index for each geometry.
+        list: A list in the same order as geoms which contains the calculated Polsby-Popper index for each geometry.
     """
 
     # Warn if Polsby-Popper column already exists
-    if "polsby_popper" in geoms.columns:
-        warnings.warn("The 'polsby_popper' column already exists and will be overwritten.", UserWarning)
+    #if "polsby_popper" in geoms.columns:
+    #    warnings.warn("The 'polsby_popper' column already exists and will be overwritten.", UserWarning)
         
     # Preserve original CRS for re-projection if needed
     orig_crs = geoms.crs
@@ -101,17 +100,19 @@ def calc_polsby_popper(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         geoms = geoms.to_crs(geoms.geometry.estimate_utm_crs())
     
     # Calculate the Polsby-Popper compactness score
-    geoms['polsby_popper'] = (4 * np.pi * geoms.geometry.area) / (geoms.geometry.boundary.length ** 2)
-    geoms['polsby_popper_hull'] = (4 * np.pi * geoms.geometry.convex_hull.area) / (geoms.geometry.convex_hull.boundary.length ** 2)
+    if convex_hull:
+        geoms['polsby_popper'] = (4 * np.pi * geoms.geometry.convex_hull.area) / (geoms.geometry.convex_hull.boundary.length ** 2)
+    else:
+        geoms['polsby_popper'] = (4 * np.pi * geoms.geometry.area) / (geoms.geometry.boundary.length ** 2)
     
     # Return to the original CRS
-    if orig_crs is not None and orig_crs != geoms.crs:
-        geoms = geoms.to_crs(orig_crs)
+    #if orig_crs is not None and orig_crs != geoms.crs:
+    #    geoms = geoms.to_crs(orig_crs)
     
-    return geoms
+    return list(geoms['polsby_popper']) 
     
 
-def calc_inertia_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+def inertia_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
     Calculates the inertia irregularity index for building footprint polygons comparing inertia with the inertia of a circle with the same area.
 
@@ -122,13 +123,12 @@ def calc_inertia_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         geoms (gpd.GeoDataFrame): A GeoDataFrame containing building footprint geometries as polygons.
 
     Returns:
-        gpd.GeoDataFrame: The input GeoDataFrame with an added column `"polsby_popper"`,
-                          which contains the calculated Polsby-Popper index for each geometry.
+        list: A list with the same order as geoms which contains the calculated Polsby-Popper index for each geometry.
     """
 
     # Warn if Polsby-Popper column already exists
-    if "inertia_irregularity" in geoms.columns:
-        warnings.warn("The 'inertia_irregularity' column already exists and will be overwritten.", UserWarning)
+    #if "inertia_irregularity" in geoms.columns:
+    #    warnings.warn("The 'inertia_irregularity' column already exists and will be overwritten.", UserWarning)
         
     # Preserve original CRS for re-projection if needed
     orig_crs = geoms.crs
@@ -141,8 +141,8 @@ def calc_inertia_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     geoms['inertia_irregularity'] = eq_circle_intertia(geoms.geometry.area) / calc_inertia(geoms.geometry) 
 
     # Return to the original CRS
-    if orig_crs is not None and orig_crs != geoms.crs:
-        geoms = geoms.to_crs(orig_crs)
+    #if orig_crs is not None and orig_crs != geoms.crs:
+    #    geoms = geoms.to_crs(orig_crs)
     
-    return geoms
+    return list(geoms['inertia_irregularity'])
     
