@@ -22,10 +22,10 @@ This feature determines if a building touches other structures (relative positio
 #### **Function: `get_forces_gdf`**
 ```python
 get_forces_gdf(
-  geoms: gpd.GeoDataFrame,
-  buffer: float = 0,
-  height_column: str = None,
-  min_radius: float = 0
+    geoms: gpd.GeoDataFrame,
+    buffer: float = 0,
+    height_column: str = None,
+    min_radius: float = 0
 ) -> gpd.GeoDataFrame
 ```
 
