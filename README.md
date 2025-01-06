@@ -141,7 +141,7 @@ polsby_popper(geoms: gpd.GeoDataFrame, convex_hull: bool = False) -> list
 - **`geoms`** (`gpd.GeoDataFrame`): GeoDataFrame with building footprint geometries.
 - **`convex_hull`** (`bool`, optional): Use the convex hull of the geometries instead to compute the polsby popper index (default: `False`).
 ##### **Output:**
-List of `polsby_popper` indices corresponding to `geoms` rows.
+List of `polsby_popper` values corresponding to `geoms` rows.
 
 ---
 
@@ -164,7 +164,7 @@ shape_irregularity(geoms: gpd.GeoDataFrame) -> list
 ##### **Parameters**:  
 - **`geoms`** (`gpd.GeoDataFrame`): GeoDataFrame with building footprint geometries.
 ##### **Output**: 
-List of `shape_irregularity` indices corresponding to `geoms` rows.
+List of `shape_irregularity` values corresponding to `geoms` rows.
 
 ---
 
@@ -182,7 +182,7 @@ inertia_irregularity(geoms: gpd.GeoDataFrame) -> list
 ##### **Parameters**:  
 - **`geoms`** (`gpd.GeoDataFrame`): GeoDataFrame with building footprint geometries.
 ##### **Output**: 
-List of `inertia_irregularity` indices corresponding to `geoms` rows.
+List of `inertia_irregularity` values corresponding to `geoms` rows.
 
 ---
 
