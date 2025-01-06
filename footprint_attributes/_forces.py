@@ -119,7 +119,7 @@ def get_forces_gdf(geoms:gpd.GeoDataFrame,buffer:float=0,height_column:str=None,
 
     return geoms
 
-def relative_position(footprints: gpd.GeoDataFrame, min_angular_acc: float = 2.133, min_confinement: float = 1, min_angle: float = 0.78, min_force: float = 0.166) -> list:
+def relative_position(forces: gpd.GeoDataFrame, min_angular_acc: float = 2.133, min_confinement: float = 1, min_angle: float = 0.78, min_force: float = 0.166) -> list:
     """
     Classifies building footprints based on their relative position and interaction with surrounding structures.
 
@@ -146,7 +146,7 @@ def relative_position(footprints: gpd.GeoDataFrame, min_angular_acc: float = 2.1
     Notes:
         - The classification prioritizes categories in the order listed above.
     """
-    footprints = footprints.copy()
+    forces = forces.copy()
     # Warn if relative_position column already exists
 
     #if "relative_position" in footprints.columns:
@@ -158,30 +158,30 @@ def relative_position(footprints: gpd.GeoDataFrame, min_angular_acc: float = 2.1
     #orig_crs = footprints.crs
     
     # Ensure the geometries are in a projected CRS for accurate calculations
-    if not footprints.crs.is_projected:
-        footprints = footprints.to_crs(footprints.geometry.estimate_utm_crs())
+    if not forces.crs.is_projected:
+        forces = forces.to_crs(forces.geometry.estimate_utm_crs())
 
     # Initialize 'relative_position' column
-    footprints['relative_position'] = 'isolated'
+    forces['relative_position'] = 'isolated'
     
     # Update 'relative_position' based on criteria
-    footprints.loc[footprints['force'] > min_force, 'relative_position'] = 'partial'
+    forces.loc[forces['force'] > min_force, 'relative_position'] = 'partial'
     
-    footprints.loc[
+    forces.loc[
         (
-            footprints['angle'] > min_angle
+            forces['angle'] > min_angle
         ) & (
-            footprints['relative_position'] == 'partial'
+            forces['relative_position'] == 'partial'
         ),
         'relative_position'
     ] = 'corner'
     
-    footprints.loc[footprints['confinement_ratio'] > min_confinement, 'relative_position'] = 'confined'
+    forces.loc[forces['confinement_ratio'] > min_confinement, 'relative_position'] = 'confined'
 
-    footprints.loc[
-        ((footprints['relative_position'] == 'corner') | (footprints['relative_position'] == 'confined')
+    forces.loc[
+        ((forces['relative_position'] == 'corner') | (forces['relative_position'] == 'confined')
         ) & (
-            footprints['angular_acc'] > min_angular_acc
+            forces['angular_acc'] > min_angular_acc
         ), 
         'relative_position'
     ] = 'torque'
@@ -190,4 +190,4 @@ def relative_position(footprints: gpd.GeoDataFrame, min_angular_acc: float = 2.1
     #if orig_crs is not None and orig_crs != footprints.crs:
     #    footprints = footprints.to_crs(orig_crs)
     
-    return list(footprints['relative_position'])
+    return list(forces['relative_position'])
