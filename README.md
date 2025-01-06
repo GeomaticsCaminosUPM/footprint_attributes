@@ -1,3 +1,140 @@
+```markdown
+# Footprint Attributes
+
+**Footprint Attributes** is a Python package built using GeoPandas to calculate various geometric indices related to building footprint geometry and seismic risk.
+
+---
+
+## Installation
+
+To install the package, use the following command:
+
+```bash
+pip install git+https://github.com/GeomaticsCaminosUPM/footprint_attributes.git
+```
+
+---
+
+## Features
+
+### 1. **Relative Position of Buildings**
+This feature determines if a building touches other structures (relative position within the city block). It calculates "forces" that neighboring structures exert on the building, proportional to the contact area (length of touching footprints multiplied by building height) in the normal direction of the touching plane.
+
+#### **Function: `get_forces_gdf`**
+```python
+get_forces_gdf(geoms: gpd.GeoDataFrame, buffer: float = 0, height_column: str = None) -> gpd.GeoDataFrame
+```
+
+##### Parameters:
+- **`geoms`** (`gpd.GeoDataFrame`): A GeoDataFrame containing building footprints as polygon geometries.
+- **`buffer`** (`float`): Buffer distance in meters to determine if two buildings are considered touching.
+- **`height_column`** (`str`, optional): Column name specifying building height. Defaults to `1` if `None`.
+
+##### Output:
+Returns a `gpd.GeoDataFrame` with additional columns:
+- **`height`**: Building height.
+- **`angular_acc`**: Angular acceleration.
+- **`force`**: Magnitude of the resultant force.
+- **`confinement_ratio`**: Proportion of confined forces.
+- **`angle`**: Normalized sum of force angles.
+- **`geometry`**: Original building footprint geometries.
+
+---
+
+#### **Function: `relative_position`**
+```python
+relative_position(
+    forces: gpd.GeoDataFrame,
+    min_angular_acc: float = 0.0825,
+    min_confinement: float = 1,
+    min_angle: float = 0.78,
+    min_force: float = 0.166
+) -> list
+```
+
+##### Parameters:
+- **`forces`** (`gpd.GeoDataFrame`): Output GeoDataFrame from `get_forces_gdf`.
+- **`min_force`** (`float`): Minimum force threshold (default: `0.166`).
+- **`min_angle`** (`float`): Minimum angle threshold (default: `π/4` radians or 45 degrees).
+- **`min_confinement`** (`float`): Minimum confinement threshold (default: `1`).
+- **`min_angular_acc`** (`float`): Minimum angular acceleration threshold.
+
+##### Output:
+Returns a list of relative positions for buildings, classified as:
+1. **"torque"**: High angular acceleration.
+2. **"confined"**: Touches on both lateral sides.
+3. **"corner"**: Touches at a corner.
+4. **"partial"**: Touches on one side.
+5. **"isolated"**: No touching structures.
+
+---
+
+### 2. **Shape Irregularity**
+Measures geometric irregularity of building footprints using various indices.
+
+#### **Polsby-Popper Index**
+Measures shape compactness (similarity to a circle).
+- **Formula**:  
+  \[
+  \text{Polsby-Popper Index} = \frac{4 \pi A}{P^2}
+  \]
+  where:
+  - \( A \): Area of the polygon.
+  - \( P \): Perimeter of the polygon.
+
+##### Function: `calc_polsby_popper`
+```python
+calc_polsby_popper(geoms: gpd.GeoDataFrame) -> list
+```
+
+- **Parameters**:  
+  - `geoms`: GeoDataFrame with building footprint geometries.
+- **Output**: List of `polsby_popper` indices corresponding to `geoms` rows.
+
+---
+
+#### **Custom Irregularity Index**
+Quantifies the irregularity of footprints using convex hull analysis.
+- **Formula**:  
+  \[
+  \text{Custom Irregularity Index} = \frac{l \cdot d}{L}
+  \]
+  where:
+  - \( l \): Length outside the convex hull.
+  - \( d \): Distance of the center of gravity outside the hull.
+  - \( L \): Total convex hull length.
+
+##### Function: `calc_shape_irregularity`
+```python
+calc_shape_irregularity(geoms: gpd.GeoDataFrame) -> list
+```
+
+- **Parameters**:  
+  - `geoms`: GeoDataFrame with building footprint geometries.
+- **Output**: List of `shape_irregularity` indices.
+
+---
+
+#### **Inertia Irregularity**
+Compares the inertia of a polygon to a circle with the same area.
+- **Formula**:  
+  \[
+  \text{Inertia Irregularity} = \frac{\text{Inertia of Equivalent Circle}}{\text{Inertia of Polygon}}
+  \]
+
+##### Function: `calc_inertia_irregularity`
+```python
+calc_inertia_irregularity(geoms: gpd.GeoDataFrame) -> list
+```
+
+- **Parameters**:  
+  - `geoms`: GeoDataFrame with building footprint geometries.
+- **Output**: List of `inertia_irregularity` indices.
+
+---
+
+
+
 # Footprint Attributes
 
 **Footprint Attributes** is a Python package built using GeoPandas to calculate various geometric indices related to building footprint geometry and seismic risk.
@@ -10,37 +147,8 @@
 
 The package provides functions for:
 
-### 1. **Shape Irregularity**
-- **Polsby-Popper Index**: A measure of shape compactness (similarity to a circle).
-  - **Formula**: $\text{Polsby-Popper Index} = \frac{4 \pi A}{P^2}$
-    where:
-    - $A$: Area of the polygon.
-    - $P$: Perimeter of the polygon.
-  - #### Function: `calc_polsby_popper(geoms: gpd.GeoDataFrame) -> gpd.GeoDataFrame`
-    - **Parameters**:
-      - `geoms`: GeoDataFrame with building footprint polygon geometries.
-    - **Output**: A list in the same order as `geoms` rows with the `polsby_popper` index.
 
-- **Custom Irregularity Index**: Our own index to quantify the irregularity of building footprints.
-  - **Formula**: $\frac{l \cdot d}{L}$, where:
-    - $l$: Length of the shapes outside the convex hull.
-    - $d$: Distance of the center of gravity of the shapes outside the hull to the hull.
-    - $L$: Total length of the convex hull.
-  - #### Function: `calc_shape_irregularity(geoms: gpd.GeoDataFrame) -> gpd.GeoDataFrame`
-    - **Parameters**:
-      - `geoms`: GeoDataFrame with building footprint polygon geometries.
-    - **Output**: A list in the same order as `geoms` rows with the `shape_irregularity` index. 
-   
-- **Inertia Irregularity**: Inertia of a circle with the same area as the polygon geometry divided by the inertia of the polygon.
-    - **Formula**: $\text{intertia irregularity} = \frac{\text{intertia eq circle}}{\text{itertia}}$
-    - #### Function: `calc_inertia_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame`
-        - **Parameters**:
-          - `geoms`: GeoDataFrame with building footprint polygon geometries.
-        - **Output**: A list in the same order as `geoms` rows with the `inertia_irregularity` index.
-
----
-
-### 2. **Relative Position of Buildings**
+### 1. **Relative Position of Buildings**
 Determines if the building touches other structures (relative position in the city block). This is done by calculating "forces" that neighboring structures exert on the building. The force is proportional to the contact area (length of touching footprints multiplied by building height) in the normal direction of the touching plane.
 
 #### Function: `get_forces_gdf(geoms: gpd.GeoDataFrame, buffer: float = 0, height_column: str = None) -> gpd.GeoDataFrame`
@@ -85,7 +193,7 @@ The function returns a `gpd.GeoDataFrame`, which includes the following columns:
 
 The row indices are the same as the input `geoms` GeoDataframe.
 
-#### Function: `relative_position(forces: gpd.GeoDataFrame, min_angular_acc: float = 0.0825, min_confinement: float = 1, min_angle: float = 0.78, min_force: float = 0.166) -> gpd.GeoDataFrame`
+#### Function: `relative_position(forces: gpd.GeoDataFrame, min_angular_acc: float = 0.0825, min_confinement: float = 1, min_angle: float = 0.78, min_force: float = 0.166) -> list`
 
 ##### Parameters
   - **`forces` (`gpd.GeoDataFrame`)**: GeoDataFrame outputted by `calc_forces()` with `force`, `confinement`, and `angle` columns.
@@ -103,6 +211,35 @@ The row indices are the same as the input `geoms` GeoDataframe.
   4. **"partial"**: Structures touching on either the left or right side.
   5. **"isolated"**: No touching structures.
 
+---
+
+### 2. **Shape Irregularity**
+- **Polsby-Popper Index**: A measure of shape compactness (similarity to a circle).
+  - **Formula**: $\text{Polsby-Popper Index} = \frac{4 \pi A}{P^2}$
+    where:
+    - $A$: Area of the polygon.
+    - $P$: Perimeter of the polygon.
+  - #### Function: `calc_polsby_popper(geoms: gpd.GeoDataFrame) -> list`
+    - **Parameters**:
+      - `geoms`: GeoDataFrame with building footprint polygon geometries.
+    - **Output**: A list in the same order as `geoms` rows with the `polsby_popper` index.
+
+- **Custom Irregularity Index**: Our own index to quantify the irregularity of building footprints.
+  - **Formula**: $\frac{l \cdot d}{L}$, where:
+    - $l$: Length of the shapes outside the convex hull.
+    - $d$: Distance of the center of gravity of the shapes outside the hull to the hull.
+    - $L$: Total length of the convex hull.
+  - #### Function: `calc_shape_irregularity(geoms: gpd.GeoDataFrame) -> list`
+    - **Parameters**:
+      - `geoms`: GeoDataFrame with building footprint polygon geometries.
+    - **Output**: A list in the same order as `geoms` rows with the `shape_irregularity` index. 
+   
+- **Inertia Irregularity**: Inertia of a circle with the same area as the polygon geometry divided by the inertia of the polygon.
+    - **Formula**: $\text{intertia irregularity} = \frac{\text{intertia eq circle}}{\text{itertia}}$
+    - #### Function: `calc_inertia_irregularity(geoms:gpd.GeoDataFrame) -> list`
+        - **Parameters**:
+          - `geoms`: GeoDataFrame with building footprint polygon geometries.
+        - **Output**: A list in the same order as `geoms` rows with the `inertia_irregularity` index.
 
 
 
