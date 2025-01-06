@@ -107,8 +107,8 @@ def calc_forces(geoms:gpd.GeoDataFrame,buffer:float=0,height_column:str=None,min
     geoms['force'] = geoms['force'] / np.sqrt(geoms['area'])
     geoms['angular_acc'] = geoms['angular_acc'] * geoms['area']
 
-    #result = geoms_orig[['geometry']].merge(geoms[['force','confinement_ratio','angular_acc','angle']],left_index=True,right_index=True,how='left')
-    geoms = geoms[['height','force','confinement_ratio','angular_acc','angle','geometry']]
+    #result = geoms_orig.merge(geoms[['force','confinement_ratio','angular_acc','angle']],left_index=True,right_index=True,how='left')
+    geoms = geoms[['height','force','confinement_ratio','angular_acc','angle']]
     geoms.geometry = orig_geometry 
     geoms.crs = orig_crs
     geoms.loc[geoms['force'].isna(),'force'] = 0 
