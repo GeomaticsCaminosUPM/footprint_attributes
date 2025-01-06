@@ -19,9 +19,6 @@ pip install git+https://github.com/GeomaticsCaminosUPM/footprint_attributes.git
 ### 1. **Relative Position of Buildings**
 This feature determines if a building touches other structures (relative position within the city block). It calculates "forces" that neighboring structures exert on the building, proportional to the contact area (length of touching footprints multiplied by building height) in the normal direction of the touching plane.
 
-Here is the markdown formatted version for your GitHub README:
-
-
 #### **Function: `get_forces_gdf`**
 ```python
 get_forces_gdf(geoms: gpd.GeoDataFrame, buffer: float = 0, height_column: str = None) -> gpd.GeoDataFrame
