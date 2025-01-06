@@ -100,6 +100,8 @@ Returns a list of relative positions for buildings, classified as:
 4. **"partial"**: Touches on one side.
 5. **"isolated"**: No touching structures.
 
+**Note:** The order of the list corresponds to the input `forces` rows.
+
 ---
 
 ### 2. **Shape Irregularity**
