@@ -19,35 +19,59 @@ pip install git+https://github.com/GeomaticsCaminosUPM/footprint_attributes.git
 ### 1. **Relative Position of Buildings**
 This feature determines if a building touches other structures (relative position within the city block). It calculates "forces" that neighboring structures exert on the building, proportional to the contact area (length of touching footprints multiplied by building height) in the normal direction of the touching plane.
 
+Certainly! Here's an enhanced and more readable markdown format for your GitHub README:
+
 #### **Function: `get_forces_gdf`**
 ```python
-get_forces_gdf(geoms: gpd.GeoDataFrame, buffer: float = 0, height_column: str = None) -> gpd.GeoDataFrame
+get_forces_gdf(geoms: gpd.GeoDataFrame, buffer: float = 0, height_column: str = None, min_radius: float = 0) -> gpd.GeoDataFrame
 ```
 
-##### Parameters:
-- **`geoms`** (`gpd.GeoDataFrame`): A GeoDataFrame containing building footprints as polygon geometries.
-- **`buffer`** (`float`): Buffer distance in meters to determine if two buildings are considered touching.
-- **`height_column`** (`str`, optional): Column name specifying building height. If `None` the all building heights will be `1`.
-- **`min_radius`** (`float`, optional): Minimum distance multiplier used to exclude forces that would otherwise increase momentum. Forces with a distance below a threshold  
-  (`min_radius * equivalent radius`) will contribute to the momentum calculation only if they decrease the momentum. The equivalent radius of a building is defined as the radius of a circle with the same area as the building's footprint.
+##### **Parameters:**
+- **`geoms`** (`gpd.GeoDataFrame`):  
+  A GeoDataFrame containing building footprints as polygon geometries.
+  
+- **`buffer`** (`float`):  
+  Buffer distance in meters to determine if two buildings are considered touching.
 
-##### Output:
+- **`height_column`** (`str`, optional):  
+  The column name in `geoms` specifying the building height in meters.  
+  If `None`, all buildings will have a uniform height of `1`.
+
+- **`min_radius`** (`float`, optional):  
+  Minimum distance multiplier used to exclude forces that would otherwise increase momentum.  
+  Forces with a distance below a threshold (`min_radius * equivalent radius`) will only contribute to momentum calculation if they decrease the momentum.  
+  The equivalent radius of a building is the radius of a circle with the same area as the building's footprint.
+
+---
+
+##### **Output:**
 Returns a `gpd.GeoDataFrame` with the following columns:
-- **`height`**: Building height. If `height_column` is set to `None` the height will be `1`.
-  
-- **`angular_acc`**: Angular acceleration calculated as: $\text{angular acc} = \frac{\text{momentum} \cdot \text{area}}{\text{inertia}}$
-  
-   - Momentum is calculated as: $\text{momentum} = \sum (\text{distance} \cdot |\text{force}_i|)$
-     
-- **`force`**: Magnitude of the resultant force acting on the footprint, normalized by the square root of the area: $\text{force} = \left| \sum \text{force}_i \right|$
-  
-- **`confinement_ratio`**: Proportion of total forces that are confined (counterbalanced by opposing forces): $\text{confinement ratio} = \frac{\sum |\text{force}_i| - \left| \sum \text{force}_i \right|}{\left| \sum \text{force}_i \right|}$
-  
-- **`angle`**: Normalized sum of the angles between individual forces and the resultant force: $\text{angle} = \frac{\sum \left( |\text{force}_i| \cdot \text{angle}(\text{force}_i, \sum \text{force}_j) \right)}{\left| \sum \text{force}_i \right|}$
-  
-- **`geometry`**: Original building footprint geometries.
 
-**Note:** The row indices are the same as the `geoms` indices.
+- **`height`**:  
+  The building height. If `height_column` is `None`, the height will default to `1`.
+
+- **`angular_acc`**:  
+  The angular acceleration, calculated as:  
+  $$\text{angular acc} = \frac{\text{momentum} \cdot \text{area}}{\text{inertia}}$$  
+  Where **momentum** is calculated as:  
+  $$\text{momentum} = \sum (\text{distance} \cdot |\text{force}_i|)$$
+
+- **`force`**:  
+  The magnitude of the resultant force acting on the footprint, normalized by the square root of the area:  
+  $$\text{force} = \left| \sum \text{force}_i \right|$$
+
+- **`confinement_ratio`**:  
+  The proportion of total forces that are confined (counterbalanced by opposing forces):  
+  $$\text{confinement ratio} = \frac{\sum |\text{force}_i| - \left| \sum \text{force}_i \right|}{\left| \sum \text{force}_i \right|}$$
+
+- **`angle`**:  
+  The normalized sum of the angles between individual forces and the resultant force:  
+  $$\text{angle} = \frac{\sum \left( |\text{force}_i| \cdot \text{angle}(\text{force}_i, \sum \text{force}_j) \right)}{\left| \sum \text{force}_i \right|}$$
+
+- **`geometry`**:  
+  The original building footprint geometries (from the input GeoDataFrame).
+
+**Note:** The row indices in the output GeoDataFrame will be the same as the indices in the input `geoms` GeoDataFrame.
 
 ---
 
