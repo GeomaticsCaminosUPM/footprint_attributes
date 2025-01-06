@@ -19,7 +19,7 @@ The package provides functions for:
   - #### Function: `calc_polsby_popper(geoms: gpd.GeoDataFrame) -> gpd.GeoDataFrame`
     - **Parameters**:
       - `geoms`: GeoDataFrame with building footprint polygon geometries.
-    - **Output**: Returns the same GeoDataFrame with a new column `"polsby_popper"`.
+    - **Output**: A list in the same order as `geoms` rows with the `polsby_popper` index.
 
 - **Custom Irregularity Index**: Our own index to quantify the irregularity of building footprints.
   - **Formula**: $\frac{l \cdot d}{L}$, where:
@@ -29,21 +29,21 @@ The package provides functions for:
   - #### Function: `calc_shape_irregularity(geoms: gpd.GeoDataFrame) -> gpd.GeoDataFrame`
     - **Parameters**:
       - `geoms`: GeoDataFrame with building footprint polygon geometries.
-    - **Output**: Returns the same GeoDataFrame with a new column `"shape_irregularity"`.
+    - **Output**: A list in the same order as `geoms` rows with the `shape_irregularity` index. 
    
 - **Inertia Irregularity**: Inertia of a circle with the same area as the polygon geometry divided by the inertia of the polygon.
     - **Formula**: $\text{intertia irregularity} = \frac{\text{intertia eq circle}}{\text{itertia}}$
     - #### Function: `calc_inertia_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame`
         - **Parameters**:
           - `geoms`: GeoDataFrame with building footprint polygon geometries.
-        - **Output**: Returns the same GeoDataFrame with a new column `"inertia_irregularity"`.
+        - **Output**: A list in the same order as `geoms` rows with the `inertia_irregularity` index.
 
 ---
 
 ### 2. **Relative Position of Buildings**
 Determines if the building touches other structures (relative position in the city block). This is done by calculating "forces" that neighboring structures exert on the building. The force is proportional to the contact area (length of touching footprints multiplied by building height) in the normal direction of the touching plane.
 
-#### Function: `calc_forces(geoms: gpd.GeoDataFrame, buffer: float = 0, height_column: str = None) -> gpd.GeoDataFrame`
+#### Function: `get_forces_gdf(geoms: gpd.GeoDataFrame, buffer: float = 0, height_column: str = None) -> gpd.GeoDataFrame`
 ##### Parameters
 
 - **`geoms` (`gpd.GeoDataFrame`)**  
@@ -62,25 +62,33 @@ Determines if the building touches other structures (relative position in the ci
 
 ##### Output
 
-The function returns the input `gpd.GeoDataFrame`, which includes the following new columns:
+The function returns a `gpd.GeoDataFrame`, which includes the following columns:
 
-1. **`angular_acc`**  
+- **`height`**
+    Building height. If `height_column` is set to `None` the height will be `1`.
+  
+- **`angular_acc`**  
    Angular acceleration calculated as: $\text{angular acc} = \frac{\text{momentum} \cdot \text{area}}{\text{inertia}}$
    - **Momentum** is calculated as: $\text{momentum} = \sum (\text{distance} \cdot |\text{force}_i|)$
 
-2. **`force`**  
+- **`force`**  
    Magnitude of the resultant force acting on the footprint, normalized by the square root of the area: $\text{force} = \left| \sum \text{force}_i \right|$
 
-3. **`confinement_ratio`**  
+- **`confinement_ratio`**  
    Proportion of total forces that are confined (counterbalanced by opposing forces): $\text{confinement ratio} = \frac{\sum |\text{force}_i| - \left| \sum \text{force}_i \right|}{\left| \sum \text{force}_i \right|}$
 
-4. **`angle`**  
+- **`angle`**  
    Normalized sum of the angles between individual forces and the resultant force: $\text{angle} = \frac{\sum \left( |\text{force}_i| \cdot \text{angle}(\text{force}_i, \sum \text{force}_j) \right)}{\left| \sum \text{force}_i \right|}$
 
-#### Function: `relative_position(footprints: gpd.GeoDataFrame, min_angular_acc: float = 0.0825, min_confinement: float = 1, min_angle: float = 0.78, min_force: float = 0.166) -> gpd.GeoDataFrame`
+- **`geometry`**
+  Geopandas geometry column with the building footprint shapely polygons from the input.
+
+The row indices are the same as the input `geoms` GeoDataframe.
+
+#### Function: `relative_position(forces: gpd.GeoDataFrame, min_angular_acc: float = 0.0825, min_confinement: float = 1, min_angle: float = 0.78, min_force: float = 0.166) -> gpd.GeoDataFrame`
 
 ##### Parameters
-  - **`footprints` (`gpd.GeoDataFrame`)**: GeoDataFrame outputted by `calc_forces()` with `force`, `confinement`, and `angle` columns.
+  - **`forces` (`gpd.GeoDataFrame`)**: GeoDataFrame outputted by `calc_forces()` with `force`, `confinement`, and `angle` columns.
   - **`min_force` (`float`, optional)**: Significance threshold for the resultant force. Default: `0.166`. (E.g., for a square building with height 1 and side length 1, if a touching structure covers only 1/6 of one side, the resultant force would be 1/6.)
   - **`min_angle` (`float`, optional)**: Angle threshold (in radians). Default: $\pi / 4$ (45 degrees).
   - **`min_confinement` (`float`, optional)**: Threshold for confinement. Default: `1` (indicating equal amounts of confined and resultant forces).
@@ -88,7 +96,7 @@ The function returns the input `gpd.GeoDataFrame`, which includes the following 
                             a touching structure covering 1/3 of two sides in the worst case would have an anuglar acceleration of 2.133)
 
 ##### Output
-  Returns the input `gpd.GeoDataFrame` with a new column `"relative_position"`. Classifies buildings into the following categories (priority order):
+  Returns a list in the same ordes as forces rows with the `relative_position`. Classifies buildings into the following categories (priority order):
   1. **"torque"**: Buildings of class **confined** or **corner** with an angular acceleration exceeding the minimum.
   2. **"confined"**: Structures touching on both the left and right lateral sides.
   3. **"corner"**: Structures touching at a corner (determined by force and angle thresholds).
