@@ -34,11 +34,17 @@ get_forces_gdf(geoms: gpd.GeoDataFrame, buffer: float = 0, height_column: str = 
 ##### Output:
 Returns a `gpd.GeoDataFrame` with the following columns:
 - **`height`**: Building height. If `height_column` is set to `None` the height will be `1`.
+  
 - **`angular_acc`**: Angular acceleration calculated as: $\text{angular acc} = \frac{\text{momentum} \cdot \text{area}}{\text{inertia}}$
+  
    - Momentum is calculated as: $\text{momentum} = \sum (\text{distance} \cdot |\text{force}_i|)$
+     
 - **`force`**: Magnitude of the resultant force acting on the footprint, normalized by the square root of the area: $\text{force} = \left| \sum \text{force}_i \right|$
+  
 - **`confinement_ratio`**: Proportion of total forces that are confined (counterbalanced by opposing forces): $\text{confinement ratio} = \frac{\sum |\text{force}_i| - \left| \sum \text{force}_i \right|}{\left| \sum \text{force}_i \right|}$
+  
 - **`angle`**: Normalized sum of the angles between individual forces and the resultant force: $\text{angle} = \frac{\sum \left( |\text{force}_i| \cdot \text{angle}(\text{force}_i, \sum \text{force}_j) \right)}{\left| \sum \text{force}_i \right|}$
+  
 - **`geometry`**: Original building footprint geometries.
 
 **Note:** The row indices are the same as the `geoms` indices.
