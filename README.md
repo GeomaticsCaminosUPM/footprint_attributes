@@ -49,21 +49,27 @@ Returns a `gpd.GeoDataFrame` with the following columns:
   The building height. If `height_column` is `None`, the height will default to `1`.
 
 - **`angular_acc`**:  
-  The angular acceleration, calculated as:  
-  $$\text{angular acc} = \frac{\text{momentum} \cdot \text{area}}{\text{inertia}}$$  
-  Where **momentum** is calculated as:  
+  The angular acceleration, calculated as:
+  
+  $$\text{angular acc} = \frac{\text{momentum} \cdot \text{area}}{\text{inertia}}$$
+   
+  Where **momentum** is calculated as:
+  
   $$\text{momentum} = \sum (\text{distance} \cdot |\text{force}_i|)$$
 
 - **`force`**:  
-  The magnitude of the resultant force acting on the footprint, normalized by the square root of the area:  
+  The magnitude of the resultant force acting on the footprint, normalized by the square root of the area:
+  
   $$\text{force} = \left| \sum \text{force}_i \right|$$
 
 - **`confinement_ratio`**:  
-  The proportion of total forces that are confined (counterbalanced by opposing forces):  
+  The proportion of total forces that are confined (counterbalanced by opposing forces):
+    
   $$\text{confinement ratio} = \frac{\sum |\text{force}_i| - \left| \sum \text{force}_i \right|}{\left| \sum \text{force}_i \right|}$$
 
 - **`angle`**:  
-  The normalized sum of the angles between individual forces and the resultant force:  
+  The normalized sum of the angles between individual forces and the resultant force:
+   
   $$\text{angle} = \frac{\sum \left( |\text{force}_i| \cdot \text{angle}(\text{force}_i, \sum \text{force}_j) \right)}{\left| \sum \text{force}_i \right|}$$
 
 - **`geometry`**:  
@@ -109,8 +115,10 @@ Measures geometric irregularity of building footprints using various indices.
 
 #### **Polsby-Popper Index**
 Measures shape compactness (similarity to a circle).
-- **Formula**:  
+- **Formula**:
+    
   $$\text{Polsby-Popper Index} = \frac{4 \pi A}{P^2}$$
+  
   where:
   - \( A \): Area of the polygon.
   - \( P \): Perimeter of the polygon.
@@ -128,8 +136,10 @@ polsby_popper(geoms: gpd.GeoDataFrame) -> list
 
 #### **Custom Irregularity Index**
 Quantifies the irregularity of footprints using convex hull analysis.
-- **Formula**:  
+- **Formula**:
+  
   $$\text{Custom Irregularity Index} = \frac{l \cdot d}{L}$$
+  
   where:
   - \( l \): Length outside the convex hull.
   - \( d \): Distance of the center of gravity outside the hull.
@@ -148,7 +158,8 @@ shape_irregularity(geoms: gpd.GeoDataFrame) -> list
 
 #### **Inertia Irregularity**
 Compares the inertia of a polygon to a circle with the same area.
-- **Formula**:  
+- **Formula**:
+  
   $$\text{Inertia Irregularity} = \frac{\text{Inertia of Equivalent Circle}}{\text{Inertia of Polygon}}$$
 
 ##### Function: `inertia_irregularity`
