@@ -97,15 +97,19 @@ relative_position(
 
 ##### Parameters:
 - **`forces`** (`gpd.GeoDataFrame`): Output GeoDataFrame from `get_forces_gdf`.
+  
 - **`min_force`** (`float`, optional): Minimum force threshold (default: `0.166`; e.g., for a square building with height 1 and side length 1, if a touching structure covers only 1/6 of one side, the resultant force would be 1/6.)
+  
 - **`min_angle`** (`float`, optional): Minimum angle threshold (default: `π/4` radians or 45 degrees; e.g., for a square building with height 1 and side length 1, if a touching structure covers only 1/6 of one side, the resultant force would be 1/6.)
+  
 - **`min_confinement`** (`float`, optional): Minimum confinement threshold (default: `1`; equal amounts of confined and resultant forces).
+  
 - **`min_angular_acc`** (`float`, optional): Minimum angular acceleration threshold \frac{momentum * area}{inertia}$ (default: `2.133`; e.g., for a rectangular building with height 1 and sides of length 1 and 0.5, 
                             a touching structure covering 1/3 of two sides in the worst case would have an anuglar acceleration of 2.133)
 
 ##### Output:
 Returns a list of relative positions for buildings, classified as:
-1. **"torque"**: High angular acceleration.
+1. **"torque"**: High angular acceleration and class **confined** or **corner**.
 2. **"confined"**: Touches on both lateral sides.
 3. **"corner"**: Touches at a corner.
 4. **"partial"**: Touches on one side.
@@ -134,7 +138,7 @@ polsby_popper(geoms: gpd.GeoDataFrame, convex_hull: bool = False) -> list
 ```
 
 ##### **Parameters:** 
-- **`geoms`**: GeoDataFrame with building footprint geometries.
+- **`geoms`** (`gpd.GeoDataFrame`): GeoDataFrame with building footprint geometries.
 - **`convex_hull`** (`bool`, optional): Use the convex hull of the geometries instead to compute the polsby popper index (default: `False`).
 ##### **Output:**
 List of `polsby_popper` indices corresponding to `geoms` rows.
@@ -158,7 +162,7 @@ shape_irregularity(geoms: gpd.GeoDataFrame) -> list
 ```
 
 ##### **Parameters**:  
-- **`geoms`**: GeoDataFrame with building footprint geometries.
+- **`geoms`** (`gpd.GeoDataFrame`): GeoDataFrame with building footprint geometries.
 ##### **Output**: 
 List of `shape_irregularity` indices corresponding to `geoms` rows.
 
@@ -176,7 +180,7 @@ inertia_irregularity(geoms: gpd.GeoDataFrame) -> list
 ```
 
 ##### **Parameters**:  
-- **`geoms`**: GeoDataFrame with building footprint geometries.
+- **`geoms`** (`gpd.GeoDataFrame`): GeoDataFrame with building footprint geometries.
 ##### **Output**: 
 List of `inertia_irregularity` indices corresponding to `geoms` rows.
 
