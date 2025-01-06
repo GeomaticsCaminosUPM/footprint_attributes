@@ -130,11 +130,12 @@ Measures shape compactness (similarity to a circle).
 
 ##### Function: `polsby_popper`
 ```python
-polsby_popper(geoms: gpd.GeoDataFrame) -> list
+polsby_popper(geoms: gpd.GeoDataFrame, convex_hull: bool = False) -> list
 ```
 
 - **Parameters**:  
   - `geoms`: GeoDataFrame with building footprint geometries.
+  - `convex_hull` (`bool`, optional): Use the convex hull of the geometries instead to compute the polsby popper index (default: `False`).
 - **Output**: List of `polsby_popper` indices corresponding to `geoms` rows.
 
 ---
