@@ -107,12 +107,13 @@ def get_forces_gdf(geoms:gpd.GeoDataFrame,buffer:float=0,height_column:str=None,
     geoms['force'] = geoms['force'] / np.sqrt(geoms['area'])
     geoms['angular_acc'] = geoms['angular_acc'] * geoms['area']
 
-    geoms = geoms_orig.merge(geoms[['force','confinement_ratio','angular_acc','angle']],left_index=True,right_index=True,how='left')
+    geoms = geoms_orig.merge(geoms[['height','force','confinement_ratio','angular_acc','angle']],left_index=True,right_index=True,how='left')
+    geoms = geoms[['height','force','confinement_ratio','angular_acc','angle',geoms.geometry.name]]
     geoms.loc[geoms['force'].isna(),'force'] = 0 
     geoms.loc[geoms['confinement_ratio'].isna(),'confinement_ratio'] = 0 
     geoms.loc[geoms['angular_acc'].isna(),'angular_acc'] = 0 
     geoms.loc[geoms['angle'].isna(),'angle'] = 0 
-    geoms[['force','confinement_ratio','angular_acc','angle']] = geoms[['force','confinement_ratio','angular_acc','angle']].astype(float)
+    geoms[['height','force','confinement_ratio','angular_acc','angle']] = geoms[['height','force','confinement_ratio','angular_acc','angle']].astype(float)
 
     return geoms
 
