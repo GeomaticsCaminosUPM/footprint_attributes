@@ -110,9 +110,7 @@ Measures geometric irregularity of building footprints using various indices.
 #### **Polsby-Popper Index**
 Measures shape compactness (similarity to a circle).
 - **Formula**:  
-  $
-  \text{Polsby-Popper Index} = \frac{4 \pi A}{P^2}
-  $
+  $$\text{Polsby-Popper Index} = \frac{4 \pi A}{P^2}$$
   where:
   - \( A \): Area of the polygon.
   - \( P \): Perimeter of the polygon.
@@ -131,9 +129,7 @@ polsby_popper(geoms: gpd.GeoDataFrame) -> list
 #### **Custom Irregularity Index**
 Quantifies the irregularity of footprints using convex hull analysis.
 - **Formula**:  
-  $
-  \text{Custom Irregularity Index} = \frac{l \cdot d}{L}
-  $
+  $$\text{Custom Irregularity Index} = \frac{l \cdot d}{L}$$
   where:
   - \( l \): Length outside the convex hull.
   - \( d \): Distance of the center of gravity outside the hull.
@@ -153,9 +149,7 @@ shape_irregularity(geoms: gpd.GeoDataFrame) -> list
 #### **Inertia Irregularity**
 Compares the inertia of a polygon to a circle with the same area.
 - **Formula**:  
-  $
-  \text{Inertia Irregularity} = \frac{\text{Inertia of Equivalent Circle}}{\text{Inertia of Polygon}}
-  $
+  $$\text{Inertia Irregularity} = \frac{\text{Inertia of Equivalent Circle}}{\text{Inertia of Polygon}}$$
 
 ##### Function: `inertia_irregularity`
 ```python
