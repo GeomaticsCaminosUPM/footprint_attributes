@@ -133,10 +133,10 @@ Measures shape compactness (similarity to a circle).
 polsby_popper(geoms: gpd.GeoDataFrame, convex_hull: bool = False) -> list
 ```
 
-###### **Parameters:** 
-- `geoms`: GeoDataFrame with building footprint geometries.
-- `convex_hull` (`bool`, optional): Use the convex hull of the geometries instead to compute the polsby popper index (default: `False`).
-###### **Output:**
+##### **Parameters:** 
+- **`geoms`**: GeoDataFrame with building footprint geometries.
+- **`convex_hull`** (`bool`, optional): Use the convex hull of the geometries instead to compute the polsby popper index (default: `False`).
+##### **Output:**
 List of `polsby_popper` indices corresponding to `geoms` rows.
 
 ---
@@ -157,9 +157,9 @@ Quantifies the irregularity of footprints using convex hull analysis.
 shape_irregularity(geoms: gpd.GeoDataFrame) -> list
 ```
 
-###### **Parameters**:  
-- `geoms`: GeoDataFrame with building footprint geometries.
-###### **Output**: 
+##### **Parameters**:  
+- **`geoms`**: GeoDataFrame with building footprint geometries.
+##### **Output**: 
 List of `shape_irregularity` indices corresponding to `geoms` rows.
 
 ---
@@ -175,9 +175,9 @@ Compares the inertia of a polygon to a circle with the same area.
 inertia_irregularity(geoms: gpd.GeoDataFrame) -> list
 ```
 
-###### **Parameters**:  
-- `geoms`: GeoDataFrame with building footprint geometries.
-###### **Output**: 
+##### **Parameters**:  
+- **`geoms`**: GeoDataFrame with building footprint geometries.
+##### **Output**: 
 List of `inertia_irregularity` indices corresponding to `geoms` rows.
 
 ---
