@@ -5,7 +5,7 @@ import numpy as np
 import warnings
 from ._utils import get_normal, explode_edges, calculate_momentum, select_touching_edges, resultant_angle, calc_inertia
 
-def calc_forces(geoms:gpd.GeoDataFrame,buffer:float=0,height_column:str=None,min_radius:float=0) -> gpd.GeoDataFrame:
+def get_forces_gdf(geoms:gpd.GeoDataFrame,buffer:float=0,height_column:str=None,min_radius:float=0) -> gpd.GeoDataFrame:
     """
     Calculates force-based metrics for building footprints based on their geometry and proximity.
 
@@ -107,8 +107,8 @@ def calc_forces(geoms:gpd.GeoDataFrame,buffer:float=0,height_column:str=None,min
     geoms['force'] = geoms['force'] / np.sqrt(geoms['area'])
     geoms['angular_acc'] = geoms['angular_acc'] * geoms['area']
 
-    #result = geoms_orig.merge(geoms[['force','confinement_ratio','angular_acc','angle']],left_index=True,right_index=True,how='left')
-    geoms = geoms[['height','force','confinement_ratio','angular_acc','angle']]
+    #result = geoms_orig[[geoms.geometry.name]].merge(geoms[['force','confinement_ratio','angular_acc','angle']],left_index=True,right_index=True,how='left')
+    geoms = geoms[['height','force','confinement_ratio','angular_acc','angle',geoms.geometry.name]]
     geoms.geometry = orig_geometry 
     geoms.crs = orig_crs
     geoms.loc[geoms['force'].isna(),'force'] = 0 
@@ -124,7 +124,7 @@ def relative_position(footprints: gpd.GeoDataFrame, min_angular_acc: float = 2.1
     Classifies building footprints based on their relative position and interaction with surrounding structures.
 
     Parameters:
-        footprints (gpd.GeoDataFrame): GeoDataFrame outputted by `calc_forces()` containing `force`, `confinement_ratio`, and `angle` columns.
+        footprints (gpd.GeoDataFrame): GeoDataFrame outputted by `get_forces_gdf()` containing `force`, `confinement_ratio`, and `angle` columns.
         min_force (float, optional): Threshold for the resultant force (nomalized by the sqrt of the area).
                                      Default: 0.166 (e.g., for a square building with height 1 and side length 1, 
                                      a touching structure covering 1/6 of one side would have a resultant force of 1/6).
