@@ -156,7 +156,7 @@ Quantifies the irregularity of footprints based on the diference between the bou
   - \( d \): Distance of the center of gravity of the geometries outside the hull to the convex hull.
   - \( L \): Total convex hull length.
 
-**Note:** Polygons are transformed into `LineStrings` based on their boundary.
+**Note:** Footprint polygons and convex hulls are transformed into `LineStrings` based on their boundary.
 
 ##### **Function: `shape_irregularity`**
 ```python
