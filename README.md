@@ -60,7 +60,7 @@ $$\text{angular acc} = \frac{\text{momentum} \cdot \text{area}}{\text{inertia}}$
    
   Where **momentum** is calculated as:
   
-$$\text{momentum} = \sum (\text{distance} \cdot |\text{force}_i|)$$
+$$\text{momentum} = \sum \(\text{distance} \cdot |\text{force}_i|\)$$
 
 - **`force`**:  
   The magnitude of the resultant force acting on the footprint, normalized by the square root of the area:
