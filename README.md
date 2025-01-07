@@ -146,15 +146,17 @@ List of `polsby_popper` values corresponding to `geoms` rows.
 ---
 
 #### **Custom Irregularity Index**
-Quantifies the irregularity of footprints using convex hull analysis.
+Quantifies the irregularity of footprints based on the diference between the boundary of the footprint and the convex hull.
 ##### **Formula:**
   
   $$\text{Custom Irregularity Index} = \frac{l \cdot d}{L}$$
   
   where:
-  - \( l \): Length outside the convex hull.
-  - \( d \): Distance of the center of gravity outside the hull.
+  - \( l \): Length of the geometries outside the convex hull.
+  - \( d \): Distance of the center of gravity of the geometries outside the hull to the convex hull.
   - \( L \): Total convex hull length.
+
+**Note:** Polygons are transformed into `LineStrings` based on their boundary.
 
 ##### **Function: `shape_irregularity`**
 ```python
