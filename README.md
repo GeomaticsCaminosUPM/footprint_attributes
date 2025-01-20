@@ -2,7 +2,9 @@
 
 **Footprint Attributes** is a Python package built using GeoPandas to calculate various geometric indices related to building footprint geometry and seismic risk.
 
-<img src="examples/example_img.png" alt="screenshot" width="400"/>
+<div align="center">
+  <img src="examples/example_img.png" alt="screenshot" width="500"/>
+</div>
 
 ---
 
