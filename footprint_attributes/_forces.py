@@ -138,7 +138,7 @@ def relative_position(forces: gpd.GeoDataFrame, min_angular_acc: float = 2.133, 
             1. "torque": Buildings classified as *confined* or *corner* with momentum exceeding the minimum momentum.
             2. "confined": Structures touching on both the left and right lateral sides.
             3. "corner": Structures touching at a corner, based on force and angle thresholds.
-            4. "partial": Structures touching on either the left or right side.
+            4. "lateral": Structures touching on either the left or right side.
             5. "isolated": Structures with no touching neighbors.
 
     Notes:
@@ -163,13 +163,13 @@ def relative_position(forces: gpd.GeoDataFrame, min_angular_acc: float = 2.133, 
     forces['relative_position'] = 'isolated'
     
     # Update 'relative_position' based on criteria
-    forces.loc[forces['force'] > min_force, 'relative_position'] = 'partial'
+    forces.loc[forces['force'] > min_force, 'relative_position'] = 'lateral'
     
     forces.loc[
         (
             forces['angle'] > min_angle
         ) & (
-            forces['relative_position'] == 'partial'
+            forces['relative_position'] == 'lateral'
         ),
         'relative_position'
     ] = 'corner'
