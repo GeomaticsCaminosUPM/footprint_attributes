@@ -112,7 +112,7 @@ Returns a list of relative positions for buildings, classified as:
 1. **"torque"**: High angular acceleration and class **confined** or **corner**.
 2. **"confined"**: Touches on both lateral sides.
 3. **"corner"**: Touches at a corner.
-4. **"partial"**: Touches on one side.
+4. **"lateral"**: Touches on one side.
 5. **"isolated"**: No touching structures.
 
 **Note:** The order of the list corresponds to the input `forces` rows.
