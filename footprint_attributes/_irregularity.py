@@ -143,4 +143,13 @@ def inertia_circle(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     geoms['inertia_circle'] = eq_circle_intertia(geoms.geometry.area) / calc_inertia_z(geoms.geometry) 
     
     return list(geoms['inertia_circle'])
+
+def excentricity_EC_8(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    centre_of_mass = geoms.geometry.centroid 
+    centre_of_stiffness = geoms.geometry.boundary.centroid 
+    e0x = np.sqrt((centre_of_mass.x - centre_of_stiffness.x)**2 + (centre_of_mass.y - centre_of_stiffness.y)**2)
+    I_z = calc_inertia_z(geoms.geometry) 
+    rx = np.sqrt(I_z/geoms.area)
+    return e0x * rx 
+    
     
