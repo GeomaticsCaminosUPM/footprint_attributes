@@ -4,8 +4,6 @@ import shapely
 import numpy as np
 from shapely.geometry import LineString, Point
 from packaging.version import Version
-import shapely
-
 
 """
 def get_angle_sharp(normal_0,normal_1,geom_id_0,geom_id_1):
@@ -192,34 +190,9 @@ def _cast(collection):
         else:
             return np.array([collection])
 
-def _second_moa_ring_xplusy(points):
-    """
-    implementation of the moment of area for a single ring
-    """
-    return sum(
-        (points[:-1,0] * points[1:,1] - points[1:,0] * points[:-1,1]) * (
-            points[1:,0]**2
-            + points[1:,0] * points[:-1,0]
-            + points[:-1,0]**2
-            + points[1:,1]**2
-            + points[1:,1] * points[:-1,1]
-            + points[:-1,1]**2
-        )
-    ) / 12 
+        
 
-
-def _second_moment_of_area_polygon(polygon):
-    """
-    Compute the absolute value of the moment of area (i.e. ignoring winding direction)
-    for an input polygon.
-    """
-    coordinates = shapely.get_coordinates(polygon)
-    centroid = shapely.centroid(polygon)
-    centroid_coords = shapely.get_coordinates(centroid)
-    moi = _second_moa_ring_xplusy(coordinates - centroid_coords)
-    return abs(moi)
-
-def calc_inertia(collection):
+def _ring_inertia_x_y(polygon, reference_point):
     """
     Using equation listed on en.wikipedia.org/wiki/Second_moment_of_area#Any_polygon, the second
     moment of area is the sum of the inertia across the x and y axes:
@@ -248,7 +221,130 @@ def calc_inertia(collection):
     Defense Research and Development Technical Memorandum 87/209.
     https://apps.dtic.mil/dtic/tr/fulltext/u2/a183444.pdf
 
-    """  # noqa: E501
+    """
+
+    coordinates = shapely.get_coordinates(polygon)
+    centroid = shapely.centroid(polygon)
+    centroid_coords = shapely.get_coordinates(centroid)
+    points = coordinates - centroid_coords
+
+    # Ensure reference_point is a Shapely Point
+    if not isinstance(reference_point, Point):
+        reference_point = Point(reference_point)  # Convert to Point if necessary
+
+    I_x = np.sum(
+        (points[:-1, 0]**2 + points[:-1, 0] * points[1:, 0] + points[1:, 0]**2) *
+        (points[1:, 1] * points[:-1, 0] - points[:-1, 1] * points[1:, 0])
+    ) / 12
+
+    I_y = np.sum(
+        (points[:-1, 1]**2 + points[:-1, 1] * points[1:, 1] + points[1:, 1]**2) *
+        (points[1:, 1] * points[:-1, 0] - points[:-1, 1] * points[1:, 0])
+    ) / 12
+
+    I_xy = np.sum(
+        (points[:-1,0] * points[1:,1] + 2 * points[:-1,0] * points[:-1,1] + 2 * points[1:,0] * points[1:,1] + points[1:,0] * points[:-1,1]) *
+        (points[1:, 1] * points[:-1, 0] - points[:-1, 1] * points[1:, 0])
+    ) / 24
+    
+    # Step 4: Use the Parallel Axis Theorem to shift the moments of inertia to the new reference point
+
+    d_x = abs(reference_point.x - polygon.centroid.x)  # Distance along the x-axis
+    d_y = abs(reference_point.y - polygon.centroid.y)  # Distance along the y-axis
+
+    A = polygon.area  # Area of the polygon
+    I_x += A * d_x ** 2
+    I_y += A * d_y ** 2
+    I_xy += A * d_x * d_y
+
+    return I_x, I_y, I_xy
+
+def calc_inertia_all(collection):
+    """
+    Calculate the principal moments of inertia for a collection of polygons.
+    """
+
+    # Ensure the collection is in the right format for computation
+    ga = _cast(collection)  # Assuming _cast is a helper function to ensure compatibility with geopandas
+
+    # Get the fundamental parts of the collection
+    parts, collection_ix = shapely.get_parts(ga, return_index=True)
+    rings, ring_ix = shapely.get_rings(parts, return_index=True)
+
+    # Get the exterior and interior rings
+    collection_ix = np.repeat(
+        collection_ix, shapely.get_num_interior_rings(parts) + 1
+    )
+
+    polygon_rings = shapely.polygons(rings)
+    is_external = np.zeros_like(collection_ix).astype(bool)
+    is_external[0] = True
+    is_external[1:] = ring_ix[1:] != ring_ix[:-1]
+
+    # Create GeoDataFrame to work with the polygons
+    polygon_rings = gpd.GeoDataFrame(
+        dict(
+            collection_ix=collection_ix,
+            ring_within_geom_ix=ring_ix,
+            is_external_ring=is_external,
+        ),
+        geometry=polygon_rings,
+    )
+
+    polygon_rings["sign"] = (1 - polygon_rings.is_external_ring * 2) * -1
+
+    # Get the original centroids for each polygon
+    original_centroids = shapely.centroid(ga)
+    polygon_rings["collection_centroid"] = original_centroids[collection_ix]
+    
+    # Apply the principal moment calculation for all polygons at once
+    polygon_rings[["I_x", "I_y", "I_xy"]] = polygon_rings.apply(
+        lambda x: pd.Series(_ring_inertia_x_y(x['geometry'], x['collection_centroid'])) * x['sign'],
+        axis=1
+    )
+
+    # Aggregate the moments for each collection
+    aggregated_inertia = polygon_rings.groupby("collection_ix")[["I_x", "I_y", "I_xy"]].sum()
+
+    # Create the inertia tensor for each polygon
+    aggregated_inertia['I_tensor'] = aggregated_inertia.apply(
+        lambda row: np.array([[row['I_x'], row['I_xy']],
+                             [row['I_xy'], row['I_y']]]), axis=1
+    )
+
+    # Calculate the eigenvalues (principal moments of inertia) and eigenvectors (principal axes)
+    result = aggregated_inertia['I_tensor'].apply(lambda tensor: pd.Series(np.sort(np.linalg.eigvals(tensor))))
+    printcipal_mom_1 = result[0]
+    printcipal_mom_2 = result[1]
+    
+    return np.array(printcipal_mom_1), np.array(printcipal_mom_2)
+
+
+
+
+def _ring_inertia_z(polygon):
+    """
+    implementation of the moment of area for a single ring
+    """
+
+    coordinates = shapely.get_coordinates(polygon)
+    centroid = shapely.centroid(polygon)
+    centroid_coords = shapely.get_coordinates(centroid)
+    points = coordinates - centroid_coords
+    return sum(
+        (points[:-1,0] * points[1:,1] - points[1:,0] * points[:-1,1]) * (
+            points[1:,0]**2
+            + points[1:,0] * points[:-1,0]
+            + points[:-1,0]**2
+            + points[1:,1]**2
+            + points[1:,1] * points[:-1,1]
+            + points[:-1,1]**2
+        )
+    ) / 12 
+
+
+def calc_inertia_z(collection):
+    # noqa: E501
     ga = _cast(collection)
     import  geopandas as gpd  # function level, to follow module design
 
@@ -288,7 +384,7 @@ def calc_inertia(collection):
     #     result = engine(promise(geom) for geom in polygon_rings.geometry.values)
 
     # but we will keep simple for now
-    polygon_rings["moa"] = polygon_rings.geometry.apply(_second_moment_of_area_polygon)
+    polygon_rings["moa"] = polygon_rings.geometry.apply(_ring_inertia_z)
     # the above algorithm computes an unsigned moa
     # to be insensitive to winding direction.
     # however, we need to subtract the moa of holes. Hence, the sign of the moa is
