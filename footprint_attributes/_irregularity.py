@@ -87,14 +87,7 @@ def polsby_popper(geoms:gpd.GeoDataFrame, convex_hull:bool=False) -> list:
     Returns:
         list: A list in the same order as geoms which contains the calculated Polsby-Popper index for each geometry.
     """
-
-    # Warn if Polsby-Popper column already exists
-    #if "polsby_popper" in geoms.columns:
-    #    warnings.warn("The 'polsby_popper' column already exists and will be overwritten.", UserWarning)
-        
-    # Preserve original CRS for re-projection if needed
-    orig_crs = geoms.crs
-    
+    geoms = geoms.copy()
     # Ensure the geometries are in a projected CRS for accurate area and length calculations
     if not geoms.crs.is_projected:
         geoms = geoms.to_crs(geoms.geometry.estimate_utm_crs())
@@ -105,14 +98,29 @@ def polsby_popper(geoms:gpd.GeoDataFrame, convex_hull:bool=False) -> list:
     else:
         geoms['polsby_popper'] = (4 * np.pi * geoms.geometry.area) / (geoms.geometry.boundary.length ** 2)
     
-    # Return to the original CRS
-    #if orig_crs is not None and orig_crs != geoms.crs:
-    #    geoms = geoms.to_crs(orig_crs)
-    
     return list(geoms['polsby_popper']) 
     
+def inertia_slenderness(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """
+    Calculates the inertia irregularity index for building footprint polygons comparing the principal components of the inertia tensor (max and min).
 
-def inertia_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    Parameters:
+        geoms (gpd.GeoDataFrame): A GeoDataFrame containing building footprint geometries as polygons.
+
+    Returns:
+        list: A list with the same order as geoms which contains the calculated Polsby-Popper index for each geometry.
+    """
+    geoms = geoms.copy() 
+    # Ensure the geometries are in a projected CRS for accurate area and length calculations
+    if not geoms.crs.is_projected:
+        geoms = geoms.to_crs(geoms.geometry.estimate_utm_crs())
+
+    I_min, I_max = calc_inertia_all(geoms.geometry)
+    geoms['inertia_slenderness'] = I_min / I_max
+    
+    return list(geoms['inertia_slenderness'])
+    
+def inertia_circle(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
     Calculates the inertia irregularity index for building footprint polygons comparing inertia with the inertia of a circle with the same area.
 
@@ -125,24 +133,14 @@ def inertia_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     Returns:
         list: A list with the same order as geoms which contains the calculated Polsby-Popper index for each geometry.
     """
-
-    # Warn if Polsby-Popper column already exists
-    #if "inertia_irregularity" in geoms.columns:
-    #    warnings.warn("The 'inertia_irregularity' column already exists and will be overwritten.", UserWarning)
-        
-    # Preserve original CRS for re-projection if needed
-    orig_crs = geoms.crs
+    geoms = geoms.copy()
     
     # Ensure the geometries are in a projected CRS for accurate area and length calculations
     if not geoms.crs.is_projected:
         geoms = geoms.to_crs(geoms.geometry.estimate_utm_crs())
     
     # Calculate the inertia irregularity score comparing to a circle with the same area
-    geoms['inertia_irregularity'] = eq_circle_intertia(geoms.geometry.area) / calc_inertia(geoms.geometry) 
-
-    # Return to the original CRS
-    #if orig_crs is not None and orig_crs != geoms.crs:
-    #    geoms = geoms.to_crs(orig_crs)
+    geoms['inertia_circle'] = eq_circle_intertia(geoms.geometry.area) / calc_inertia_z(geoms.geometry) 
     
-    return list(geoms['inertia_irregularity'])
+    return list(geoms['inertia_circle'])
     
