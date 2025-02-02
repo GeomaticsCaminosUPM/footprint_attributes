@@ -3,7 +3,7 @@ import pandas as pd
 import shapely 
 import numpy as np
 import warnings
-from ._utils import get_normal, explode_edges, calculate_momentum, select_touching_edges, resultant_angle, calc_inertia_
+from ._utils import get_normal, explode_edges, calculate_momentum, select_touching_edges, resultant_angle, calc_inertia_z
 
 def get_forces_gdf(geoms:gpd.GeoDataFrame,buffer:float=0,height_column:str=None,min_radius:float=0) -> gpd.GeoDataFrame:
     """
@@ -67,7 +67,7 @@ def get_forces_gdf(geoms:gpd.GeoDataFrame,buffer:float=0,height_column:str=None,
     if not geoms.crs.is_projected:
         geoms = geoms.to_crs(geoms.geometry.estimate_utm_crs())
 
-    geoms['inertia'] = calc_inertia(geoms.geometry)
+    geoms['inertia'] = calc_inertia_z(geoms.geometry)
     geoms['area'] = geoms.geometry.area
     crs = geoms.crs
     geoms['centroid'] = geoms.geometry.centroid.copy()
