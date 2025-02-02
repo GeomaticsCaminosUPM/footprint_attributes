@@ -2,7 +2,7 @@ from ._forces import get_forces_gdf, relative_position
 from ._irregularity import shape_irregularity, polsby_popper, inertia_irregularity
 import sys
 
-__version__ = '1.0.0'
+__version__ = '0.2.0'
 __all__ = ['get_forces_gdf', 'relative_position', 'shape_irregularity', 'polsby_popper', 'inertia_circle','inertia_slenderness','excentricity_EC_8','__version__']
 
 
