@@ -3,7 +3,7 @@ import pandas as pd
 import shapely 
 import numpy as np
 import warnings
-from ._utils import get_normal, explode_edges, calculate_momentum, select_touching_edges, resultant_angle, calc_inertia
+from ._utils import get_normal, explode_edges, calculate_momentum, select_touching_edges, resultant_angle, calc_inertia_
 
 def get_forces_gdf(geoms:gpd.GeoDataFrame,buffer:float=0,height_column:str=None,min_radius:float=0) -> gpd.GeoDataFrame:
     """
