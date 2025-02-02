@@ -1,5 +1,5 @@
 from ._forces import get_forces_gdf, relative_position
-from ._irregularity import shape_irregularity, polsby_popper, inertia_irregularity
+from ._irregularity import shape_irregularity, polsby_popper, inertia_circle, inertia_slenderness, excentricity_EC_8
 import sys
 
 __version__ = '0.2.0'
