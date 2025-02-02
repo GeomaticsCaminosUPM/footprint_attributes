@@ -3,7 +3,7 @@ import pandas as pd
 import shapely 
 import numpy as np
 import warnings
-from ._utils import get_normal, explode_edges, explode_exterior_and_interior_rings, calc_inertia_z, eq_circle_intertia
+from ._utils import get_normal, explode_edges, explode_exterior_and_interior_rings, calc_inertia_z, eq_circle_intertia, calc_inertia_all
 
 
 def shape_irregularity(geoms:gpd.GeoDataFrame) -> list:
