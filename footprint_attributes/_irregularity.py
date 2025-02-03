@@ -116,6 +116,8 @@ def inertia_slenderness(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         geoms = geoms.to_crs(geoms.geometry.estimate_utm_crs())
 
     I_min, I_max = calc_inertia_all(geoms.geometry)
+    I_min = np.abs(I_min)
+    I_max = np.abs(I_max)
     geoms['inertia_slenderness'] = I_min / I_max
     
     return list(geoms['inertia_slenderness'])
@@ -140,7 +142,7 @@ def inertia_circle(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         geoms = geoms.to_crs(geoms.geometry.estimate_utm_crs())
     
     # Calculate the inertia irregularity score comparing to a circle with the same area
-    geoms['inertia_circle'] = eq_circle_intertia(geoms.geometry.area) / calc_inertia_z(geoms.geometry) 
+    geoms['inertia_circle'] = eq_circle_intertia(geoms.geometry.area) / np.abs(calc_inertia_z(geoms.geometry)) 
     
     return list(geoms['inertia_circle'])
 
@@ -148,7 +150,7 @@ def excentricity_EC_8(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     centre_of_mass = geoms.geometry.centroid 
     centre_of_stiffness = geoms.geometry.boundary.centroid 
     e0x = np.sqrt((centre_of_mass.x - centre_of_stiffness.x)**2 + (centre_of_mass.y - centre_of_stiffness.y)**2)
-    I_z = calc_inertia_z(geoms.geometry) 
+    I_z = np.abs(calc_inertia_z(geoms.geometry)) 
     rx = np.sqrt(I_z/geoms.area)
     return e0x * rx 
     
