@@ -152,6 +152,6 @@ def excentricity_EC_8(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     e0x = np.sqrt((centre_of_mass.x - centre_of_stiffness.x)**2 + (centre_of_mass.y - centre_of_stiffness.y)**2)
     I_z = np.abs(calc_inertia_z(geoms.geometry)) 
     rx = np.sqrt(I_z/geoms.area)
-    return e0x * rx 
+    return e0x / rx 
     
     
