@@ -157,7 +157,7 @@ def excentricity_ratio(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 def compactness(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     convex_hull = geoms.geometry.convex_hull
     geoms_holes_filled = geoms.geometry.apply(
-        lambda x: Polygon(x.exterior) if isinstance(x, Polygon) else x
+        lambda x: Polygon(x.exterior)
     )
     return (convex_hull.area - geoms_holes_filled.area) / convex_hull.area
     
