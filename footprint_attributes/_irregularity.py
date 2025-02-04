@@ -118,7 +118,7 @@ def inertia_slenderness(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     I_min, I_max = calc_inertia_all(geoms.geometry)
     I_min = np.abs(I_min)
     I_max = np.abs(I_max)
-    geoms['inertia_slenderness'] = I_min / I_max
+    geoms['inertia_slenderness'] = np.sqrt(I_min / I_max)
     
     return list(geoms['inertia_slenderness'])
     
