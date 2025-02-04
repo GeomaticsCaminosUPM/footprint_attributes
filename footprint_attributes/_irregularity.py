@@ -146,12 +146,19 @@ def inertia_circle(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     
     return list(geoms['inertia_circle'])
 
-def excentricity_EC_8(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+def excentricity_ratio(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     centre_of_mass = geoms.geometry.centroid 
     centre_of_stiffness = geoms.geometry.boundary.centroid 
     e0x = np.sqrt((centre_of_mass.x - centre_of_stiffness.x)**2 + (centre_of_mass.y - centre_of_stiffness.y)**2)
     I_z = np.abs(calc_inertia_z(geoms.geometry)) 
     rx = np.sqrt(I_z/geoms.area)
     return e0x / rx 
+    
+def compactness(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    convex_hull = geoms.geometry.convex_hull
+    geoms_holes_filled = geoms.geometry.apply(
+        lambda x: Polygon(x.exterior) if isinstance(x, Polygon) else x
+    )
+    return (convex_hull.area - geoms_holes_filled.area) / convex_hull.area
     
     
