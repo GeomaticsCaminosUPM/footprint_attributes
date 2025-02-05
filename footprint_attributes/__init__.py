@@ -3,7 +3,7 @@ from ._irregularity import shape_irregularity, polsby_popper, inertia_circle, in
 import sys
 
 __version__ = '0.2.0'
-__all__ = ['get_forces_gdf', 'relative_position', 'shape_irregularity', 'polsby_popper', 'inertia_circle','inertia_slenderness','excentricity_EC_8','__version__']
+__all__ = ['get_forces_gdf', 'relative_position', 'shape_irregularity', 'polsby_popper', 'inertia_circle','inertia_slenderness','compactness','__version__']
 
 
 # Remove the private submodules from the package namespace
