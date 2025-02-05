@@ -1,6 +1,7 @@
 import geopandas as gpd 
 import pandas as pd
 import shapely 
+from shapely.geometry import Polygon
 import numpy as np
 import warnings
 from ._utils import get_normal, explode_edges, explode_exterior_and_interior_rings, calc_inertia_z, eq_circle_intertia, calc_inertia_all
@@ -69,7 +70,7 @@ def shape_irregularity(geoms:gpd.GeoDataFrame) -> list:
 
     return list(result['shape_irregularity'])
 
-def polsby_popper(geoms:gpd.GeoDataFrame, convex_hull:bool=False) -> list:
+def polsby_popper(geoms:gpd.GeoDataFrame, fill_holes:bool=True) -> list:
     """TODO: Polsby popper donut shape. boundary.length takes both inner and outer circle into accout so that the perimeter is very large"""
     """
     Calculates the Polsby-Popper index for building footprint polygons.
@@ -82,7 +83,7 @@ def polsby_popper(geoms:gpd.GeoDataFrame, convex_hull:bool=False) -> list:
 
     Parameters:
         geoms (gpd.GeoDataFrame): A GeoDataFrame containing building footprint geometries as polygons.
-        convex_hull (bool, optional): Use the convex hull of the geometries instead to compute the index. Defaults to False.
+        fill_holes (bool, optional): Fill all holes of the geometries (interior patios, etc.) to compute the index. Defaults to True.
 
     Returns:
         list: A list in the same order as geoms which contains the calculated Polsby-Popper index for each geometry.
@@ -94,7 +95,10 @@ def polsby_popper(geoms:gpd.GeoDataFrame, convex_hull:bool=False) -> list:
     
     # Calculate the Polsby-Popper compactness score
     if convex_hull:
-        geoms['polsby_popper'] = (4 * np.pi * geoms.geometry.convex_hull.area) / (geoms.geometry.convex_hull.boundary.length ** 2)
+        geoms_holes_filled = geoms.geometry.apply(
+            lambda x: Polygon(x.exterior)
+        )
+        geoms['polsby_popper'] = (4 * np.pi * geoms_holes_filled.geometry.area) / (geoms_holes_filled.geometry.boundary.length ** 2)
     else:
         geoms['polsby_popper'] = (4 * np.pi * geoms.geometry.area) / (geoms.geometry.boundary.length ** 2)
     
