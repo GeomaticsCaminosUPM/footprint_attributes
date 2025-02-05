@@ -259,7 +259,7 @@ def _ring_inertia_x_y(polygon, reference_point):
 
     return I_x, I_y, I_xy
 
-def calc_inertia_all(collection):
+def calc_inertia_all(collection,principal_dirs:bool=False):
     """
     Calculate the principal moments of inertia for a collection of polygons.
     """
@@ -313,11 +313,19 @@ def calc_inertia_all(collection):
     )
 
     # Calculate the eigenvalues (principal moments of inertia) and eigenvectors (principal axes)
-    result = aggregated_inertia['I_tensor'].apply(lambda tensor: pd.Series(np.sort(np.linalg.eigvals(tensor))))
-    printcipal_mom_1 = result[0]
-    printcipal_mom_2 = result[1]
-    
-    return np.array(printcipal_mom_1), np.array(printcipal_mom_2)
+
+    if principal_dirs:
+        vals, vects = aggregated_inertia['I_tensor'].apply(lambda tensor: pd.Series(np.sort(np.linalg.eig(tensor))))
+        vect_1 = vects[0]
+        vect_2 = vects[1]
+        printcipal_mom_1 = vals[0]
+        printcipal_mom_2 = vals[1]
+        return np.array(printcipal_mom_1), np.array(vect_1), np.array(printcipal_mom_2), np.array(vect_2)
+    else:
+        result = aggregated_inertia['I_tensor'].apply(lambda tensor: pd.Series(np.sort(np.linalg.eigvals(tensor))))
+        printcipal_mom_1 = result[0]
+        printcipal_mom_2 = result[1]
+        return np.array(printcipal_mom_1), np.array(printcipal_mom_2)
 
 
 
