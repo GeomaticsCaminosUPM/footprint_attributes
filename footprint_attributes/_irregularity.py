@@ -151,19 +151,10 @@ def compactness(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     geoms_holes_filled = geoms.geometry.apply(
         lambda x: Polygon(x.exterior)
     )
-    return (convex_hull.area - geoms_holes_filled.area) / convex_hull.area
+    return 1 - (convex_hull.area - geoms_holes_filled.area) / convex_hull.area
 
-def excentricity_ratio(geoms):
-    """
-    Computes the excentricity ratio for a set of geometries following EC8 and choosing the worst axis.
-
-    Parameters:
-        geoms (GeoDataFrame): A GeoDataFrame containing geometry objects.
-
-    Returns:
-        list: A list with the same order as geoms which contains the the computed excentricity ratios.
-    """
-    import scipy
+def eurocode_8(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    import scipy 
     
     # Compute principal moments of inertia and their corresponding eigenvectors
     inertia_df = calc_inertia_principal(geoms, principal_dirs=True)
@@ -173,28 +164,33 @@ def excentricity_ratio(geoms):
         geom.centroid.x - geom.boundary.centroid.x,
         geom.centroid.y - geom.boundary.centroid.y
     ]))
-
+    
     # Compute magnitude of eccentricity vectors
     e_magnitude = np.sqrt(np.sum(np.array([*(e_vect * e_vect)]), axis=1))
 
+    # Compute the area of the footprint in m2 
+    area = geoms.geometry.to_crs(geoms.geometry.estimate_utm_crs()).area
+    
     # Create DataFrame with necessary parameters
     df = pd.DataFrame({
         'e_vect': e_vect,
         'e_magnitude': e_magnitude,
+        'area' : area
         'I_1': inertia_df[0],  # First principal moment of inertia
         'I_2': inertia_df[2],  # Second principal moment of inertia
+        'I_0' : inertia_df[0] + inertia_df[2], # Polar inertia 
+        'I_t' : (inertia_df[0] + inertia_df[2]) + area * e_magnitude ** 2 # Torsional inertia
         'vect_1': inertia_df[1],  # First principal axis
         'vect_2': inertia_df[3],  # Second principal axis
-        'area': geoms.geometry.to_crs(geoms.geometry.estimate_utm_crs()).area  # Projected area
     })
 
-    # Compute angle `b` based on eccentricity direction and principal axis
+    # Compute angle `b`. Angle of eccentricity direction and principal axis
     df['b'] = df.apply(
         lambda row: 0 if row['e_magnitude'] <= 10**-10 else get_angle(row['vect_1'], row['e_vect']),
         axis=1
     )
 
-    # Optimize `x` to minimize the function, setting `x_opt` to 0 when `e_magnitude` is small
+    # Optimize for the angle 'x' with the worst ecentricity ratio.
     df['x_opt'] = df.apply(
         lambda row: 0 if row['e_magnitude'] <= 10**-10 else scipy.optimize.fmin(
             lambda x: - np.cos(x - row['b']) ** 2 * (
@@ -209,14 +205,23 @@ def excentricity_ratio(geoms):
         axis=1
     )
 
-    # Compute excentricity ratio
-    result = np.sqrt(
-        df['e_magnitude'] ** 2 * np.cos(df['x_opt'] - df['b']) ** 2 * (
+    torsional_radius = np.sqrt(df['I_t'] / (
             0.5 * (df['I_1'] - df['I_2']) * np.cos(2 * df['x_opt']) + 
             0.5 * (df['I_1'] + df['I_2'])
-        ) / (df['I_1'] + df['I_2'] + df['area'] * df['e_magnitude'] ** 2)
-    )
+        )
 
-    return list(result)
-    
-    
+    radius_of_gyration = np.sqrt(df['I_0']/df['area'])
+
+    excentricity_ratio = df['e_magnitude'] / torsional_radius
+
+    radius_ratio = torsional_radius / radius_of_gyration
+                      
+    slenderness = np.sqrt(df['I_1'] / df['I_2'])
+
+    convex_hull = geoms.geometry.convex_hull
+    geoms_holes_filled = geoms.geometry.apply(
+        lambda x: Polygon(x.exterior)
+    )
+    compactness = 1 - (convex_hull.area - geoms_holes_filled.area) / convex_hull.area
+
+    return pd.DataFrame({'excentricity_ratio':excentricity_ratio,'radius_ratio':radius_ratio,'slenderness':slenderness,'compactness':compactness})
