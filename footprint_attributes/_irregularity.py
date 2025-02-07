@@ -4,7 +4,7 @@ import shapely
 from shapely.geometry import Polygon
 import numpy as np
 import warnings
-from ._utils import get_normal, explode_edges, explode_exterior_and_interior_rings, calc_inertia_z, eq_circle_intertia, calc_inertia_all
+from ._utils import get_normal, explode_edges, explode_exterior_and_interior_rings, calc_inertia_z, eq_circle_intertia, calc_inertia_all, calc_inertia_principal, get_angle
 
 
 def shape_irregularity(geoms:gpd.GeoDataFrame) -> list:
@@ -119,12 +119,8 @@ def inertia_slenderness(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     if not geoms.crs.is_projected:
         geoms = geoms.to_crs(geoms.geometry.estimate_utm_crs())
 
-    I_min, I_max = calc_inertia_all(geoms.geometry)
-    I_min = np.abs(I_min)
-    I_max = np.abs(I_max)
-    geoms['inertia_slenderness'] = np.sqrt(I_min / I_max)
-    
-    return list(geoms['inertia_slenderness'])
+    I_max, I_min = calc_inertia_principal(geoms.geometry,principal_dirs=False)
+    return np.sqrt(I_min / I_max)
     
 def inertia_circle(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
@@ -150,19 +146,77 @@ def inertia_circle(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     
     return list(geoms['inertia_circle'])
 
-def excentricity_ratio(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    centre_of_mass = geoms.geometry.centroid 
-    centre_of_stiffness = geoms.geometry.boundary.centroid 
-    e0x = np.sqrt((centre_of_mass.x - centre_of_stiffness.x)**2 + (centre_of_mass.y - centre_of_stiffness.y)**2)
-    I_z = np.abs(calc_inertia_z(geoms.geometry)) 
-    rx = np.sqrt(I_z/geoms.area)
-    return e0x / rx 
-    
 def compactness(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     convex_hull = geoms.geometry.convex_hull
     geoms_holes_filled = geoms.geometry.apply(
         lambda x: Polygon(x.exterior)
     )
     return (convex_hull.area - geoms_holes_filled.area) / convex_hull.area
+
+def excentricity_ratio(geoms):
+    """
+    Computes the excentricity ratio for a set of geometries following EC8 and choosing the worst axis.
+
+    Parameters:
+        geoms (GeoDataFrame): A GeoDataFrame containing geometry objects.
+
+    Returns:
+        list: A list with the same order as geoms which contains the the computed excentricity ratios.
+    """
+    import scipy
+    
+    # Compute principal moments of inertia and their corresponding eigenvectors
+    inertia_df = calc_inertia_principal(geoms, principal_dirs=True)
+
+    # Compute eccentricity vectors (difference between centroid and boundary centroid)
+    e_vect = geoms.geometry.apply(lambda geom: np.array([
+        geom.centroid.x - geom.boundary.centroid.x,
+        geom.centroid.y - geom.boundary.centroid.y
+    ]))
+
+    # Compute magnitude of eccentricity vectors
+    e_magnitude = np.sqrt(np.sum(np.array([*(e_vect * e_vect)]), axis=1))
+
+    # Create DataFrame with necessary parameters
+    df = pd.DataFrame({
+        'e_vect': e_vect,
+        'e_magnitude': e_magnitude,
+        'I_1': inertia_df[0],  # First principal moment of inertia
+        'I_2': inertia_df[2],  # Second principal moment of inertia
+        'vect_1': inertia_df[1],  # First principal axis
+        'vect_2': inertia_df[3],  # Second principal axis
+        'area': geoms.geometry.to_crs(geoms.geometry.estimate_utm_crs()).area  # Projected area
+    })
+
+    # Compute angle `b` based on eccentricity direction and principal axis
+    df['b'] = df.apply(
+        lambda row: 0 if row['e_magnitude'] <= 10**-10 else get_angle(row['vect_1'], row['e_vect']),
+        axis=1
+    )
+
+    # Optimize `x` to minimize the function, setting `x_opt` to 0 when `e_magnitude` is small
+    df['x_opt'] = df.apply(
+        lambda row: 0 if row['e_magnitude'] <= 10**-10 else scipy.optimize.fmin(
+            lambda x: - np.cos(x - row['b']) ** 2 * (
+                0.5 * (row['I_1'] - row['I_2']) * np.cos(2 * x) + 
+                0.5 * (row['I_1'] + row['I_2'])
+            ),
+            x0=0,
+            xtol=1e-5,
+            ftol=1e-5,
+            disp=False
+        )[0],
+        axis=1
+    )
+
+    # Compute excentricity ratio
+    result = np.sqrt(
+        df['e_magnitude'] ** 2 * np.cos(df['x_opt'] - df['b']) ** 2 * (
+            0.5 * (df['I_1'] - df['I_2']) * np.cos(2 * df['x_opt']) + 
+            0.5 * (df['I_1'] + df['I_2'])
+        ) / (df['I_1'] + df['I_2'] + df['area'] * df['e_magnitude'] ** 2)
+    )
+
+    return list(result)
     
     
