@@ -336,8 +336,8 @@ def calc_inertia_principal(collection,principal_dirs:bool=False):
         return np.array(printcipal_mom_1), np.array(vect_1), np.array(printcipal_mom_2), np.array(vect_2)
     else:
         result = aggregated_inertia['I_tensor'].apply(lambda tensor: pd.Series(np.sort(np.linalg.eigvals(tensor))))
-        printcipal_mom_1 = result[0]
-        printcipal_mom_2 = result[1]
+        printcipal_mom_1 = result[1]
+        printcipal_mom_2 = result[0]
         return np.array(printcipal_mom_1), np.array(printcipal_mom_2)
 
 
