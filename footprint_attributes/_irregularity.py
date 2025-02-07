@@ -94,7 +94,7 @@ def polsby_popper(geoms:gpd.GeoDataFrame, fill_holes:bool=True) -> list:
         geoms = geoms.to_crs(geoms.geometry.estimate_utm_crs())
     
     # Calculate the Polsby-Popper compactness score
-    if convex_hull:
+    if fill_holes:
         geoms_holes_filled = geoms.geometry.apply(
             lambda x: Polygon(x.exterior)
         )
