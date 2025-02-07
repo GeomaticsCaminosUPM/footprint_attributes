@@ -235,7 +235,7 @@ def eurocode_8(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     angle_slenderness[angle_slenderness > np.pi/2] -= np.pi 
     angle_slenderness *= 180 / np.pi
 
-    df = pd.DataFrame({
+    result_df = pd.DataFrame({
         'excentricity_ratio':excentricity_ratio,
         'radius_ratio':radius_ratio,
         'slenderness':slenderness,
@@ -243,7 +243,7 @@ def eurocode_8(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         'angle_excentricity':angle_excentricity,
         'angle_slenderness':angle_slenderness
     })
-    return df
+    return result_df
 
 def excentricity_costa_rica(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     import scipy 
