@@ -62,24 +62,25 @@ def get_angle_90(normal_0,normal_1,geom_id_0=0,geom_id_1=0):
     return angle
 
 
-def get_angle(normal_0, normal_1, geom_id_0=0, geom_id_1=0):
+def get_angle(vect_0, vect_1, geom_id_0=0, geom_id_1=0):
     # If geometry IDs are different, the angle is undefined (return 0)
     if geom_id_0 != geom_id_1:
         return 0
     
     # Normalize the input vectors
-    _normal_0 = normal_0 / np.linalg.norm(normal_0)
-    _normal_1 = normal_1 / np.linalg.norm(normal_1)
+    _vect_0 = vect_0 / np.linalg.norm(vect_0)
+    _vect_1 = vect_1 / np.linalg.norm(vect_1)
     
     # Compute the dot and cross products
-    dot = np.dot(_normal_0, _normal_1)  # Dot product
+    dot = np.dot(_vect_0, _vect_1)  # Dot product
     if np.abs(dot) > 1:
         if np.abs(dot) > 1.0000001:
             warnings.warn(f"invalid value encountered in np.arccos({dot})", RuntimeWarning)
 
         dot = 1 * dot/np.abs(dot)
 
-    cross = np.cross(_normal_0, _normal_1)  # Cross product (2D equivalent)
+    cross = _vect_0[0] * _vect_1[1] - _vect_0[1] * _vect_1[0]
+    #cross = np.cross(_vect_0, _vect_1)  # Cross product (2D equivalent)
     
     if np.abs(cross) > 1:
         if np.abs(cross) > 1.0000001:
@@ -166,7 +167,6 @@ def calculate_momentum(center_point, normal_vector, reference_point,min_dist=0):
     else:
         return np.array([cross_product,cross_product,cross_product, cross_product])
 
-
 def _cast(collection):
     """
     Cast a collection to a shapely geometry array.
@@ -232,20 +232,20 @@ def _ring_inertia_x_y(polygon, reference_point):
     if not isinstance(reference_point, Point):
         reference_point = Point(reference_point)  # Convert to Point if necessary
 
-    I_x = np.sum(
+    I_x = np.abs(np.sum(
         (points[:-1, 0]**2 + points[:-1, 0] * points[1:, 0] + points[1:, 0]**2) *
         (points[1:, 1] * points[:-1, 0] - points[:-1, 1] * points[1:, 0])
-    ) / 12
+    ) / 12)
 
-    I_y = np.sum(
+    I_y = np.abs(np.sum(
         (points[:-1, 1]**2 + points[:-1, 1] * points[1:, 1] + points[1:, 1]**2) *
         (points[1:, 1] * points[:-1, 0] - points[:-1, 1] * points[1:, 0])
-    ) / 12
+    ) / 12)
 
-    I_xy = np.sum(
+    I_xy = np.abs(np.sum(
         (points[:-1,0] * points[1:,1] + 2 * points[:-1,0] * points[:-1,1] + 2 * points[1:,0] * points[1:,1] + points[1:,0] * points[:-1,1]) *
         (points[1:, 1] * points[:-1, 0] - points[:-1, 1] * points[1:, 0])
-    ) / 24
+    ) / 24)
     
     # Step 4: Use the Parallel Axis Theorem to shift the moments of inertia to the new reference point
 
@@ -259,9 +259,9 @@ def _ring_inertia_x_y(polygon, reference_point):
 
     return I_x, I_y, I_xy
 
-def calc_inertia_all(collection,principal_dirs:bool=False):
+def calc_inertia_all(collection):
     """
-    Calculate the principal moments of inertia for a collection of polygons.
+    Calculate inertia in x and y dirs.
     """
 
     # Ensure the collection is in the right format for computation
@@ -305,29 +305,40 @@ def calc_inertia_all(collection,principal_dirs:bool=False):
 
     # Aggregate the moments for each collection
     aggregated_inertia = polygon_rings.groupby("collection_ix")[["I_x", "I_y", "I_xy"]].sum()
+    return aggregated_inertia['I_x'], aggregated_inertia['I_y'], aggregated_inertia['I_xy']
 
-    # Create the inertia tensor for each polygon
+def calc_inertia_principal(collection,principal_dirs:bool=False):
+    """
+    Calculate the principal moments of inertia for a collection of polygons.
+    """
+    I_x, I_y, I_xy = calc_inertia_all(collection)
+    aggregated_inertia = pd.DataFrame({'I_x':I_x,'I_y':I_y,'I_xy':I_xy})
+    
     aggregated_inertia['I_tensor'] = aggregated_inertia.apply(
         lambda row: np.array([[row['I_x'], row['I_xy']],
                              [row['I_xy'], row['I_y']]]), axis=1
     )
 
     # Calculate the eigenvalues (principal moments of inertia) and eigenvectors (principal axes)
-
     if principal_dirs:
-        vals, vects = aggregated_inertia['I_tensor'].apply(lambda tensor: pd.Series(np.sort(np.linalg.eig(tensor))))
-        vect_1 = vects[0]
-        vect_2 = vects[1]
-        printcipal_mom_1 = vals[0]
-        printcipal_mom_2 = vals[1]
+        result = aggregated_inertia['I_tensor'].apply(lambda tensor: pd.Series(np.linalg.eig(tensor)))
+        result = result.apply(
+            lambda x: pd.Series([x[0][1],x[0][0],x[1][1],x[1][0]])
+            if float(x[0][0]) < float(x[0][1]) 
+            else pd.Series([x[0][0],x[0][1],x[1][0],x[1][1]]),
+            axis=1
+        )
+
+        vect_1 = result[2]
+        vect_2 = result[3]
+        printcipal_mom_1 = result[0]
+        printcipal_mom_2 = result[1]
         return np.array(printcipal_mom_1), np.array(vect_1), np.array(printcipal_mom_2), np.array(vect_2)
     else:
         result = aggregated_inertia['I_tensor'].apply(lambda tensor: pd.Series(np.sort(np.linalg.eigvals(tensor))))
         printcipal_mom_1 = result[0]
         printcipal_mom_2 = result[1]
         return np.array(printcipal_mom_1), np.array(printcipal_mom_2)
-
-
 
 
 def _ring_inertia_z(polygon):
@@ -339,7 +350,7 @@ def _ring_inertia_z(polygon):
     centroid = shapely.centroid(polygon)
     centroid_coords = shapely.get_coordinates(centroid)
     points = coordinates - centroid_coords
-    return sum(
+    return np.abs(sum(
         (points[:-1,0] * points[1:,1] - points[1:,0] * points[:-1,1]) * (
             points[1:,0]**2
             + points[1:,0] * points[:-1,0]
@@ -348,14 +359,12 @@ def _ring_inertia_z(polygon):
             + points[1:,1] * points[:-1,1]
             + points[:-1,1]**2
         )
-    ) / 12 
+    ) / 12)
 
 
 def calc_inertia_z(collection):
     # noqa: E501
     ga = _cast(collection)
-    import  geopandas as gpd  # function level, to follow module design
-
     # construct a dataframe of the fundamental parts of all input polygons
     parts, collection_ix = shapely.get_parts(ga, return_index=True)
     rings, ring_ix = shapely.get_rings(parts, return_index=True)
