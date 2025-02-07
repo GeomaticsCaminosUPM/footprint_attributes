@@ -7,7 +7,7 @@ import warnings
 from ._utils import get_normal, explode_edges, explode_exterior_and_interior_rings, calc_inertia_z, eq_circle_intertia, calc_inertia_all, calc_inertia_principal, get_angle
 
 
-def shape_irregularity(geoms:gpd.GeoDataFrame) -> list:
+def convex_hull_momentum(geoms:gpd.GeoDataFrame) -> list:
     """TODO: Explore normalize by the boundary and not by the hull and some type of normalization 0-1. Explore polsby + shape"""
     """
     Calculates an index to quantify the irregularity of building footprints.
@@ -224,4 +224,88 @@ def eurocode_8(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     )
     compactness = 1 - (convex_hull.area - geoms_holes_filled.area) / convex_hull.area
 
-    return pd.DataFrame({'excentricity_ratio':excentricity_ratio,'radius_ratio':radius_ratio,'slenderness':slenderness,'compactness':compactness})
+    angle_vect_1 = np.arctan2(vect_1[:,1],vect_1[:,0]) 
+    angle_excentricity = np.abs(angle_vect_1 + df['x_opt'])
+    angle_excentricity[angle_excentricity > 2*np.pi] -= 2*np.pi
+    angle_excentricity[angle_excentricity > np.pi/2] -= np.pi 
+    angle_excentricity *= 180 / np.pi
+
+    angle_slenderness = np.abs(angle_vect_1 + np.pi / 2)
+    angle_slenderness[angle_slenderness > 2*np.pi] -= 2*np.pi
+    angle_slenderness[angle_slenderness > np.pi/2] -= np.pi 
+    angle_slenderness *= 180 / np.pi
+
+    df = pd.DataFrame({
+        'excentricity_ratio':excentricity_ratio,
+        'radius_ratio':radius_ratio,
+        'slenderness':slenderness,
+        'compactness':compactness,
+        'angle_excentricity':angle_excentricity,
+        'angle_slenderness':angle_slenderness
+    })
+    return df
+
+def excentricity_costa_rica(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    import scipy 
+    
+    # Compute principal moments of inertia and their corresponding eigenvectors
+    inertia_df = calc_inertia_principal(geoms, principal_dirs=True)
+
+    # Compute eccentricity vectors (difference between centroid and boundary centroid)
+    e_vect = geoms.geometry.apply(lambda geom: np.array([
+        geom.centroid.x - geom.boundary.centroid.x,
+        geom.centroid.y - geom.boundary.centroid.y
+    ]))
+    
+    # Compute magnitude of eccentricity vectors
+    e_magnitude = np.sqrt(np.sum(np.array([*(e_vect * e_vect)]), axis=1))
+
+    # Compute the area of the footprint in m2 
+    area = geoms.geometry.to_crs(geoms.geometry.estimate_utm_crs()).area
+    
+    # Create DataFrame with necessary parameters
+    df = pd.DataFrame({
+        'e_vect': e_vect,
+        'e_magnitude': e_magnitude,
+        'area' : area
+        'I_1': inertia_df[0],  # First principal moment of inertia
+        'I_2': inertia_df[2],  # Second principal moment of inertia
+        'r' : 0.5 * (row['I_1'] - row['I_2']) #Mohr radius 
+        'c' : 0.5 * (row['I_1'] + row['I_2']) #Mohr centre
+        'vect_1': inertia_df[1],  # First principal axis
+        'vect_2': inertia_df[3],  # Second principal axis
+    })
+
+    # Compute angle `b`. Angle of eccentricity direction and principal axis
+    df['b'] = df.apply(
+        lambda row: 0 if row['e_magnitude'] <= 10**-10 else get_angle(row['vect_1'], row['e_vect']),
+        axis=1
+    )
+
+    # Optimize for the angle 'x' with the worst ecentricity ratio.
+    df['x_opt'] = df.apply(
+        lambda row: 0 if row['e_magnitude'] <= 10**-10 else scipy.optimize.fmin(
+            lambda x: - np.cos(x - row['b']) ** 4 *  (
+                    row['c'] - row['r] * np.cos(2 * x)
+                        ) / (
+                    row['c'] + row['r] * np.cos(2 * x)
+                )
+            ),
+            x0=0,
+            xtol=1e-5,
+            ftol=1e-5,
+            disp=False
+        )[0],
+        axis=1
+    )
+
+    excentricity_i = df['e_magnitude'] * np.cos(df['x_opt'] - df['b']) 
+    dimension_i = np.sqrt(df['area']) * ((df['c'] + df['r'] * np.cos(2*df['x_opt'])) / (df['c'] - df['r'] * np.cos(2*df['x_opt']))) ** 0.25
+    excentricity_ratio = excentricity_i / dimension_i
+    vect_1 = np.array([*df['vect_1']])
+    angle = np.abs(np.arctan2(vect_1[:,1],vect_1[:,0]) + df['x_opt'])
+    angle[angle > 2*np.pi] -= 2*np.pi 
+    angle[angle > np.pi/2] -= np.pi
+    angle *= 180/np.pi
+         
+    return pd.DataFrame({'excentricity_ratio' : excentricity_ratio, 'angle' : angle})
