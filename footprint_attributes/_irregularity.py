@@ -153,7 +153,7 @@ def compactness(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     )
     return 1 - (convex_hull.area - geoms_holes_filled.area) / convex_hull.area
 
-def eurocode_8(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+def eurocode_8_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     import scipy 
     
     # Compute principal moments of inertia and their corresponding eigenvectors
@@ -245,7 +245,7 @@ def eurocode_8(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     })
     return result_df
 
-def excentricity_costa_rica(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+def costa_rica_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     import scipy 
     
     # Compute principal moments of inertia and their corresponding eigenvectors
@@ -309,3 +309,7 @@ def excentricity_costa_rica(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     angle *= 180/np.pi
          
     return pd.DataFrame({'excentricity_ratio' : excentricity_ratio, 'angle' : angle})
+
+
+        
+     
