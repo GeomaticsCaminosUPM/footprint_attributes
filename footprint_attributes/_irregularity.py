@@ -286,9 +286,9 @@ def excentricity_costa_rica(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     df['x_opt'] = df.apply(
         lambda row: 0 if row['e_magnitude'] <= 10**-10 else scipy.optimize.fmin(
             lambda x: - np.cos(x - row['b']) ** 4 *  (
-                    row['c'] - row['r] * np.cos(2 * x)
+                    row['c'] + row['r] * np.cos(2 * x) ### Max inertia is in the min side and min inertia in the max length side
                         ) / (
-                    row['c'] + row['r] * np.cos(2 * x)
+                    row['c'] - row['r] * np.cos(2 * x)
                 )
             ),
             x0=0,
@@ -300,7 +300,7 @@ def excentricity_costa_rica(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     )
 
     excentricity_i = df['e_magnitude'] * np.cos(df['x_opt'] - df['b']) 
-    dimension_i = np.sqrt(df['area']) * ((df['c'] + df['r'] * np.cos(2*df['x_opt'])) / (df['c'] - df['r'] * np.cos(2*df['x_opt']))) ** 0.25
+    dimension_i = np.sqrt(df['area']) * ((df['c'] - df['r'] * np.cos(2*df['x_opt'])) / (df['c'] + df['r'] * np.cos(2*df['x_opt']))) ** 0.25
     excentricity_ratio = excentricity_i / dimension_i
     vect_1 = np.array([*df['vect_1']])
     angle = np.abs(np.arctan2(vect_1[:,1],vect_1[:,0]) + df['x_opt'])
