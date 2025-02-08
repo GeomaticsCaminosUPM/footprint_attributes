@@ -231,13 +231,9 @@ def get_eurocode_8_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
 
     radius_ratio = torsional_radius / radius_of_gyration
                       
-    slenderness = np.sqrt(df['I_1'] / df['I_2'])
+    slenderness_result = np.sqrt(df['I_1'] / df['I_2'])
 
-    convex_hull = geoms.geometry.convex_hull
-    geoms_holes_filled = geoms.geometry.apply(
-        lambda x: Polygon(x.exterior)
-    )
-    compactness = 1 - (convex_hull.area - geoms_holes_filled.area) / convex_hull.area
+    compactness_result = compactness(geoms) 
 
     angle_vect_1 = np.arctan2(vect_1[:,1],vect_1[:,0]) 
     angle_excentricity = np.abs(angle_vect_1 + df['x_opt'])
@@ -253,8 +249,8 @@ def get_eurocode_8_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
     result_df = pd.DataFrame({
         'excentricity_ratio':excentricity_ratio,
         'radius_ratio':radius_ratio,
-        'slenderness':slenderness,
-        'compactness':compactness,
+        'slenderness':slenderness_result,
+        'compactness':compactness_result,
         'angle_excentricity':angle_excentricity,
         'angle_slenderness':angle_slenderness
     })
