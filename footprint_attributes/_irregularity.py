@@ -4,7 +4,16 @@ import shapely
 from shapely.geometry import Polygon, MultiPolygon, LineString
 import numpy as np
 import warnings
-from ._utils import get_normal, explode_edges, explode_exterior_and_interior_rings, calc_inertia_z, eq_circle_intertia, calc_inertia_all, calc_inertia_principal, get_angle
+from ._utils import (
+    get_normal,
+    explode_edges,
+    explode_exterior_and_interior_rings,
+    calc_inertia_z,
+    eq_circle_intertia,
+    calc_inertia_all,
+    calc_inertia_principal,
+    get_angle
+)
 
 
 def convex_hull_momentum(geoms:gpd.GeoDataFrame) -> list:
@@ -104,7 +113,7 @@ def polsby_popper(geoms:gpd.GeoDataFrame, fill_holes:bool=True) -> list:
     
     return list(geoms['polsby_popper']) 
     
-def inertia_slenderness(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+def inertia_slenderness(geoms:gpd.GeoDataFrame) -> list:
     """
     Calculates the inertia irregularity index for building footprint polygons comparing the principal components of the inertia tensor (max and min).
 
@@ -122,7 +131,7 @@ def inertia_slenderness(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     I_max, I_min = calc_inertia_principal(geoms.geometry,principal_dirs=False)
     return np.sqrt(I_min / I_max)
     
-def inertia_circle(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+def inertia_circle(geoms:gpd.GeoDataFrame) -> list:
     """
     Calculates the inertia irregularity index for building footprint polygons comparing inertia with the inertia of a circle with the same area.
 
@@ -158,7 +167,7 @@ def compactness(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     )
     return 1 - (convex_hull.area - geoms_holes_filled.area) / convex_hull.area
 
-def eurocode_8_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+def get_eurocode_8_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
     import scipy 
 
     geoms = geoms.copy()
@@ -251,7 +260,7 @@ def eurocode_8_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     })
     return result_df
 
-def costa_rica_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+def get_costa_rica_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
     import scipy 
                
     geoms = geoms.copy()
@@ -408,7 +417,7 @@ def hole_ratio(geoms:gpd.GeoDataFrame) -> list:
     hole_ratio = list(hole_ratio['hole_ratio'])
     return hole_ratio
                       
-def mexico_NTC_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+def get_mexico_NTC_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
     geoms = geoms.copy()
     # Ensure the geometries are in a projected CRS for accurate area and length calculations
     if not geoms.crs.is_projected:
