@@ -227,7 +227,7 @@ def get_eurocode_8_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
 
     radius_of_gyration = np.sqrt(df['I_0']/df['area'])
 
-    excentricity_ratio = df['e_magnitude'] / torsional_radius
+    excentricity_ratio = df['e_magnitude'] * np.abs(np.cos(df['x_opt'] - df['b'])) / torsional_radius
 
     radius_ratio = torsional_radius / radius_of_gyration
                       
@@ -315,7 +315,7 @@ def get_costa_rica_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
         axis=1
     )
 
-    excentricity_i = df['e_magnitude'] * np.cos(df['x_opt'] - df['b']) 
+    excentricity_i = np.abs(df['e_magnitude'] * np.cos(df['x_opt'] - df['b']))
     dimension_i = np.sqrt(df['area']) * ((df['c'] + df['r'] * np.cos(2*df['x_opt'])) / (df['c'] - df['r'] * np.cos(2*df['x_opt']))) ** 0.25
     excentricity_ratio = excentricity_i / dimension_i
     vect_1 = np.array([*df['vect_1']])
