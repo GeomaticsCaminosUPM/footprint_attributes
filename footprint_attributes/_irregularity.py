@@ -357,7 +357,7 @@ def setback_ratio(geoms:gpd.GeoDataFrame) -> list:
     df['b'] = np.sqrt(df['I_2']/df['footprint_I_2'])
     df['setback_ratio'] = df[['a', 'b']].max(axis=1)
     setback_ratio = df.loc[df.groupby('index')['setback_ratio'].idxmax(),['index','setback_ratio']]
-    setback_ratio = footprints_gdf.merge(setback_ratio, left_index=True, right_on='index', how='left').fillna({'setback_ratio': 0})
+    setback_ratio = geoms.merge(setback_ratio, left_index=True, right_on='index', how='left').fillna({'setback_ratio': 0})
     setback_ratio = list(setback_ratio['setback_ratio'])
     return setback_ratio
 
@@ -409,7 +409,7 @@ def hole_ratio(geoms:gpd.GeoDataFrame) -> list:
     
     df['hole_ratio'] = df[['hole_ratio_1','hole_ratio_2']].max(axis=1)
     hole_ratio = df.loc[df.groupby('index')['hole_ratio'].idxmax(),['index','hole_ratio']]
-    hole_ratio = footprints_gdf.merge(hole_ratio, left_index=True, right_on='index', how='left').fillna({'hole_ratio': 0})
+    hole_ratio = geoms.merge(hole_ratio, left_index=True, right_on='index', how='left').fillna({'hole_ratio': 0})
     hole_ratio = list(hole_ratio['hole_ratio'])
     return hole_ratio
                       
