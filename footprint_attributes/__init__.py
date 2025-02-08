@@ -1,6 +1,6 @@
 from ._forces import get_forces_gdf, relative_position
 from ._irregularity import (
-    shape_irregularity,
+    convex_hull_momentum,
     polsby_popper, 
     inertia_circle,
     inertia_slenderness,
