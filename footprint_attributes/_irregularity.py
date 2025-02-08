@@ -310,6 +310,29 @@ def costa_rica_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
          
     return pd.DataFrame({'excentricity_ratio' : excentricity_ratio, 'angle' : angle})
 
+def side_length(polygon,point,direction):
+    bounds = polygon.total_bounds
+    distance = np.sqrt((bounds[2]-bounds[0])**2 + (bounds[3],bounds[1])**2) / 2 
+    line_start = np.array([point.x, point.y]) - direction * (distance + 1)
+    line_end = np.array([point.x, point.y]) + direction * (distance + 1)
+    line = LineString([tuple(line_start), tuple(line_end)])
+    intersection = polygon.intersection(line)
+    if intersection.is_empty:
+        return 0
+    else:
+        # Get all parts of the intersection (if it's a multi-part geometry)
+        parts = list(intersection.geoms)
+    
+        # Find the segment that contains the point (if any)
+        for part in parts:
+            if part.distance(point) < 1e-6:  # Check if point lies close to the part
+                selected_segment = part
+                return selected_segment.length
+                break
+        else:
+            return 0
+    
+    
 def mexico_NTC_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     convex_hull = geoms.geometry.convex_hull
     geoms_holes_filled = geoms.geometry.apply(
@@ -338,6 +361,10 @@ def mexico_NTC_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     setback_ratio = df.loc[df.groupby('index')['setback_ratio'].idxmax(),['index','setback_ratio']]
     setback_ratio = footprints_gdf.merge(setback_ratio, left_index=True, right_on='index', how='left').fillna({'setback_ratio': 0})
     setback_ratio = list(setback_ratio['setback_ratio'])
+
+    geoms_holes = geoms.geometry.apply(
+        lambda x: MultiPolygon([Polygon(ring) for ring in x.interiors]) if x.interiors else Polygon()
+    )
 
     return setback_ratio
         
