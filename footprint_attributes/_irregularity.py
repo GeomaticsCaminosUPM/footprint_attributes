@@ -147,6 +147,11 @@ def inertia_circle(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return list(geoms['inertia_circle'])
 
 def compactness(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    geoms = geoms.copy()
+    # Ensure the geometries are in a projected CRS for accurate area and length calculations
+    if not geoms.crs.is_projected:
+        geoms = geoms.to_crs(geoms.geometry.estimate_utm_crs())
+        
     convex_hull = geoms.geometry.convex_hull
     geoms_holes_filled = geoms.geometry.apply(
         lambda x: Polygon(x.exterior)
@@ -155,7 +160,12 @@ def compactness(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
 def eurocode_8_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     import scipy 
-    
+
+    geoms = geoms.copy()
+    # Ensure the geometries are in a projected CRS for accurate area and length calculations
+    if not geoms.crs.is_projected:
+        geoms = geoms.to_crs(geoms.geometry.estimate_utm_crs())
+        
     # Compute principal moments of inertia and their corresponding eigenvectors
     inertia_df = calc_inertia_principal(geoms, principal_dirs=True)
 
@@ -175,11 +185,13 @@ def eurocode_8_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     df = pd.DataFrame({
         'e_vect': e_vect,
         'e_magnitude': e_magnitude,
-        'area' : area
+        'area' : area,
         'I_1': inertia_df[0],  # First principal moment of inertia
         'I_2': inertia_df[2],  # Second principal moment of inertia
         'I_0' : inertia_df[0] + inertia_df[2], # Polar inertia 
-        'I_t' : (inertia_df[0] + inertia_df[2]) + area * e_magnitude ** 2 # Torsional inertia
+        'I_t' : (inertia_df[0] + inertia_df[2]) + area * e_magnitude ** 2, # Torsional inertia
+        'r' : 0.5 * (inertia_df[0] - inertia_df[2]), #Mohr radius 
+        'c' : 0.5 * (inertia_df[0] + inertia_df[2]), #Mohr centre
         'vect_1': inertia_df[1],  # First principal axis
         'vect_2': inertia_df[3],  # Second principal axis
     })
@@ -193,10 +205,7 @@ def eurocode_8_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     # Optimize for the angle 'x' with the worst ecentricity ratio.
     df['x_opt'] = df.apply(
         lambda row: 0 if row['e_magnitude'] <= 10**-10 else scipy.optimize.fmin(
-            lambda x: - np.cos(x - row['b']) ** 2 * (
-                0.5 * (row['I_1'] - row['I_2']) * np.cos(2 * x) + 
-                0.5 * (row['I_1'] + row['I_2'])
-            ),
+            lambda x: - np.cos(x - row['b']) ** 2 * (row['c'] - row['r'] * np.cos(2 * x)),
             x0=0,
             xtol=1e-5,
             ftol=1e-5,
@@ -205,10 +214,7 @@ def eurocode_8_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         axis=1
     )
 
-    torsional_radius = np.sqrt(df['I_t'] / (
-            0.5 * (df['I_1'] - df['I_2']) * np.cos(2 * df['x_opt']) + 
-            0.5 * (df['I_1'] + df['I_2'])
-        )
+    torsional_radius = np.sqrt(df['I_t'] / (df['c'] - df['r'] * np.cos(2 * df['x_opt']))
 
     radius_of_gyration = np.sqrt(df['I_0']/df['area'])
 
@@ -230,7 +236,7 @@ def eurocode_8_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     angle_excentricity[angle_excentricity > np.pi/2] -= np.pi 
     angle_excentricity *= 180 / np.pi
 
-    angle_slenderness = np.abs(angle_vect_1 + np.pi / 2)
+    angle_slenderness = np.abs(angle_vect_1 + np.pi/2)
     angle_slenderness[angle_slenderness > 2*np.pi] -= 2*np.pi
     angle_slenderness[angle_slenderness > np.pi/2] -= np.pi 
     angle_slenderness *= 180 / np.pi
@@ -247,7 +253,12 @@ def eurocode_8_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
 def costa_rica_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     import scipy 
-    
+               
+    geoms = geoms.copy()
+    # Ensure the geometries are in a projected CRS for accurate area and length calculations
+    if not geoms.crs.is_projected:
+        geoms = geoms.to_crs(geoms.geometry.estimate_utm_crs())
+             
     # Compute principal moments of inertia and their corresponding eigenvectors
     inertia_df = calc_inertia_principal(geoms, principal_dirs=True)
 
@@ -267,11 +278,11 @@ def costa_rica_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     df = pd.DataFrame({
         'e_vect': e_vect,
         'e_magnitude': e_magnitude,
-        'area' : area
+        'area' : area,
         'I_1': inertia_df[0],  # First principal moment of inertia
         'I_2': inertia_df[2],  # Second principal moment of inertia
-        'r' : 0.5 * (row['I_1'] - row['I_2']) #Mohr radius 
-        'c' : 0.5 * (row['I_1'] + row['I_2']) #Mohr centre
+        'r' : 0.5 * (inertia_df[0] - inertia_df[2]), #Mohr radius 
+        'c' : 0.5 * (inertia_df[0] + inertia_df[2]), #Mohr centre
         'vect_1': inertia_df[1],  # First principal axis
         'vect_2': inertia_df[3],  # Second principal axis
     })
@@ -286,9 +297,9 @@ def costa_rica_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     df['x_opt'] = df.apply(
         lambda row: 0 if row['e_magnitude'] <= 10**-10 else scipy.optimize.fmin(
             lambda x: - np.cos(x - row['b']) ** 4 *  (
-                    row['c'] + row['r] * np.cos(2 * x) ### Max inertia is in the min side and min inertia in the max length side
+                    row['c'] - row['r] * np.cos(2 * x) ### Max inertia is in the min side and min inertia in the max length side
                         ) / (
-                    row['c'] - row['r] * np.cos(2 * x)
+                    row['c'] + row['r] * np.cos(2 * x)
                 )
             ),
             x0=0,
@@ -300,7 +311,7 @@ def costa_rica_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     )
 
     excentricity_i = df['e_magnitude'] * np.cos(df['x_opt'] - df['b']) 
-    dimension_i = np.sqrt(df['area']) * ((df['c'] - df['r'] * np.cos(2*df['x_opt'])) / (df['c'] + df['r'] * np.cos(2*df['x_opt']))) ** 0.25
+    dimension_i = np.sqrt(df['area']) * ((df['c'] + df['r'] * np.cos(2*df['x_opt'])) / (df['c'] - df['r'] * np.cos(2*df['x_opt']))) ** 0.25
     excentricity_ratio = excentricity_i / dimension_i
     vect_1 = np.array([*df['vect_1']])
     angle = np.abs(np.arctan2(vect_1[:,1],vect_1[:,0]) + df['x_opt'])
@@ -309,31 +320,13 @@ def costa_rica_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     angle *= 180/np.pi
          
     return pd.DataFrame({'excentricity_ratio' : excentricity_ratio, 'angle' : angle})
-
-def side_length(polygon,point,direction):
-    bounds = polygon.total_bounds
-    distance = np.sqrt((bounds[2]-bounds[0])**2 + (bounds[3],bounds[1])**2) / 2 
-    line_start = np.array([point.x, point.y]) - direction * (distance + 1)
-    line_end = np.array([point.x, point.y]) + direction * (distance + 1)
-    line = LineString([tuple(line_start), tuple(line_end)])
-    intersection = polygon.intersection(line)
-    if intersection.is_empty:
-        return 0
-    else:
-        # Get all parts of the intersection (if it's a multi-part geometry)
-        parts = list(intersection.geoms)
-    
-        # Find the segment that contains the point (if any)
-        for part in parts:
-            if part.distance(point) < 1e-6:  # Check if point lies close to the part
-                selected_segment = part
-                return selected_segment.length
-                break
-        else:
-            return 0
-    
     
 def mexico_NTC_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    geoms = geoms.copy()
+    # Ensure the geometries are in a projected CRS for accurate area and length calculations
+    if not geoms.crs.is_projected:
+        geoms = geoms.to_crs(geoms.geometry.estimate_utm_crs())
+        
     convex_hull = geoms.geometry.convex_hull
     geoms_holes_filled = geoms.geometry.apply(
         lambda x: Polygon(x.exterior)
@@ -365,6 +358,7 @@ def mexico_NTC_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     df = gpd.GeoDataFrame(
         {
             'index':geoms.index,
+            'polygon_with_holes':geoms.geometry,
             'polygon':geoms_holes_filled,
         },
         geometry = geoms.geometry.apply(
@@ -375,10 +369,8 @@ def mexico_NTC_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     df = df.loc[df.geometry.is_empty == False]
     df = df.explode().reset_index(drop=True)
     inertia_df = calc_inertia_principal(df.geometry,principal_dirs=True)
-    df[f'hole_width_1'] = np.sqrt(df.area * np.sqrt(inertia_df[2] / inertia_df[0]))
-    df[f'hole_width_2'] = np.sqrt(df.area * np.sqrt(inertia_df[0] / inertia_df[2]))
-         
     inertia_df_vect_ids = [3,1]
+         
     for i in range(2):
         id = inertia_df_vect_ids[i]
         
@@ -396,6 +388,7 @@ def mexico_NTC_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         df = df.explode(column='intersection').reset_index(drop=True)
         df = df.loc[df['intersection'].distance(df.centroid) < 10**-3]
         df[f'side_length_{i+1}'] = df['intersection'].length
+        df[f'hole_width_{i+1}'] = df[f'side_length_{i+1}'] - df['polygon_with_holes'].intersection(df['intersection']).length
         df[f'hole_ratio_{i+1}'] = df[f'hole_width_{i+1}'] / df[f'side_length_{i+1}']
     
     df['hole_ratio'] = df[['hole_ratio_1','hole_ratio_2']].max(axis=1)
