@@ -16,6 +16,7 @@ setup(
         "pandas>=1.3.0",
         "shapely>=1.8.0",
         "numpy>=1.21.0",
+        "scipy>=1.0.0"
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
