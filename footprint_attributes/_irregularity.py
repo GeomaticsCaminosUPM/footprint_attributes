@@ -340,6 +340,7 @@ def setback_ratio(geoms:gpd.GeoDataFrame) -> list:
     inertia_df = calc_inertia_principal(geoms_holes_filled,principal_dirs=True)
     df = gpd.GeoDataFrame({
         'index':geoms.index,
+        'footprint_area':geoms_holes_filled.area,
         'footprint_I_1':inertia_df[0],
         'vect_1_x':np.array([*inertia_df[1]])[:,0],
         'vect_1_y':np.array([*inertia_df[1]])[:,1],
@@ -353,8 +354,8 @@ def setback_ratio(geoms:gpd.GeoDataFrame) -> list:
     inertia_df = calc_inertia_all(df)
     df['I_1'] = inertia_df[0] * df['vect_1_x'] ** 2 + inertia_df[2] * df['vect_1_y'] * df['vect_1_x'] + inertia_df[2] * df['vect_1_x'] * df['vect_1_y'] + inertia_df[1] * df['vect_1_y'] ** 2
     df['I_2'] = inertia_df[0] * df['vect_2_x'] ** 2 + inertia_df[2] * df['vect_2_y'] * df['vect_2_x'] + inertia_df[2] * df['vect_2_x'] * df['vect_2_y'] + inertia_df[1] * df['vect_2_y'] ** 2
-    df['a'] = np.sqrt(df['I_1']/df['footprint_I_1'])
-    df['b'] = np.sqrt(df['I_2']/df['footprint_I_2'])
+    df['b'] = np.sqrt(df.geometry.area * np.sqrt(df['I_2'] / df['I_1'])) / np.sqrt(df['footprint_area'] * np.sqrt(df['footprint_I_2'] / df['footprint_I_1']))
+    df['a'] = np.sqrt(df.geometry.area * np.sqrt(df['I_1'] / df['I_2'])) / np.sqrt(df['footprint_area'] * np.sqrt(df['footprint_I_1'] / df['footprint_I_2']))
     df['setback_ratio'] = df[['a', 'b']].max(axis=1)
     setback_ratio = df.loc[df.groupby('index')['setback_ratio'].idxmax(),['index','setback_ratio']]
     setback_ratio = geoms.merge(setback_ratio, left_index=True, right_on='index', how='left').fillna({'setback_ratio': 0})
@@ -404,7 +405,13 @@ def hole_ratio(geoms:gpd.GeoDataFrame) -> list:
         df = df.explode(column='intersection').reset_index(drop=True)
         df = df.loc[df['intersection'].distance(df.centroid) < 10**-3]
         df[f'side_length_{i+1}'] = df['intersection'].length
-        df[f'hole_width_{i+1}'] = df[f'side_length_{i+1}'] - df['polygon_with_holes'].intersection(df['intersection']).length
+        df[f'hole_width_{i+1}_a'] = df[f'side_length_{i+1}'] - df['polygon_with_holes'].intersection(df['intersection']).length
+        if i == 0:
+            df[f'hole_width_{i+1}_b'] = np.sqrt(df.geometry.area * np.sqrt(inertia_df[2] / inertia_df[0]))
+        else:
+            df[f'hole_width_{i+1}_b'] = np.sqrt(df.geometry.area * np.sqrt(inertia_df[0] / inertia_df[2]))
+
+        df[f'hole_width_{i+1}'] = df[[f'hole_width_{i+1}_a',f'hole_width_{i+1}_b']].max(axis=1)
         df[f'hole_ratio_{i+1}'] = df[f'hole_width_{i+1}'] / df[f'side_length_{i+1}']
     
     df['hole_ratio'] = df[['hole_ratio_1','hole_ratio_2']].max(axis=1)
