@@ -1,7 +1,7 @@
 import geopandas as gpd 
 import pandas as pd
 import shapely 
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, MultiPolygon, LineString
 import numpy as np
 import warnings
 from ._utils import get_normal, explode_edges, explode_exterior_and_interior_rings, calc_inertia_z, eq_circle_intertia, calc_inertia_all, calc_inertia_principal, get_angle
@@ -368,7 +368,7 @@ def mexico_NTC_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
             'polygon':geoms_holes_filled,
         },
         geometry = geoms.geometry.apply(
-            lambda x: shapely.MultiPolygon([shapely.Polygon(ring) for ring in x.interiors]) if x.interiors else shapely.Polygon()
+            lambda x: MultiPolygon([Polygon(ring) for ring in x.interiors]) if x.interiors else Polygon()
         ),
         crs = geoms.crs
     )
@@ -391,7 +391,7 @@ def mexico_NTC_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         df['line_start_y'] = df.geometry.centroid.y - np.array([*inertia_df[id]])[:,1] * (df['distance'] + 1) 
         df['line_end_x'] = df.geometry.centroid.x + np.array([*inertia_df[id]])[:,0] * (df['distance'] + 1) 
         df['line_end_y'] = df.geometry.centroid.y + np.array([*inertia_df[id]])[:,1] * (df['distance'] + 1)    
-        df['line'] = gpd.GeoSeries(df.apply(lambda row: shapely.LineString([(row['line_start_x'],row['line_start_y']),(row['line_end_x'],row['line_end_y'])]),axis=1),crs=df.crs)
+        df['line'] = gpd.GeoSeries(df.apply(lambda row: LineString([(row['line_start_x'],row['line_start_y']),(row['line_end_x'],row['line_end_y'])]),axis=1),crs=df.crs)
         df['intersection'] = df['polygon'].intersection(df['line'])
         df = df.explode(column='intersection').reset_index(drop=True)
         df = df.loc[df['intersection'].distance(df.centroid) < 10**-3]
