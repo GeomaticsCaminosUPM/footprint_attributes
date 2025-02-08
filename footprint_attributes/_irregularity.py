@@ -310,6 +310,35 @@ def costa_rica_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
          
     return pd.DataFrame({'excentricity_ratio' : excentricity_ratio, 'angle' : angle})
 
+def mexico_NTC_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    convex_hull = geoms.geometry.convex_hull
+    geoms_holes_filled = geoms.geometry.apply(
+        lambda x: Polygon(x.exterior)
+    )
+    geoms = convex_hull.geometry.difference(geoms_holes_filled.geometry)
+    inertia_df = calc_inertia_principal(geoms_holes_filled,principal_dirs=True)
+    df = gpd.GeoDataFrame({
+        'index':geoms.index,
+        'footprint_I_1':inertia_df[0],
+        'vect_1_x':np.array([*inertia_df[1]])[:,0],
+        'vect_1_y':np.array([*inertia_df[1]])[:,1],
+        'footprint_I_2':inertia_df[2],
+        'vect_2_x':np.array([*inertia_df[3]])[:,0],
+        'vect_2_y':np.array([*inertia_df[3]])[:,1]},
+        geometry=geoms,
+        crs=geoms.crs
+    )
+    df = df[df.geometry.is_empty==False].explode().reset_index(drop=True)
+    inertia_df = calc_inertia_all(df)
+    df['I_1'] = inertia_df[0] * df['vect_1_x'] ** 2 + inertia_df[2] * df['vect_1_y'] * df['vect_1_x'] + inertia_df[2] * df['vect_1_x'] * df['vect_1_y'] + inertia_df[1] * df['vect_1_y'] ** 2
+    df['I_2'] = inertia_df[0] * df['vect_2_x'] ** 2 + inertia_df[2] * df['vect_2_y'] * df['vect_2_x'] + inertia_df[2] * df['vect_2_x'] * df['vect_2_y'] + inertia_df[1] * df['vect_2_y'] ** 2
+    df['a'] = np.sqrt(df['I_1']/df['footprint_I_1'])
+    df['b'] = np.sqrt(df['I_2']/df['footprint_I_2'])
+    df['setback_ratio'] = df[['a', 'b']].max(axis=1)
+    setback_ratio = df.loc[df.groupby('index')['setback_ratio'].idxmax(),['index','setback_ratio']]
+    setback_ratio = footprints_gdf.merge(setback_ratio, left_index=True, right_on='index', how='left').fillna({'setback_ratio': 0})
+    setback_ratio = list(setback_ratio['setback_ratio'])
 
+    return setback_ratio
         
      
