@@ -223,7 +223,7 @@ def get_eurocode_8_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
         axis=1
     )
 
-    torsional_radius = np.sqrt(df['I_t'] / (df['c'] - df['r'] * np.cos(2 * df['x_opt']))
+    torsional_radius = np.sqrt(df['I_t'] / (df['c'] - df['r'] * np.cos(2 * df['x_opt'])))
 
     radius_of_gyration = np.sqrt(df['I_0']/df['area'])
 
@@ -235,6 +235,7 @@ def get_eurocode_8_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
 
     compactness_result = compactness(geoms) 
 
+    vect_1 = np.array([*df['vect_1']])
     angle_vect_1 = np.arctan2(vect_1[:,1],vect_1[:,0]) 
     angle_excentricity = np.abs(angle_vect_1 + df['x_opt'])
     angle_excentricity[angle_excentricity > 2*np.pi] -= 2*np.pi
@@ -305,8 +306,7 @@ def get_costa_rica_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
                     row['c'] - row['r'] * np.cos(2*x) ### Max inertia is in the min side and min inertia in the max length side
                         ) / (
                     row['c'] + row['r'] * np.cos(2*x)
-                )
-            ),
+                ),
             x0=0,
             xtol=1e-5,
             ftol=1e-5,
@@ -423,5 +423,3 @@ def get_mexico_NTC_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
     hole_ratio_results = hole_ratio(geoms)
                       
     return pd.DataFrame({'setback_ratio':setback_ratio_results,'hole_ratio':hole_ratio_results})
-        
-     
