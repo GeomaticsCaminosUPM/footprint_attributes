@@ -306,9 +306,9 @@ def get_costa_rica_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
     df['x_opt'] = df.apply(
         lambda row: 0 if row['e_magnitude'] <= 10**-10 else scipy.optimize.fmin(
             lambda x: - np.cos(x - row['b']) ** 4 *  (
-                    row['c'] - row['r] * np.cos(2 * x) ### Max inertia is in the min side and min inertia in the max length side
+                    row['c'] - row['r'] * np.cos(2*x) ### Max inertia is in the min side and min inertia in the max length side
                         ) / (
-                    row['c'] + row['r] * np.cos(2 * x)
+                    row['c'] + row['r'] * np.cos(2*x)
                 )
             ),
             x0=0,
