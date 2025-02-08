@@ -337,10 +337,10 @@ def setback_ratio(geoms:gpd.GeoDataFrame) -> list:
         lambda x: Polygon(x.exterior)
     )
     geoms_difference = convex_hull.geometry.difference(geoms_holes_filled.geometry)
-    inertia_df = calc_inertia_principal(geoms_holes_filled,principal_dirs=True)
+    inertia_df = calc_inertia_principal(convex_hull,principal_dirs=True)
     df = gpd.GeoDataFrame({
         'index':geoms.index,
-        'footprint_area':geoms_holes_filled.area,
+        'footprint_area':convex_hull.area,
         'footprint_I_1':inertia_df[0],
         'vect_1_x':np.array([*inertia_df[1]])[:,0],
         'vect_1_y':np.array([*inertia_df[1]])[:,1],
