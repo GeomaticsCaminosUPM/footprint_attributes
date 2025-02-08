@@ -361,11 +361,48 @@ def mexico_NTC_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     setback_ratio = df.loc[df.groupby('index')['setback_ratio'].idxmax(),['index','setback_ratio']]
     setback_ratio = footprints_gdf.merge(setback_ratio, left_index=True, right_on='index', how='left').fillna({'setback_ratio': 0})
     setback_ratio = list(setback_ratio['setback_ratio'])
-
-    geoms_holes = geoms.geometry.apply(
-        lambda x: MultiPolygon([Polygon(ring) for ring in x.interiors]) if x.interiors else Polygon()
+    
+    df = gpd.GeoDataFrame(
+        {
+            'index':geoms.index,
+            'polygon':geoms_holes_filled,
+        },
+        geometry = geoms.geometry.apply(
+            lambda x: shapely.MultiPolygon([shapely.Polygon(ring) for ring in x.interiors]) if x.interiors else shapely.Polygon()
+        ),
+        crs = geoms.crs
     )
+    df = df.loc[df.geometry.is_empty == False]
+    df = df.explode().reset_index(drop=True)
+    inertia_df = calc_inertia_principal(df.geometry,principal_dirs=True)
+    df[f'hole_width_1'] = np.sqrt(df.area * np.sqrt(inertia_df[2] / inertia_df[0]))
+    df[f'hole_width_2'] = np.sqrt(df.area * np.sqrt(inertia_df[0] / inertia_df[2]))
+         
+    inertia_df_vect_ids = [3,1]
+    for i in range(2):
+        id = inertia_df_vect_ids[i]
+        
+        df['distance'] = np.sqrt((
+                df['polygon'].bounds['maxx']-df['polygon'].bounds['minx']
+            )**2 + (
+                df['polygon'].bounds['maxy']-df['polygon'].bounds['miny']
+            )**2) / 2
+        df['line_start_x'] = df.geometry.centroid.x - np.array([*inertia_df[id]])[:,0] * (df['distance'] + 1) 
+        df['line_start_y'] = df.geometry.centroid.y - np.array([*inertia_df[id]])[:,1] * (df['distance'] + 1) 
+        df['line_end_x'] = df.geometry.centroid.x + np.array([*inertia_df[id]])[:,0] * (df['distance'] + 1) 
+        df['line_end_y'] = df.geometry.centroid.y + np.array([*inertia_df[id]])[:,1] * (df['distance'] + 1)    
+        df['line'] = gpd.GeoSeries(df.apply(lambda row: shapely.LineString([(row['line_start_x'],row['line_start_y']),(row['line_end_x'],row['line_end_y'])]),axis=1),crs=df.crs)
+        df['intersection'] = df['polygon'].intersection(df['line'])
+        df = df.explode(column='intersection').reset_index(drop=True)
+        df = df.loc[df['intersection'].distance(df.centroid) < 10**-3]
+        df[f'side_length_{i+1}'] = df['intersection'].length
+        df[f'hole_ratio_{i+1}'] = df[f'hole_width_{i+1}'] / df[f'side_length_{i+1}']
+    
+    df['hole_ratio'] = df[['hole_ratio_1','hole_ratio_2']].max(axis=1)
+    hole_ratio = df.loc[df.groupby('index')['hole_ratio'].idxmax(),['index','hole_ratio']]
+    hole_ratio = footprints_gdf.merge(hole_ratio, left_index=True, right_on='index', how='left').fillna({'hole_ratio': 0})
+    hole_ratio = list(hole_ratio['hole_ratio'])
 
-    return setback_ratio
+    return pd.DataFrame({'setback_ratio':setback_ratio,'hole_ratio':hole_ratio})
         
      
