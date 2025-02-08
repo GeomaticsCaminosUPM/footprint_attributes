@@ -320,8 +320,8 @@ def costa_rica_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     angle *= 180/np.pi
          
     return pd.DataFrame({'excentricity_ratio' : excentricity_ratio, 'angle' : angle})
-    
-def mexico_NTC_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+
+def setback_ratio(geoms:gpd.GeoDataFrame) -> list:
     geoms = geoms.copy()
     # Ensure the geometries are in a projected CRS for accurate area and length calculations
     if not geoms.crs.is_projected:
@@ -331,7 +331,7 @@ def mexico_NTC_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     geoms_holes_filled = geoms.geometry.apply(
         lambda x: Polygon(x.exterior)
     )
-    geoms = convex_hull.geometry.difference(geoms_holes_filled.geometry)
+    geoms_difference = convex_hull.geometry.difference(geoms_holes_filled.geometry)
     inertia_df = calc_inertia_principal(geoms_holes_filled,principal_dirs=True)
     df = gpd.GeoDataFrame({
         'index':geoms.index,
@@ -341,7 +341,7 @@ def mexico_NTC_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         'footprint_I_2':inertia_df[2],
         'vect_2_x':np.array([*inertia_df[3]])[:,0],
         'vect_2_y':np.array([*inertia_df[3]])[:,1]},
-        geometry=geoms,
+        geometry=geoms_difference,
         crs=geoms.crs
     )
     df = df[df.geometry.is_empty==False].explode().reset_index(drop=True)
@@ -354,7 +354,18 @@ def mexico_NTC_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     setback_ratio = df.loc[df.groupby('index')['setback_ratio'].idxmax(),['index','setback_ratio']]
     setback_ratio = footprints_gdf.merge(setback_ratio, left_index=True, right_on='index', how='left').fillna({'setback_ratio': 0})
     setback_ratio = list(setback_ratio['setback_ratio'])
-    
+    return setback_ratio
+
+def hole_ratio(geoms:gpd.GeoDataFrame) -> list:
+    geoms = geoms.copy()
+    # Ensure the geometries are in a projected CRS for accurate area and length calculations
+    if not geoms.crs.is_projected:
+        geoms = geoms.to_crs(geoms.geometry.estimate_utm_crs())
+        
+    geoms_holes_filled = geoms.geometry.apply(
+        lambda x: Polygon(x.exterior)
+    )    
+
     df = gpd.GeoDataFrame(
         {
             'index':geoms.index,
@@ -395,7 +406,17 @@ def mexico_NTC_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     hole_ratio = df.loc[df.groupby('index')['hole_ratio'].idxmax(),['index','hole_ratio']]
     hole_ratio = footprints_gdf.merge(hole_ratio, left_index=True, right_on='index', how='left').fillna({'hole_ratio': 0})
     hole_ratio = list(hole_ratio['hole_ratio'])
-
-    return pd.DataFrame({'setback_ratio':setback_ratio,'hole_ratio':hole_ratio})
+    return hole_ratio
+                      
+def mexico_NTC_irregularity(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    geoms = geoms.copy()
+    # Ensure the geometries are in a projected CRS for accurate area and length calculations
+    if not geoms.crs.is_projected:
+        geoms = geoms.to_crs(geoms.geometry.estimate_utm_crs())
+     
+    setback_ratio_results = setback_ratio(geoms)
+    hole_ratio_results = hole_ratio(geoms)
+                      
+    return pd.DataFrame({'setback_ratio':setback_ratio_results,'hole_ratio':hole_ratio_results})
         
      
