@@ -214,7 +214,7 @@ def get_eurocode_8_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
     # Optimize for the angle 'x' with the worst ecentricity ratio.
     df['x_opt'] = df.apply(
         lambda row: 0 if row['e_magnitude'] <= 10**-10 else scipy.optimize.fmin(
-            lambda x: - np.cos(x - row['b']) ** 2 * (row['c'] - row['r'] * np.cos(-2 * x - np.pi)),
+            lambda x: - np.cos(x - row['b']) ** 2 * (row['c'] - row['r'] * np.cos(-2 * x)),
             x0=0,
             xtol=1e-5,
             ftol=1e-5,
@@ -223,7 +223,7 @@ def get_eurocode_8_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
         axis=1
     )
 
-    torsional_radius = np.sqrt(df['I_t'] / (df['c'] - df['r'] * np.cos(-2 * df['x_opt'] - np.pi)))
+    torsional_radius = np.sqrt(df['I_t'] / (df['c'] - df['r'] * np.cos(-2 * df['x_opt'])))
 
     radius_of_gyration = np.sqrt(df['I_0']/df['area'])
 
@@ -237,15 +237,15 @@ def get_eurocode_8_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
 
     vect_1 = np.array([*df['vect_1']])
     angle_vect_1 = np.arctan2(vect_1[:,1],vect_1[:,0]) 
-    angle_excentricity = np.abs(angle_vect_1 + df['x_opt'])
+    angle_excentricity = np.abs(angle_vect_1 + df['x_opt'] + np.pi/2) # facing north
     angle_excentricity[angle_excentricity > 2*np.pi] -= 2*np.pi
     angle_excentricity[angle_excentricity > np.pi/2] -= np.pi 
-    angle_excentricity *= 180 / np.pi
+    angle_excentricity *= -180 / np.pi # invert to rotate north-east
 
-    angle_slenderness = np.abs(angle_vect_1 + np.pi/2)
+    angle_slenderness = np.abs(angle_vect_1 + np.pi/2) # facing north 
     angle_slenderness[angle_slenderness > 2*np.pi] -= 2*np.pi
     angle_slenderness[angle_slenderness > np.pi/2] -= np.pi 
-    angle_slenderness *= 180 / np.pi
+    angle_slenderness *= -180 / np.pi # invert to rotate north-east
 
     result_df = pd.DataFrame({
         'excentricity_ratio':excentricity_ratio,
@@ -319,10 +319,10 @@ def get_costa_rica_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
     dimension_i = np.sqrt(df['area']) * ((df['c'] + df['r'] * np.cos(-2*df['x_opt'])) / (df['c'] - df['r'] * np.cos(-2*df['x_opt']))) ** 0.25
     excentricity_ratio = excentricity_i / dimension_i
     vect_1 = np.array([*df['vect_1']])
-    angle = np.abs(np.arctan2(vect_1[:,1],vect_1[:,0]) + df['x_opt'])
+    angle = np.abs(np.arctan2(vect_1[:,1],vect_1[:,0]) + df['x_opt'] + np.pi/2) # facing north
     angle[angle > 2*np.pi] -= 2*np.pi 
     angle[angle > np.pi/2] -= np.pi
-    angle *= 180/np.pi
+    angle *= -180/np.pi  # invert to rotate north-east
          
     return pd.DataFrame({'excentricity_ratio' : excentricity_ratio, 'angle' : angle})
 
