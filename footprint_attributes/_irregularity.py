@@ -214,7 +214,7 @@ def get_eurocode_8_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
     # Optimize for the angle 'x' with the worst ecentricity ratio.
     df['x_opt'] = df.apply(
         lambda row: 0 if row['e_magnitude'] <= 10**-10 else scipy.optimize.fmin(
-            lambda x: - np.cos(x - row['b']) ** 2 * (row['c'] - row['r'] * np.cos(2 * x)),
+            lambda x: - np.cos(x - row['b']) ** 2 * (row['c'] - row['r'] * np.cos(-2 * x)),
             x0=0,
             xtol=1e-5,
             ftol=1e-5,
@@ -223,7 +223,7 @@ def get_eurocode_8_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
         axis=1
     )
 
-    torsional_radius = np.sqrt(df['I_t'] / (df['c'] - df['r'] * np.cos(2 * df['x_opt'])))
+    torsional_radius = np.sqrt(df['I_t'] / (df['c'] - df['r'] * np.cos(-2 * df['x_opt'])))
 
     radius_of_gyration = np.sqrt(df['I_0']/df['area'])
 
@@ -303,9 +303,9 @@ def get_costa_rica_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
     df['x_opt'] = df.apply(
         lambda row: 0 if row['e_magnitude'] <= 10**-10 else scipy.optimize.fmin(
             lambda x: - np.cos(x - row['b']) ** 4 *  (
-                    row['c'] - row['r'] * np.cos(2*x) ### Max inertia is in the min side and min inertia in the max length side
+                    row['c'] - row['r'] * np.cos(-2*x) ### Max inertia is in the min side and min inertia in the max length side
                         ) / (
-                    row['c'] + row['r'] * np.cos(2*x)
+                    row['c'] + row['r'] * np.cos(-2*x)
                 ),
             x0=0,
             xtol=1e-5,
@@ -316,7 +316,7 @@ def get_costa_rica_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
     )
 
     excentricity_i = np.abs(df['e_magnitude'] * np.cos(df['x_opt'] - df['b']))
-    dimension_i = np.sqrt(df['area']) * ((df['c'] + df['r'] * np.cos(2*df['x_opt'])) / (df['c'] - df['r'] * np.cos(2*df['x_opt']))) ** 0.25
+    dimension_i = np.sqrt(df['area']) * ((df['c'] + df['r'] * np.cos(-2*df['x_opt'])) / (df['c'] - df['r'] * np.cos(-2*df['x_opt']))) ** 0.25
     excentricity_ratio = excentricity_i / dimension_i
     vect_1 = np.array([*df['vect_1']])
     angle = np.abs(np.arctan2(vect_1[:,1],vect_1[:,0]) + df['x_opt'])
@@ -352,8 +352,8 @@ def setback_ratio(geoms:gpd.GeoDataFrame) -> list:
     )
     df = df[df.geometry.is_empty==False].explode().reset_index(drop=True)
     inertia_df = calc_inertia_all(df)
-    df['I_1'] = inertia_df[0] * df['vect_1_x'] ** 2 + inertia_df[2] * df['vect_1_y'] * df['vect_1_x'] + inertia_df[2] * df['vect_1_x'] * df['vect_1_y'] + inertia_df[1] * df['vect_1_y'] ** 2
-    df['I_2'] = inertia_df[0] * df['vect_2_x'] ** 2 + inertia_df[2] * df['vect_2_y'] * df['vect_2_x'] + inertia_df[2] * df['vect_2_x'] * df['vect_2_y'] + inertia_df[1] * df['vect_2_y'] ** 2
+    df['I_1'] = inertia_df[0] * df['vect_1_x'] ** 2 - inertia_df[2] * df['vect_1_y'] * df['vect_1_x'] - inertia_df[2] * df['vect_1_x'] * df['vect_1_y'] + inertia_df[1] * df['vect_1_y'] ** 2
+    df['I_2'] = inertia_df[0] * df['vect_2_x'] ** 2 - inertia_df[2] * df['vect_2_y'] * df['vect_2_x'] - inertia_df[2] * df['vect_2_x'] * df['vect_2_y'] + inertia_df[1] * df['vect_2_y'] ** 2
     df['b'] = np.sqrt(df.geometry.area * np.sqrt(df['I_2'] / df['I_1'])) / np.sqrt(df['footprint_area'] * np.sqrt(df['footprint_I_2'] / df['footprint_I_1']))
     df['a'] = np.sqrt(df.geometry.area * np.sqrt(df['I_1'] / df['I_2'])) / np.sqrt(df['footprint_area'] * np.sqrt(df['footprint_I_1'] / df['footprint_I_2']))
     df['setback_ratio'] = df[['a', 'b']].max(axis=1)
