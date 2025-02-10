@@ -315,8 +315,8 @@ def calc_inertia_principal(collection,principal_dirs:bool=False):
     aggregated_inertia = pd.DataFrame({'I_x':I_x,'I_y':I_y,'I_xy':I_xy})
     
     aggregated_inertia['I_tensor'] = aggregated_inertia.apply(
-        lambda row: np.array([[row['I_x'], row['I_xy']],
-                             [row['I_xy'], row['I_y']]]), axis=1
+        lambda row: np.array([[row['I_x'], - row['I_xy']],
+                             [- row['I_xy'], row['I_y']]]), axis=1
     )
 
     # Calculate the eigenvalues (principal moments of inertia) and eigenvectors (principal axes)
