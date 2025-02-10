@@ -214,7 +214,7 @@ def get_eurocode_8_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
     # Optimize for the angle 'x' with the worst ecentricity ratio.
     df['x_opt'] = df.apply(
         lambda row: 0 if row['e_magnitude'] <= 10**-10 else scipy.optimize.fmin(
-            lambda x: - np.cos(x - row['b']) ** 2 * (row['c'] - row['r'] * np.cos(-2 * x)),
+            lambda x: - np.cos(x - row['b']) ** 2 * (row['c'] - row['r'] * np.cos(-2 * x - np.pi)),
             x0=0,
             xtol=1e-5,
             ftol=1e-5,
@@ -223,7 +223,7 @@ def get_eurocode_8_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
         axis=1
     )
 
-    torsional_radius = np.sqrt(df['I_t'] / (df['c'] - df['r'] * np.cos(-2 * df['x_opt'])))
+    torsional_radius = np.sqrt(df['I_t'] / (df['c'] - df['r'] * np.cos(-2 * df['x_opt'] - np.pi)))
 
     radius_of_gyration = np.sqrt(df['I_0']/df['area'])
 
