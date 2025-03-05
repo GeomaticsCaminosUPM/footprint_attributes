@@ -3,9 +3,9 @@ import pandas as pd
 import shapely 
 import numpy as np
 import warnings
-from ._utils import get_normal, explode_edges, calculate_momentum, select_touching_edges, resultant_angle, calc_inertia_z
+from .utils import get_normal, explode_edges, calculate_momentum, select_touching_edges, resultant_angle, calc_inertia_z
 
-def get_forces_gdf(geoms:gpd.GeoDataFrame,buffer:float=0,height_column:str=None,min_radius:float=0) -> gpd.GeoDataFrame:
+def forces_df(geoms:gpd.GeoDataFrame,buffer:float=0,height_column:str=None,min_radius:float=0) -> gpd.GeoDataFrame:
     """
     Calculates force-based metrics for building footprints based on their geometry and proximity.
 
@@ -117,7 +117,16 @@ def get_forces_gdf(geoms:gpd.GeoDataFrame,buffer:float=0,height_column:str=None,
 
     return geoms
 
-def relative_position(forces: gpd.GeoDataFrame, min_angular_acc: float = 2.133, min_confinement: float = 1, min_angle: float = 0.78, min_force: float = 0.166) -> list:
+def relative_position(
+    forces: gpd.GeoDataFrame,
+    min_angular_acc: float = 2.133,
+    min_confinement: float = 1,
+    min_angle: float = 0.78,
+    min_force: float = 0.166,
+    buffer:float=0,
+    height_column:str=None,
+    min_radius:float=0
+) -> list:
     """
     Classifies building footprints based on their relative position and interaction with surrounding structures.
 
@@ -145,15 +154,13 @@ def relative_position(forces: gpd.GeoDataFrame, min_angular_acc: float = 2.133, 
         - The classification prioritizes categories in the order listed above.
     """
     forces = forces.copy()
-    # Warn if relative_position column already exists
-
-    #if "relative_position" in footprints.columns:
-    #    warnings.warn(
-    #        "The 'relative_position' column already exists and will be overwritten.", UserWarning
-    #    )
-    
-    # Preserve original CRS for re-projection if needed
-    #orig_crs = footprints.crs
+    if (
+        ('force' not in forces.columns) | 
+        ('angle' not in forces.columns) | 
+        ('confinement_ratio' not in forces.columns) | 
+        ('angular_acc' not in forces.columns)
+    ):
+        forces = forces_df(forces,buffer=buffer,height_column=height_column,min_radius=min_radius)
     
     # Ensure the geometries are in a projected CRS for accurate calculations
     if not forces.crs.is_projected:
