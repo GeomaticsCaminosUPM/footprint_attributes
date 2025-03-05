@@ -4,7 +4,7 @@ import shapely
 from shapely.geometry import Polygon, MultiPolygon, LineString
 import numpy as np
 import warnings
-from ._utils import (
+from .utils import (
     get_normal,
     explode_edges,
     explode_exterior_and_interior_rings,
@@ -155,7 +155,7 @@ def inertia_circle(geoms:gpd.GeoDataFrame) -> list:
     
     return list(geoms['inertia_circle'])
 
-def compactness(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+def compactness(geoms:gpd.GeoDataFrame) -> list:
     geoms = geoms.copy()
     # Ensure the geometries are in a projected CRS for accurate area and length calculations
     if not geoms.crs.is_projected:
@@ -165,9 +165,13 @@ def compactness(geoms:gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     geoms_holes_filled = geoms.geometry.apply(
         lambda x: Polygon(x.exterior)
     )
-    return 1 - (convex_hull.area - geoms_holes_filled.area) / convex_hull.area
+    return list(1 - (convex_hull.area - geoms_holes_filled.area) / convex_hull.area)
 
-def get_eurocode_8_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
+def eurocode_8_excentricity_ratio(geoms:gpd.GeoDataFrame) -> list:
+    ratio = eurocode_8_df(geoms) 
+    return list(ratio['excentricity_ratio'])
+    
+def eurocode_8_df(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
     import scipy 
 
     geoms = geoms.copy()
@@ -257,7 +261,12 @@ def get_eurocode_8_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
     })
     return result_df
 
-def get_costa_rica_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
+
+def costa_rica_excentricity_ratio(geoms:gpd.GeoDataFrame) -> list:
+    ratio = codigo_sismico_costa_rica_df(geoms) 
+    return list(ratio['excentricity_ratio'])
+    
+def codigo_sismico_costa_rica_df(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
     import scipy 
                
     geoms = geoms.copy()
@@ -325,7 +334,7 @@ def get_costa_rica_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
     angle *= -180/np.pi  # invert to rotate north-east
          
     return pd.DataFrame({'excentricity_ratio' : excentricity_ratio, 'angle' : angle})
-
+    
 def setback_ratio(geoms:gpd.GeoDataFrame) -> list:
     geoms = geoms.copy()
     # Ensure the geometries are in a projected CRS for accurate area and length calculations
@@ -420,7 +429,7 @@ def hole_ratio(geoms:gpd.GeoDataFrame) -> list:
     hole_ratio = list(hole_ratio['hole_ratio'])
     return hole_ratio
                       
-def get_mexico_NTC_irregularity(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
+def mexico_NTC_df(geoms:gpd.GeoDataFrame) -> pd.DataFrame:
     geoms = geoms.copy()
     # Ensure the geometries are in a projected CRS for accurate area and length calculations
     if not geoms.crs.is_projected:
