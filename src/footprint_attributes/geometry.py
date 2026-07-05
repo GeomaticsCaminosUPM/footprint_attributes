@@ -338,6 +338,7 @@ def calc_principal_inertia(
         - I1, I2: (N,) arrays of principal moments (I1 ≥ I2).
         - dir1, dir2: (N, 2) arrays of unit eigenvectors.
     """
+    validate_geodataframe(geoms, context="calc_principal_inertia")
     if isinstance(geoms, gpd.GeoDataFrame):
         geoms = geoms.geometry
     n = len(geoms)
@@ -406,6 +407,7 @@ def min_bounding_box(
         ``(L1, dir1, L2, dir2)`` where L1 ≥ L2 are side lengths and
         dir1, dir2 are unit vectors.
     """
+    validate_geodataframe(gdf, context="min_bounding_box")
     if isinstance(gdf, gpd.GeoDataFrame):
         geoms = gdf.geometry
     else:
@@ -466,6 +468,7 @@ def circumscribed_rectangle_lengths(
     Returns:
         ``(L1_list, L2_list)`` lists of lengths per building.
     """
+    validate_geodataframe(gdf, context="circumscribed_rectangle_lengths")
     if isinstance(gdf, gpd.GeoDataFrame):
         geoms = gdf.geometry.values
     else:
@@ -529,6 +532,7 @@ def largest_convex_hull_gap_area(geoms: gpd.GeoSeries | gpd.GeoDataFrame) -> np.
         (N,) array with the area of the largest hull-minus-footprint
         component per building (0.0 if the footprint is already convex).
     """
+    validate_geodataframe(geoms, context="largest_convex_hull_gap_area")
     if isinstance(geoms, gpd.GeoDataFrame):
         geoms = geoms.geometry
 
@@ -564,6 +568,7 @@ def max_hole_area_ratio(
     Returns:
         List of hole-area ratios (0–1).
     """
+    validate_geodataframe(gdf, context="max_hole_area_ratio")
     exterior = fill_holes(gdf.geometry)
     ratios = []
     for i, poly in enumerate(gdf.geometry):
@@ -620,6 +625,7 @@ def setback_gndt_metrics(
         - ``c``: protrusion width of the solid footprint perpendicular to
           ``b`` (m), for beta6 = c/b; 0 if convex.
     """
+    validate_geodataframe(gdf, context="setback_gndt_metrics")
     gdf = ensure_projected(gdf).reset_index(drop=True)
     exterior = fill_holes(gdf.geometry)
 
@@ -882,8 +888,10 @@ def main_element_a_lengths_batch(
     Returns:
         ``(a1_list, a2_list, center_list)``.
     """
+    validate_geodataframe(gdf, context="main_element_a_lengths_batch")
     a1_list, a2_list, center_list = [], [], []
-    for i, poly in enumerate(gdf.geometry):
+    filled = fill_holes(gdf.geometry)
+    for i, poly in enumerate(filled):
         a1, a2, center = main_element_a_lengths(poly, dir1[i], dir2[i], grid_n=grid_n)
         a1_list.append(a1)
         a2_list.append(a2)
@@ -973,6 +981,7 @@ def hole_h_over_l(
     Returns:
         List of h/L ratios (0.0 for footprints with no significant holes).
     """
+    validate_geodataframe(gdf, context="hole_h_over_l")
     ratios = []
     for poly in gdf.geometry:
         filled = Polygon(poly.exterior)
@@ -1046,7 +1055,7 @@ def _two_point_segments(ls) -> list:
     return [
         LineString([coords[i], coords[i + 1]])
         for i in range(len(coords) - 1)
-        if not np.allclose(coords[i], coords[i + 1])  # skip zero-length
+        if np.linalg.norm(coords[i] - coords[i + 1]) > 1e-9  # skip zero-length
     ]
 
 
@@ -1084,13 +1093,25 @@ def explode_edges(gdf: gpd.GeoDataFrame, min_length: float = 0.0) -> gpd.GeoData
         min_length: Minimum segment length to retain (metres).
 
     Returns:
-        Exploded GeoDataFrame with an ``edges`` geometry column.
+        Exploded GeoDataFrame with an ``edges`` geometry column. The
+        original (pre-split) geometry column is dropped: leaving it in
+        place is a footgun for any later ``.apply(..., axis=1)`` call,
+        since a plain row ``Series`` resolves ``r.geometry`` by column
+        label, not by the GeoDataFrame's active-geometry column -- it
+        would silently return the stale, un-split geometry instead of the
+        two-point ``edges`` segment.
     """
     out = gdf.copy()
     crs = gdf.crs
+    geom_col = out.geometry.name
     out = out[~out.geometry.is_empty].explode(index_parts=False).reset_index(drop=True)
     out["edges"] = out.geometry.apply(split_linestring_to_segments)
-    out = out.set_geometry("edges", crs=crs).explode().reset_index(drop=True)
+    out = (
+        out.drop(columns=geom_col)
+        .set_geometry("edges", crs=crs)
+        .explode()
+        .reset_index(drop=True)
+    )
     out = out[out["edges"].length > max(min_length, 0.001)]
     return out
 
@@ -1120,6 +1141,7 @@ def centre_of_mass_and_stiffness(
     Returns:
         ``(cm, cs)`` each an (N, 2) array of (x, y) coordinates.
     """
+    validate_geodataframe(geoms, context="centre_of_mass_and_stiffness")
     if isinstance(geoms, gpd.GeoDataFrame):
         geoms = geoms.geometry
 

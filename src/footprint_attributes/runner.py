@@ -38,6 +38,7 @@ _POSITION_COLUMNS = [
     "contact_confinementRatio",
     "contact_angularAcc",
     "contact_angle",
+    "contact_height",
     "relativePosition",
 ]
 
