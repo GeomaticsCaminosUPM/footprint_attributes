@@ -47,6 +47,32 @@ _POSITION_COLUMNS = [
 #: for that choice (see the "method" note in the docstring below).
 _METHOD_KEYS = {"method"}
 
+#: Group/shorthand names accepted in ``columns`` besides exact shape.py
+#: column names (norm names, "slenderness", "position", its five exact
+#: column names, and "bearing").
+_GROUP_NAMES = (
+    set(_NORMS_BY_NAME)
+    | {"slenderness", "position", "bearing"}
+    | set(_POSITION_COLUMNS)
+)
+
+#: Every exact `shape.py` column name this package can produce, used to
+#: validate columns that don't match a group name above.
+_ALL_SHAPE_COLUMNS: set[str] = set(_CODE_INDEPENDENT_SHAPE_COLUMNS)
+for _norm in _NORMS_BY_NAME.values():
+    for _param in _norm.parameters.values():
+        _ALL_SHAPE_COLUMNS.add(_param.column_name)
+        if _param.limits is not None:
+            _ALL_SHAPE_COLUMNS.add(f"compliance_{_param.column_name}")
+for _method_obj in slenderness._methods.values():
+    _ALL_SHAPE_COLUMNS.add(_method_obj.column_name)
+    if _method_obj._compliance_limits is not None:
+        _ALL_SHAPE_COLUMNS.add(f"compliance_EC8_{_method_obj.column_name}")
+del _norm, _param, _method_obj
+
+#: Every valid ``columns`` entry: group names plus exact shape columns.
+_ALL_VALID_COLUMNS = _GROUP_NAMES | _ALL_SHAPE_COLUMNS
+
 
 def _expand_columns(columns: list[str]) -> tuple[set[str], bool, bool]:
     """Resolve the requested ``columns`` into (shape_columns, want_position, want_bearing).
@@ -82,12 +108,18 @@ def _expand_columns(columns: list[str]) -> tuple[set[str], bool, bool]:
             want_position = True
         elif col == "bearing":
             want_bearing = True
-        else:
+        elif col in _ALL_SHAPE_COLUMNS:
             # Exact shape.py column name (e.g. "EC8_eccentricityRatio",
             # "compliance_ASCE7_setbackRatio", "slenderness_bbox",
-            # "polsby_popper", ...). shape() itself raises/ignores anything
-            # it doesn't recognise, so no further validation is done here.
+            # "polsby_popper", ...).
             shape_columns.add(col)
+        else:
+            print(
+                f"WARNING: run(): unrecognised column/code name {col!r} -- "
+                f"skipping. Valid names are norm names ({sorted(_NORMS_BY_NAME)}), "
+                "'slenderness', 'position', 'bearing', or an exact "
+                "shape.py column name."
+            )
 
     return shape_columns, want_position, want_bearing
 
