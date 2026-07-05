@@ -1,203 +1,221 @@
-# SeismicBuildingExposure
+# footprint_attributes
 
-**SeismicBuildingExposure** es una librería de Python construida sobre GeoPandas para calcular diversos índices geométricos relacionados con la geometría de huellas de edificaciones y riesgo sísmico.
+<p align="center">
+  <img src="figures/graphical_abstract.jpg" width="80%" alt="Graphical abstract"/>
+</p>
+
+Automated computation of **seismic behaviour modifiers** from 2-D building footprint polygons, implementing the methodology described in:
+
+> Ureña-Pliego M., Rodríguez-Saiz J., Núñez-Álvarez G., Marchamalo-Sacristán M., González-Rodrigo B.
+> *A methodology for the automated estimation of footprint-derived seismic behaviour modifiers in building exposure assessment.*
+
+> **Footprint digitalisation** (Mask2Former / SAM2 instance segmentation) is out of scope for this package and lives elsewhere; this package starts from an already-digitised footprint geometry file.
 
 ---
 
-## Instalación
+## Why this package?
 
-Para instalar el paquete, usa el siguiente comando:
+Seismic risk models require, for each building, a set of *behaviour modifiers* — attributes that adjust the base vulnerability of a structural typology. Several of these modifiers are derivable directly from a building's 2-D footprint, but their calculation usually requires subjective expert judgement based on seismic codes.
+
+<p align="center">
+  <img src="figures/DNA.jpg" width="65%" alt="GEM taxonomy attributes; red boxes mark those automated here"/>
+  <br>
+  <em>GEM building-taxonomy attributes. Red boxes mark the ones automated by this package: direction, position, plan shape and structural irregularity.</em>
+</p>
+
+This package translates the relevant code provisions into deterministic geometric algorithms, making the assessment **objective, reproducible, and scalable** to national-level inventories.
+
+---
+
+## What is computed?
+
+### 1 · Building direction — `direction`
+
+The orientation of the footprint's principal axes, via two independent methods:
+
+- `direction.bbox` — axes of the minimum rotated bounding box.
+- `direction.inertia` — principal axes of the second moment of area (exact closed-form). The *weak* axis (smaller moment) defines the building's `bearing`.
+
+<p align="center">
+  <img src="figures/axis_inertia_2b.jpg" width="40%" alt="Second moment of area axes"/>&nbsp;&nbsp;
+  <img src="figures/axis_inertia_3.jpg" width="40%" alt="Minimum bounding box axes"/>
+</p>
+<p align="center"><em>Left: principal axes of inertia. Right: minimum bounding box axes.</em></p>
+
+<p align="center">
+  <img src="figures/direction_san_jose.jpg" width="55%" alt="Building direction map"/>
+</p>
+
+### 2 · Relative position within the block — `position`
+
+Each building is classified into one of five categories using a **contact-force analogy**: a virtual unit pressure is applied to every shared wall segment, and the resultant force, confinement ratio, and angular-acceleration proxy decide the class.
+
+<p align="center">
+  <img src="figures/relative_position_explanation.jpg" width="40%" alt="Contact force diagram"/>
+</p>
+
+| Class | Meaning |
+|---|---|
+| **isolated** | No touching neighbours |
+| **lateral** | Touches on one side |
+| **corner** | Touches on two perpendicular sides |
+| **confined** | Touches on both lateral sides (enclosed) |
+| **torque** | Confined or corner with large angular acceleration |
+
+<p align="center">
+  <img src="figures/relative_position_san_jose.jpg" width="55%" alt="Relative position map"/>
+</p>
+
+### 3 · Footprint shape indices — `shape`
+
+Plan-irregularity parameters from **five international seismic codes**, plus three code-independent compactness indices (`polsby_popper`, `convex_hull_irregularity`, `inertia_circle_ratio`).
+
+#### Structural model
+
+All shape indices are computed under a *hollow-box* approximation: continuous uniform walls of height 3 m, one ceiling slab, identical materials throughout.
+
+<p align="center">
+  <img src="figures/box_idealization_and_eccentricity.jpg" width="60%" alt="Hollow-box model"/>
+</p>
+
+The **centre of mass** is the area-weighted average of the ceiling centroid and the perimeter centroid. The **centre of stiffness** is the perimeter centroid (boundary of the footprint).
+
+#### Basic plan dimensions
+
+Setback and slenderness parameters build on a common construction: the inscribed circle for the main shape element `a` (fig. below), and the convex-hull difference for setback pieces `b`/`c`.
+
+<p align="center">
+  <img src="figures/circle_step_1.jpg" width="23%"/>&nbsp;<img src="figures/circle_step_2.jpg" width="23%"/>&nbsp;<img src="figures/circle_step_3.jpg" width="23%"/>&nbsp;<img src="figures/circle_step_4.jpg" width="23%"/>
+</p>
+<p align="center"><em>Process to find the main-element side <code>a</code>: inscribe the largest circle, find its tangent points, circumscribe a rectangle along the footprint's own principal axes.</em></p>
+
+<p align="center">
+  <img src="figures/basic_lengths_example.jpg" width="50%" alt="Basic length examples"/>
+</p>
+
+#### Supported codes
+
+| Code | `shape.<NORM>` | Parameters |
+|---|---|---|
+| **Eurocode 8** (EN 1998-1) | `EC8` | eccentricity ratio, radius ratio, compactness |
+| **Costa Rica CSCR 2010** | `CSCR2010` | eccentricity ratio |
+| **Italian GNDT Level II** | `GNDTII` | β₁ (main-shape slenderness), β₂ (setback ratio), β₄ (eccentricity ratio), β₆ (setback slenderness) |
+| **US ASCE 7** | `ASCE7` | setback ratio, hole ratio, parallelity angle |
+| **Mexican NTC-23** | `NTC23` | setback ratio, hole ratio |
+
+Plan and vertical slenderness (`shape.slenderness`) and the code-independent indices apply across codes rather than belonging to one.
+
+<p align="center">
+  <img src="figures/slenderness_san_jose.jpg" width="46%" alt="Slenderness map"/>&nbsp;&nbsp;
+  <img src="figures/eccentricity_san_jose.jpg" width="45%" alt="Eccentricity map"/>
+</p>
+
+Each code parameter has a matching `compliance_{NORM}_{param}` column (0–100 score against the code's own limit).
+
+---
+
+## Installation
 
 ```bash
-pip install git+https://github.com/GeomaticsCaminosUPM/SeismicBuildingExposure.git
+pip install "footprint-attributes @ git+https://github.com/GeomaticsCaminosUPM/SeismicBuildingExposure.git"
+```
+
+Dependencies: `geopandas`, `shapely>=2.0`, `numpy`, `pandas`, `scipy`, `packaging`.
+
+---
+
+## Quick start
+
+```python
+import geopandas as gpd
+from footprint_attributes import direction, shape, position
+import footprint_attributes
+
+footprints = gpd.read_file("footprints.gpkg")
+
+# ── Building direction ─────────────────────────────────────────────────────
+footprints["bearing"] = direction.inertia(footprints)
+
+# ── Relative position within the block ─────────────────────────────────────
+footprints = position(footprints, buffer=0.1, height_column="height")
+
+# ── Eurocode 8 shape indices ────────────────────────────────────────────────
+ec8 = shape.EC8(footprints)
+footprints["EC8_compactness"] = ec8["EC8_compactness"]
+footprints["EC8_eccentricityRatio"] = ec8["EC8_eccentricityRatio"]
+
+# ── Or a single entry point: request any mix of columns in one call ────────
+result = footprint_attributes.run(
+    footprints,
+    config={"columns": ["EC8", "position", "bearing"]},
+)
+
+footprints.to_file("results.gpkg")
+```
+
+See the [`examples/`](examples/) notebooks for full walkthroughs of every module on real footprint data, and the [Sphinx docs](docs/) for the complete API reference.
+
+---
+
+## Repository layout
+
+```
+footprint_attributes/
+├── src/footprint_attributes/
+│   ├── __init__.py       # public entry points: direction, shape, position, run
+│   ├── direction.py       # building orientation (bbox / inertia methods)
+│   ├── shape.py            # seismic-code shape indices (EC8, ASCE7, GNDTII, CSCR2010, NTC23)
+│   ├── position.py         # contact forces + relative-position classification
+│   ├── eccentricity.py     # Mohr's-circle worst-case eccentricity optimisation
+│   ├── geometry.py          # shared low-level geometry primitives
+│   ├── config.py            # code limits, compliance grades, default thresholds
+│   └── runner.py             # `run()` single entry point
+├── examples/
+│   ├── direction.ipynb, position.ipynb, shape.ipynb, building_sizes.ipynb
+│   └── data/                 # sample footprints, one file per pilot area:
+│       ├── san_jose_pilot_region.gpkg
+│       ├── guatemala_pilot_region.gpkg
+│       └── santo_domingo_pilot_region.gpkg
+├── docs/                     # Sphinx documentation (Google-style autodoc + notebooks)
+├── tests/                    # pytest suite
+└── figures/                   # images used in this README, the docs, and the paper
 ```
 
 ---
 
-## Funcionalidades
+## Documentation
 
-### 1. **Posición Relativa de los Edificios**
-Esta funcionalidad determina si un edificio toca otras estructuras (posición relativa dentro de la manzana). Se calculan “fuerzas” que las estructuras vecinas ejercen sobre el edificio, proporcionales al área de contacto (longitud del contacto entre huellas multiplicada por la altura del edificio) en la dirección normal al plano de contacto.
+Full API reference (Google-style docstrings via Sphinx/autodoc) and rendered example notebooks:
 
-Las fuerzas de contacto se computan para ayudar a determinar la clase de posición relativa:
-
-- **Aceleración angular (`angular_acc`)**:  
-  La aceleración angular, calculada como:
-
-  $$\text{aceleración angular} = \frac{\text{momento} \cdot \text{área}}{\text{inercia}}$$
-
-  Donde el **momento** se calcula como:
-
-  $$\text{momento} = \sum \(\text{distancia} \cdot |\text{fuerza}_i|\)$$
-
-- **Fuerza (`force`)**:  
-  Magnitud de la fuerza resultante actuando sobre la huella, normalizada por la raíz cuadrada del área:
-
-  $$\text{fuerza} = \left| \sum \text{fuerza}_i \right|$$
-
-- **Índice de confinamiento (`confinement_ratio`)**:  
-  Proporción de fuerzas totales que están confinadas (compensadas por fuerzas opuestas):
-
-  $$\text{índice de confinamiento} = \frac{\sum |\text{fuerza}_i| - \left| \sum \text{fuerza}_i \right|}{\left| \sum \text{fuerza}_i \right|}$$
-
-- **Ángulo (`angle`)**:  
-  Suma normalizada de los ángulos entre las fuerzas individuales y la fuerza resultante:
-
-  $$\text{ángulo} = \frac{\sum \left( |\text{fuerza}_i| \cdot \text{ángulo}(\text{fuerza}_i, \sum \text{fuerza}_j) \right)}{\left| \sum \text{fuerza}_i \right|}$$
-
-Clases de posición relativa:
-1. **"torque"**: Alta aceleración angular y clase **confinado** o **esquina**.
-2. **"confinado"**: Toca ambos lados laterales.
-3. **"esquina"**: Toca en una esquina.
-4. **"lateral"**: Toca un solo lado.
-5. **"aislado"**: No toca otras estructuras.
-
-<div align="center">
-  <img src="images/san_jose_relative_position.png" alt="screenshot" width="500"/>
-</div>
+```bash
+uv sync --group docs
+uv run sphinx-build -b html docs docs/_build/html
+```
 
 ---
 
-### 2. **Irregularidad**
-Mide la irregularidad geométrica de las **huellas de edificaciones** usando distintos índices normativos.
+## Validation
 
-#### 2.1. Eurocódigo 8
+The methodology was validated against hand-labelled building inventories from three Central-American / Caribbean pilot areas (San José, Santo Domingo, Guatemala City).
 
-La irregularidad se mide siguiendo el [Eurocódigo 8](https://www.phd.eng.br/wp-content/uploads/2015/02/en.1998.1.2004.pdf).
+<p align="center">
+  <img src="figures/confusion_matrix_relative_position.jpg" width="45%" alt="Relative position confusion matrix"/>
+</p>
 
-Parámetros calculados:
-
-- **Relación de excentricidad (`excentricity_ratio`)**:  
-  $\text{relación de excentricidad} = \frac{\text{excentricidad}}{\text{radio torsional}}$
-
-- **Relación de radios (`radius_ratio`)**:  
-  $\text{relación de radios} = \frac{\text{radio torsional}}{\text{radio de giro}}$
-
-- **Esbeltez (`slenderness`)**:  
-  Se usa:  
-  $\sqrt{\frac{I_1}{I_2}}$  
-  donde $I_1$ e $I_2$ son los valores principales del tensor de inercia.
-
-- **Compacidad (`compactness`)**:  
-  $\text{compacidad} = \frac{\text{área del polígono (con huecos rellenados)}}{\text{área del casco convexo}}$
-
-La función `eurocode_8_df` devuelve la **dirección más débil** como un ángulo (en grados) respecto al **norte (en coordenadas UTM)**.
-
-**Definiciones:**
-
-- **Excentricidad**: Distancia entre el centro de masa y el centro de rigidez.
-- **Radio torsional**: $\sqrt{\frac{I_t}{I_j}}$
-- **Radio de giro**: $\sqrt{\frac{I_0}{\text{área}}}$
-
-**Límites de parámetros:**
-
-| Parámetro               | Límite |
-|------------------------|--------|
-| Relación de excentricidad | < 0.3  |
-| Relación de radios         | < 1.0  |
-| Esbeltez                  | < 4.0  |
-| Compacidad                | > 0.95 |
-
-#### 2.2. Normativa Código Sísmico de Costa Rica
-
-La irregularidad se mide siguiendo el [Código Sísmico de Costa Rica](https://www.codigosismico.or.cr/).
-
-Parámetro calculado:
-
-- **Relación de excentricidad (`excentricity_ratio`)**:  
-  $\text{relación de excentricidad} = \frac{\text{excentricidad}}{\text{dimensión}}$
-
-La función `codigo_sismico_costa_rica_df` devuelve la **dirección más débil** como un ángulo (en grados) respecto al **norte (coordenadas UTM)**.
-
-**Definiciones:**
-
-- **Excentricidad**: Distancia entre el centro de masa y el centro de rigidez.
-- **Dimensión (`dimension`)**:  
-  $\text{dimensión} = \sqrt{\text{área} \cdot \sqrt{\frac{I_i}{I_j}}}$
-
-**Límites de parámetros:**
-
-| Relación de excentricidad | Nivel de irregularidad |
-|---------------------------|-------------------------|
-| < 0.05                    | Regular                 |
-| 0.05–0.25                 | Moderada                |
-| > 0.25                    | Alta                    |
-
-<div align="center">
-  <img src="images/guatemala_cr_norm.png" alt="screenshot" width="500"/>
-</div>
-
-#### 2.3. Normativa NTC México
-
-La irregularidad se mide siguiendo la normativa NTC de México.
-
-Parámetros calculados:
-
-- **Relación de retranqueo (`setback_ratio`)**:  
-  $\text{relación de retranqueo} = \frac{\text{longitud del retranqueo}}{\text{longitud del lado}}$
-
-- **Relación de huecos (`hole_ratio`)**:  
-  $\text{relación de huecos} = \frac{\text{ancho del hueco}}{\text{longitud del lado}}$
-
-**Definiciones:**
-
-- **Longitud del lado (`side length`)**: Del rectángulo mínimo alineado a los ejes principales de inercia.
-- **Longitud del retranqueo (`setback length`)**: Longitud del rectángulo que circunscribe los polígonos del retranqueo.
-- **Ancho del hueco (`hole width`)**: Longitud del lado del rectángulo que circunscribe cada hueco.
-- **Máxima esbeltez (`max slenderness`)**: Esbeltez máxima de los retranqueos para filtrar irregularidades no significativas.
-
-**Límites de parámetros:**
-
-| Parámetro               | Límite |
-|------------------------|--------|
-| Relación de retranqueo | < 0.4  |
-| Relación de huecos     | < 0.4  |
-
-<div align="center">
-  <img src="images/santo_domingo_ntc.png" alt="screenshot" width="500"/>
-</div>
-
-#### 2.4. Índices geométricos
-
-##### **Índice Polsby-Popper**
-Mide la compacidad (circularidad):
-
-$$\text{Índice Polsby-Popper} = \frac{4 \pi A}{P^2}$$
-
-##### **Índice de momento del casco convexo**
-Mide la irregularidad comparando la huella con su casco convexo:
-
-$$\text{Momento del casco convexo} = \frac{l \cdot d}{L}$$
-
-##### **Irregularidad por círculo de inercia**
-Compara la inercia de un polígono con la de un círculo equivalente:
-
-$$\text{Irregularidad de inercia} = \frac{\text{Inercia del círculo equivalente}}{\text{Inercia del polígono}}$$
-
-##### **Esbeltez por inercia (`inertia_slenderness`)**
-$$\text{Esbeltez por inercia} = \sqrt{\frac{I_1}{I_2}}$$
-
-##### **Esbeltez circunscrita (`circunscribed_slenderness`)**
-$$\text{Esbeltez circunscrita} = \frac{L_1}{L_2}$$
-
-##### **Eurocódigo 8**
-Índices disponibles como funciones independientes:
-- Excentricidad EC8
-- Relación de radios
-- Esbeltez
-- Compacidad
-
-##### **Código Sísmico de Costa Rica**
-- Excentricidad CR
-
-##### **Norma NTC México**
-- Relación de retranqueo
-- Relación de huecos
+The automated shape and position classifications were found to be comparable in accuracy to the variability observed between independent human surveyors.
 
 ---
 
-### 3. Alturas
+## Citation
 
-En desarrollo.
+If you use this package in research, please cite:
+
+> Ureña-Pliego M., Rodríguez-Saiz J., Núñez-Álvarez G., Marchamalo-Sacristán M., González-Rodrigo B.
+> *A methodology for the automated estimation of footprint-derived seismic behaviour modifiers in building exposure assessment.*
+> Universidad Politécnica de Madrid, 2025.
 
 ---
+
+## License
+
+MIT.

@@ -1,0 +1,48 @@
+# Examples: keep only the maintained notebooks and sample data
+examples/*
+!examples/direction.ipynb
+!examples/position.ipynb
+!examples/shape.ipynb
+!examples/building_sizes.ipynb
+!examples/data/
+examples/data/*
+!examples/data/san_jose_pilot_region.gpkg
+!examples/data/guatemala_pilot_region.gpkg
+!examples/data/santo_domingo_pilot_region.gpkg
+
+# Sphinx build output
+docs/_build/
+_build/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+venv/
+
+# Python packaging outputs
+*.egg-info/
+dist/
+build/
+
+# Caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+*.cover
+.coverage
+.coverage.*
+htmlcov/
+
+# Editors / OS
+.DS_Store
+*.swp
+
+old/*
+
+figures/references.bib
+figures/sn-article.tex
