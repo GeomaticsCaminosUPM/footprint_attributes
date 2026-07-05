@@ -1,0 +1,47 @@
+{
+  "shape": [
+    "EC8_eccentricityRatio",
+    "compliance_EC8_eccentricityRatio",
+    "EC8_radiusRatio",
+    "compliance_EC8_radiusRatio",
+    "EC8_compactness",
+    "compliance_EC8_compactness",
+    "ASCE7_setbackRatio",
+    "compliance_ASCE7_setbackRatio",
+    "ASCE7_holeRatio",
+    "compliance_ASCE7_holeRatio",
+    "ASCE7_parallelityAngle",
+    "compliance_ASCE7_parallelityAngle",
+    "GNDTII_beta1_mainShapeSlenderness",
+    "compliance_GNDTII_beta1_mainShapeSlenderness",
+    "GNDTII_beta2_setbackRatio",
+    "compliance_GNDTII_beta2_setbackRatio",
+    "GNDTII_beta4_eccentricityRatio",
+    "compliance_GNDTII_beta4_eccentricityRatio",
+    "GNDTII_beta6_setbackSlenderness",
+    "compliance_GNDTII_beta6_setbackSlenderness",
+    "CSCR2010_eccentricityRatio",
+    "compliance_CSCR2010_eccentricityRatio",
+    "NTC23_setbackRatio",
+    "compliance_NTC23_setbackRatio",
+    "NTC23_holeRatio",
+    "compliance_NTC23_holeRatio",
+    "polsby_popper",
+    "convex_hull_irregularity",
+    "inertia_circle_ratio",
+    "slenderness_bbox",
+    "compliance_EC8_slenderness_bbox",
+    "slenderness_inertia",
+    "compliance_EC8_slenderness_inertia"
+  ],
+  "position": [
+    "contact_force",
+    "contact_confinementRatio",
+    "contact_angularAcc",
+    "contact_angle",
+    "relativePosition"
+  ],
+  "direction": [
+    "bearing"
+  ]
+}
