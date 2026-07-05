@@ -1,6 +1,6 @@
 [project]
 name = "footprint-attributes"
-version = "0.1.0"
+version = "1.0.0"
 description = "Compute seismic related attributes of building footprints about position and regularity based on international codes"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -19,6 +19,9 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/footprint_attributes"]
+
+[tool.uv.sources]
+fancyfolium = { git = "https://github.com/GeomaticsCaminosUPM/FancyFolium.git" }
 
 [dependency-groups]
 dev = [
@@ -39,4 +42,5 @@ visualization = [
     "mapclassify>=2.8.1",
     "matplotlib>=3.9.4",
     "nbconvert>=7.17.1",
+    "fancyfolium",
 ]
