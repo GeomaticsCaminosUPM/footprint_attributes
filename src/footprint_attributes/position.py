@@ -35,6 +35,7 @@ from .geometry import (
     ensure_projected,
     to_gdf,
     validate_geodataframe,
+    fill_holes,
     calc_inertia_z,
     select_touching_edges,
     explode_edges,
@@ -147,6 +148,17 @@ def contact_forces_df(
         geoms["height"] = 1.0
     else:
         geoms["height"] = geoms[height_column].astype(float)
+        nan_mask = geoms["height"].isna()
+        if nan_mask.any():
+            bad = list(geoms.index[nan_mask][:10])
+            raise ValueError(
+                f"[contact_forces_df] Found {nan_mask.sum()} null value(s) in "
+                f"height_column '{height_column}' at index positions {bad}"
+                f"{'…' if nan_mask.sum() > 10 else ''}. A missing height silently "
+                "zeroes that building's contact force/angularAcc, making it look "
+                "'isolated' regardless of real neighbours. Fill or drop null "
+                "heights before calling contact_forces_df()/position()."
+            )
 
     geoms["inertia"] = calc_inertia_z(geoms.geometry)
     geoms["area"] = geoms.geometry.area
@@ -156,6 +168,12 @@ def contact_forces_df(
     # ------------------------------------------------------------------
     # Select touching edge segments and compute forces
     # ------------------------------------------------------------------
+    # Interior holes (courtyards) are irrelevant to neighbour contact and
+    # would otherwise show up as spurious "touching" edges (their ring lies
+    # inside the eroded union just like a real shared wall).  Fill them
+    # before detecting touching edges; area/centroid/inertia above were
+    # already computed from the real (unfilled) footprint.
+    geoms.geometry = fill_holes(geoms.geometry)
     geoms = select_touching_edges(geoms, buffer=buffer)
     geoms = explode_edges(geoms, min_length=buffer)
 
@@ -170,9 +188,11 @@ def contact_forces_df(
             ["height", "force", "confinementRatio", "angularAcc", "angle"]
         ].astype(float)
 
-    # Compute edge normals (force vectors)
+    # Compute edge normals (force vectors). Use the exploded two-point
+    # "edges" column explicitly, not r.geometry -- explode_edges() drops the
+    # stale pre-split geometry column precisely to prevent this.
     normal_results = geoms.apply(
-        lambda r: edge_normal(r.geometry, scale=r["height"]),
+        lambda r: edge_normal(r["edges"], scale=r["height"]),
         axis=1,
         result_type="expand",
     )
@@ -312,11 +332,15 @@ class _Position:
             minRadius=minRadius,
         )
 
-        # Store force columns with the prefixed API names
+        # Store force columns with the prefixed API names. `contact_height`
+        # is kept too so a later `relative_position()` call reusing these
+        # prefixed columns can still undo the height scaling of
+        # contact_force/contact_angularAcc when classifying (see _classify).
         gdf["contact_force"] = forces["force"]
         gdf["contact_confinementRatio"] = forces["confinementRatio"]
         gdf["contact_angularAcc"] = forces["angularAcc"]
         gdf["contact_angle"] = forces["angle"]
+        gdf["contact_height"] = forces["height"]
 
         # Classify (forces already has the plain column names)
         gdf["relativePosition"] = self._classify(
@@ -396,12 +420,22 @@ class _Position:
         df = footprints_gdf.copy()
 
         if _REQUIRED_PLAIN.issubset(df.columns):
-            # Plain columns already present — use them directly.
-            forces = df[list(_REQUIRED_PLAIN)]
+            # Plain columns already present — use them directly. `height` is
+            # carried along too when available, so _classify can undo the
+            # height scaling of force/angularAcc instead of assuming height=1.
+            cols = list(_REQUIRED_PLAIN)
+            if "height" in df.columns:
+                cols.append("height")
+            forces = df[cols]
 
         elif _FORCE_COL_MAP.keys() <= set(df.columns):
             # Prefixed columns present (output of __call__) — rename to plain.
-            forces = df[list(_FORCE_COL_MAP)].rename(columns=_FORCE_COL_MAP)
+            cols = list(_FORCE_COL_MAP)
+            rename = dict(_FORCE_COL_MAP)
+            if "contact_height" in df.columns:
+                cols.append("contact_height")
+                rename["contact_height"] = "height"
+            forces = df[cols].rename(columns=rename)
 
         else:
             # No force columns found — compute from footprint geometries.
@@ -437,7 +471,8 @@ class _Position:
 
         Args:
             forces: DataFrame with columns ``force``, ``angle``,
-                ``confinementRatio``, ``angularAcc``.
+                ``confinementRatio``, ``angularAcc``, and optionally
+                ``height`` (used to undo the height scaling below).
             minAngularAcc: Threshold for the *torque* class.
             minConfinement: Threshold for the *confined* class.
             minAngle: Threshold for the *corner* class.
@@ -449,7 +484,21 @@ class _Position:
         out = forces.copy()
         out["relativePosition"] = "isolated"
 
-        out.loc[out["force"] > minForce, "relativePosition"] = "lateral"
+        # `force`/`angularAcc` scale linearly with building height (a taller
+        # shared wall really does carry more contact force), but minForce/
+        # minAngularAcc are calibrated for height=1 (see POSITION_DEFAULTS).
+        # Compare against the height=1-equivalent value so classification
+        # doesn't depend on whether/what height_column was supplied;
+        # confinementRatio/angle are already height-invariant ratios and
+        # need no such correction.
+        if "height" in out.columns:
+            height = out["height"].replace(0, np.nan).fillna(1.0)
+        else:
+            height = 1.0
+        force_for_classification = out["force"] / height
+        angular_acc_for_classification = out["angularAcc"] / height
+
+        out.loc[force_for_classification > minForce, "relativePosition"] = "lateral"
 
         out.loc[
             (out["angle"] > minAngle) & (out["relativePosition"] == "lateral"),
@@ -462,7 +511,7 @@ class _Position:
 
         out.loc[
             out["relativePosition"].isin(["corner", "confined"])
-            & (out["angularAcc"] > minAngularAcc),
+            & (angular_acc_for_classification > minAngularAcc),
             "relativePosition",
         ] = "torque"
 
