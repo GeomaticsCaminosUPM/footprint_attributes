@@ -258,6 +258,96 @@ def contact_forces_df(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Contact-force vectors (for visualisation, e.g. drawing arrows on a map)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def contact_force_vectors(
+    geoms: gpd.GeoDataFrame,
+    buffer: float = 0,
+    height_column: str | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Per-edge contact-force vectors and per-building resultant vectors.
+
+    Same underlying computation as :func:`contact_forces_df`, but returns the
+    actual 2-D force vectors (not just their aggregated magnitude/angle), so
+    callers can draw them -- e.g. as literal arrows on a map.
+
+    Args:
+        geoms: GeoDataFrame of building footprints (any CRS).
+        buffer: Contact detection buffer in metres (see
+            :func:`contact_forces_df`).
+        height_column: Name of a column with building heights in metres.  If
+            ``None`` all buildings get height = 1.
+
+    Returns:
+        ``(edges, resultants)``:
+
+        - ``edges``: one row per touching edge segment, with ``geom_id``
+          (index into *geoms*), ``anchor`` (edge midpoint, ``(x, y)``) and
+          ``vector`` (the edge's own contact-force vector, ``(vx, vy)``).
+        - ``resultants``: one row per building that has at least one
+          touching edge, with ``geom_id``, ``anchor`` (building centroid)
+          and ``vector`` (sum of that building's edge vectors -- the net
+          resultant force).
+    """
+    geoms = to_gdf(geoms)
+
+    geoms["geom_id"] = geoms.index.copy()
+    geoms.geometry = geoms.geometry.force_2d()
+    geoms = ensure_projected(geoms)
+    validate_geodataframe(geoms, context="contact_force_vectors")
+
+    if height_column is None:
+        geoms["height"] = 1.0
+    else:
+        geoms["height"] = geoms[height_column].astype(float)
+
+    # Capture the real footprint centroid before geometry is overwritten
+    # with (fill_holes'd, then touching-edge, then exploded-edge) linework.
+    orig_centroid = geoms.geometry.centroid
+
+    geoms.geometry = fill_holes(geoms.geometry)
+    geoms = select_touching_edges(geoms, buffer=buffer)
+    geoms = explode_edges(geoms, min_length=buffer)
+
+    empty = pd.DataFrame(columns=["geom_id", "anchor", "vector"])
+    if len(geoms) == 0:
+        return empty, empty.copy()
+
+    normal_results = geoms.apply(
+        lambda r: edge_normal(r["edges"], scale=r["height"]),
+        axis=1,
+        result_type="expand",
+    )
+    geoms["mid"] = normal_results[0]
+    geoms["force_vec"] = normal_results[1]
+
+    edges = pd.DataFrame(
+        {
+            "geom_id": geoms["geom_id"].values,
+            "anchor": [(p.x, p.y) for p in geoms["mid"]],
+            "vector": [tuple(v) for v in geoms["force_vec"]],
+        }
+    )
+
+    resultant_vecs = geoms.groupby("geom_id")["force_vec"].apply(
+        lambda vecs: np.sum(np.vstack(vecs.tolist()), axis=0)
+    )
+    resultants = pd.DataFrame(
+        {
+            "geom_id": resultant_vecs.index,
+            "anchor": [
+                (orig_centroid[i].x, orig_centroid[i].y) for i in resultant_vecs.index
+            ],
+            "vector": [tuple(v) for v in resultant_vecs.values],
+        }
+    )
+
+    return edges, resultants
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Callable class — exposes position() and position.relative_position()
 # ─────────────────────────────────────────────────────────────────────────────
 
