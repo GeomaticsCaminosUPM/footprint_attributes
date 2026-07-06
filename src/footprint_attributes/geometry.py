@@ -592,7 +592,19 @@ def setback_gndt_metrics(
     dir2: np.ndarray,
     min_length: float = 0.0,
     min_area_fraction: float = 0.001,
-) -> tuple[list[float], list[float], list[float]]:
+    full_output: bool = False,
+) -> (
+    tuple[list[float], list[float], list[float]]
+    | tuple[
+        list[float],
+        list[float],
+        list[float],
+        list[float],
+        list[float],
+        list[float],
+        list[float],
+    ]
+):
     """GNDT-style dual-configuration setback metrics per building.
 
     For every disconnected setback piece (``hull.difference(footprint)``),
@@ -615,15 +627,24 @@ def setback_gndt_metrics(
         dir2: (N, 2) unit vectors for the L2 axis.
         min_length: Minimum setback side length (m) to be considered.
         min_area_fraction: Minimum fractional setback area to be considered.
+        full_output: If ``True``, additionally return the dominant setback
+            piece's own ``b1``, ``b2`` (both configurations, not just the
+            winning one) and its centroid ``(cx, cy)`` -- useful for
+            visualising both candidate setback rectangles, e.g. as arrows.
 
     Returns:
-        ``(ratio, b, c)`` lists, one entry per building:
+        ``(ratio, b, c)`` lists, one entry per building (or
+        ``(ratio, b, c, b1, b2, cx, cy)`` if ``full_output=True``):
         - ``ratio``: ``min(b1/L1, b2/L2)`` for the dominant setback (the
           value to use directly for beta2/setback_ratio); 0 for convex
           footprints.
         - ``b``: the winning configuration's own b1 or b2 (m); 0 if convex.
         - ``c``: protrusion width of the solid footprint perpendicular to
           ``b`` (m), for beta6 = c/b; 0 if convex.
+        - ``b1``, ``b2`` (only if ``full_output``): the dominant setback
+          piece's own extents along *dir1*/*dir2*; 0 if convex.
+        - ``cx``, ``cy`` (only if ``full_output``): the dominant setback
+          piece's centroid; the footprint's own centroid if convex.
     """
     validate_geodataframe(gdf, context="setback_gndt_metrics")
     gdf = ensure_projected(gdf).reset_index(drop=True)
@@ -653,6 +674,18 @@ def setback_gndt_metrics(
     non_empty = sb[~sb.geometry.is_empty]
     if len(non_empty) == 0:
         zeros = [0.0] * len(gdf)
+        if full_output:
+            fallback_cx = gdf.geometry.centroid.x.tolist()
+            fallback_cy = gdf.geometry.centroid.y.tolist()
+            return (
+                zeros,
+                list(zeros),
+                list(zeros),
+                list(zeros),
+                list(zeros),
+                fallback_cx,
+                fallback_cy,
+            )
         return zeros, list(zeros), list(zeros)
 
     _d1 = np.column_stack([non_empty["d1x"].values, non_empty["d1y"].values])
@@ -677,10 +710,14 @@ def setback_gndt_metrics(
     # ignores that L1 != L2 in general).
     b_values = []
     c_values = []
+    cx_values = []
+    cy_values = []
     for _, row in dominant.iterrows():
         if row.geometry.is_empty:
             b_values.append(0.0)
             c_values.append(0.0)
+            cx_values.append(np.nan)
+            cy_values.append(np.nan)
             continue
         if row["ratio1"] <= row["ratio2"]:
             b = row["b1"]
@@ -692,6 +729,8 @@ def setback_gndt_metrics(
 
         # Cast a line through the setback centroid in perp direction
         cx, cy = row.geometry.centroid.x, row.geometry.centroid.y
+        cx_values.append(float(cx))
+        cy_values.append(float(cy))
         diag = np.hypot(
             row["footprint_no_holes"].bounds[2] - row["footprint_no_holes"].bounds[0],
             row["footprint_no_holes"].bounds[3] - row["footprint_no_holes"].bounds[1],
@@ -711,12 +750,37 @@ def setback_gndt_metrics(
 
     dominant["b"] = b_values
     dominant["c"] = c_values
-    out = (
-        pd.DataFrame({"orig_id": np.arange(len(gdf))})
-        .merge(dominant[["orig_id", "ratio", "b", "c"]], on="orig_id", how="left")
-        .fillna(0.0)
+    dominant["cx"] = cx_values
+    dominant["cy"] = cy_values
+    out = pd.DataFrame({"orig_id": np.arange(len(gdf))}).merge(
+        dominant[["orig_id", "ratio", "b", "c", "b1", "b2", "cx", "cy"]],
+        on="orig_id",
+        how="left",
     )
-    return list(out["ratio"]), list(out["b"]), list(out["c"])
+    out[["ratio", "b", "c", "b1", "b2"]] = out[["ratio", "b", "c", "b1", "b2"]].fillna(
+        0.0
+    )
+
+    if not full_output:
+        return list(out["ratio"]), list(out["b"]), list(out["c"])
+
+    # Rows with no setback (or whose only setback was filtered out) have no
+    # meaningful centroid -- fall back to the footprint's own centroid so
+    # callers always get a usable anchor point (e.g. for drawing an arrow).
+    footprint_centroid = gdf.geometry.centroid
+    missing_cx = out["cx"].isna()
+    out.loc[missing_cx, "cx"] = footprint_centroid.x.values[missing_cx.values]
+    out.loc[missing_cx, "cy"] = footprint_centroid.y.values[missing_cx.values]
+
+    return (
+        list(out["ratio"]),
+        list(out["b"]),
+        list(out["c"]),
+        list(out["b1"]),
+        list(out["b2"]),
+        list(out["cx"]),
+        list(out["cy"]),
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -11,3 +11,4 @@ ends with a GeoDataFrame plus a suggested list of columns to plot on a map.
    examples/position.ipynb
    examples/shape.ipynb
    examples/building_sizes.ipynb
+   examples/run.ipynb
