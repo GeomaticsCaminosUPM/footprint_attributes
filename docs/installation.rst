@@ -1,14 +1,18 @@
 Installation
 ============
 
+Pinned to the `v1.0.0 release
+<https://github.com/GeomaticsCaminosUPM/footprint_attributes/releases/tag/v1.0.0>`_:
+
 .. code-block:: bash
 
-    pip install "footprint-attributes @ git+https://github.com/GeomaticsCaminosUPM/SeismicBuildingExposure.git"
+    pip install "footprint-attributes @ git+https://github.com/GeomaticsCaminosUPM/footprint_attributes.git@v1.0.0"
 
 Dependencies: ``geopandas``, ``shapely>=2.0``, ``numpy``, ``pandas``,
-``scipy``, ``packaging``.
+``scipy``, ``scikit-learn``, ``statsmodels``, ``tabulate``.
 
-Optional, for the example notebooks: ``matplotlib``, ``ipykernel``.
+Optional, for the example notebooks: ``matplotlib``, ``folium``,
+``ipykernel``, ``mapclassify``.
 
 Quick start
 -----------

@@ -6,8 +6,11 @@
 
 Automated computation of **seismic behaviour modifiers** from 2-D building footprint polygons, implementing the methodology described in:
 
-> Ureña-Pliego M., Rodríguez-Saiz J., Núñez-Álvarez G., Marchamalo-Sacristán M., González-Rodrigo B.
+> Ureña-Pliego, M., Rodríguez-Saiz, J., Núñez-Álvarez, G., Marchamalo-Sacristán, M., González-Rodrigo, B. (2026).
 > *A methodology for the automated estimation of footprint-derived seismic behaviour modifiers in building exposure assessment.*
+> Advanced Modeling and Simulation in Engineering Sciences, 13:3. [doi.org/10.1186/s40323-026-00323-y](https://link.springer.com/content/pdf/10.1186/s40323-026-00323-y.pdf)
+
+Developed by the [Advanced Geomatics group (AGA)](https://blogs.upm.es/aga/en/) at the Universidad Politécnica de Madrid. See [Citation](#citation) below for the full author list, ORCIDs, and funding.
 
 > **Footprint digitalisation** (Mask2Former / SAM2 instance segmentation) is out of scope for this package and lives elsewhere; this package starts from an already-digitised footprint geometry file.
 
@@ -116,11 +119,13 @@ Each code parameter has a matching `compliance_{NORM}_{param}` column (0–100 s
 
 ## Installation
 
+Pinned to the [v1.0.0 release](https://github.com/GeomaticsCaminosUPM/footprint_attributes/releases/tag/v1.0.0):
+
 ```bash
-pip install "footprint-attributes @ git+https://github.com/GeomaticsCaminosUPM/SeismicBuildingExposure.git"
+pip install "footprint-attributes @ git+https://github.com/GeomaticsCaminosUPM/footprint_attributes.git@v1.0.0"
 ```
 
-Dependencies: `geopandas`, `shapely>=2.0`, `numpy`, `pandas`, `scipy`, `packaging`.
+Dependencies: `geopandas`, `shapely>=2.0`, `numpy`, `pandas`, `scipy`, `scikit-learn`, `statsmodels`, `tabulate`.
 
 ---
 
@@ -208,11 +213,43 @@ The automated shape and position classifications were found to be comparable in 
 
 ## Citation
 
-If you use this package in research, please cite:
+If you use this package in research, please cite the paper:
 
-> Ureña-Pliego M., Rodríguez-Saiz J., Núñez-Álvarez G., Marchamalo-Sacristán M., González-Rodrigo B.
-> *A methodology for the automated estimation of footprint-derived seismic behaviour modifiers in building exposure assessment.*
-> Universidad Politécnica de Madrid, 2025.
+> Ureña-Pliego, M., Rodríguez-Saiz, J., Núñez-Álvarez, G., Marchamalo-Sacristán, M., González-Rodrigo, B. (2026).
+> A methodology for the automated estimation of footprint-derived seismic behaviour modifiers in building exposure assessment.
+> *Advanced Modeling and Simulation in Engineering Sciences*, 13:3.
+> https://doi.org/10.1186/s40323-026-00323-y — [PDF](https://link.springer.com/content/pdf/10.1186/s40323-026-00323-y.pdf)
+
+```bibtex
+@article{urena-pliego2026footprint,
+  author  = {Ure{\~n}a-Pliego, Miguel and Rodr{\'i}guez-Saiz, Javier and N{\'u}{\~n}ez-{\'A}lvarez, Gonzalo
+             and Marchamalo-Sacrist{\'a}n, Miguel and Gonz{\'a}lez-Rodrigo, Beatriz},
+  title   = {A methodology for the automated estimation of footprint-derived seismic behaviour
+             modifiers in building exposure assessment},
+  journal = {Advanced Modeling and Simulation in Engineering Sciences},
+  year    = {2026},
+  volume  = {13},
+  number  = {3},
+  doi     = {10.1186/s40323-026-00323-y},
+  url     = {https://doi.org/10.1186/s40323-026-00323-y}
+}
+```
+
+### Authors
+
+| Author | ORCID | Affiliation |
+|---|---|---|
+| Miguel Ureña-Pliego | [0000-0001-6594-2566](https://orcid.org/0000-0001-6594-2566) | Dept. of Land Morphology and Engineering, ETSI Caminos, Canales y Puertos, UPM |
+| Javier Rodríguez-Saiz | [0009-0004-1054-8608](https://orcid.org/0009-0004-1054-8608) | Dept. of Land Morphology and Engineering, ETSI Caminos, Canales y Puertos, UPM; Buin Ingenieros SL |
+| Gonzalo Núñez-Álvarez | [0009-0000-1912-0465](https://orcid.org/0009-0000-1912-0465) | Dept. of Building Structures and Physics, ETSI Arquitectura, UPM |
+| Miguel Marchamalo-Sacristán | [0000-0001-9237-4146](https://orcid.org/0000-0001-9237-4146) | Dept. of Land Morphology and Engineering, ETSI Caminos, Canales y Puertos, UPM |
+| Beatriz González-Rodrigo | [0000-0003-1038-7459](https://orcid.org/0000-0003-1038-7459) | Dept. of Forestry and Environmental Engineering and Management, ETSI Montes, Forestal y del Medio Natural, UPM |
+
+Developed within the **[Advanced Geomatics group (AGA)](https://blogs.upm.es/aga/en/)**, Universidad Politécnica de Madrid.
+
+### Funding
+
+This research was supported by the Industrial Doctorates of the Community of Madrid (grant number IND2023/TIC-28743); by the European Union project 9063-03 "Adelante 2" (Sustainable and resilient construction in Central America and the Caribbean in the face of seismic hazard: regional cooperation based on the experience of Costa Rica); by the SIAGUA Project (reference PID2021-128123OB-C22), funded by MCIN/AEI/10.13039/501100011033 and by "ERDF A way of making Europe"; and by the Spanish State Research Agency (AEI) of the Ministry of Science, Innovation and Universities under project RISK-CARIBERIA (PID2024-155792OB-I00), within the 2025 "Knowledge Generation" Call of the Spanish State Plan for Scientific, Technical and Innovation Research.
 
 ---
 

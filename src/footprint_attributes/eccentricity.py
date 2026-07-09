@@ -27,6 +27,9 @@ CSCR optimises:
 """
 
 from __future__ import annotations
+
+from collections.abc import Callable, Iterator
+
 import numpy as np
 
 
@@ -60,7 +63,10 @@ def _signed_angle(dir1: np.ndarray, e_vec: np.ndarray) -> np.ndarray:
 
 
 def _golden_section_max(
-    f, lo: np.ndarray, hi: np.ndarray, iters: int = 60
+    f: Callable[[np.ndarray], np.ndarray],
+    lo: np.ndarray,
+    hi: np.ndarray,
+    iters: int = 60,
 ) -> np.ndarray:
     """Vectorised golden-section search for the maximiser of *f* on ``[lo, hi]``.
 
@@ -93,7 +99,10 @@ def _golden_section_max(
 
 
 def _maximize_periodic(
-    f, n: int, n_grid: int = 180, refine_iters: int = 40
+    f: Callable[[np.ndarray], np.ndarray],
+    n: int,
+    n_grid: int = 180,
+    refine_iters: int = 40,
 ) -> np.ndarray:
     """Maximise a period-π objective ``f`` for every one of *n* buildings at once.
 
@@ -141,7 +150,16 @@ def _maximize_periodic(
 _DEFAULT_CHUNK_SIZE = 10_000
 
 
-def _chunk_slices(n: int, chunk_size: int):
+def _chunk_slices(n: int, chunk_size: int) -> Iterator[slice]:
+    """Yield consecutive ``slice(start, end)`` row-chunks covering ``range(n)``.
+
+    Args:
+        n: Total number of rows to cover.
+        chunk_size: Rows per chunk (the final chunk may be shorter).
+
+    Yields:
+        One ``slice`` per chunk, in order, together covering ``[0, n)``.
+    """
     for start in range(0, n, chunk_size):
         yield slice(start, min(start + chunk_size, n))
 
@@ -202,7 +220,8 @@ def optimise_ec8(
     # ratio is divided by). Solved for every building at once; skip
     # buildings with no eccentricity (x_opt=0 trivially, same as fmin's
     # unconverged x0=0.0 there previously).
-    def _objective(x):
+    def _objective(x: np.ndarray) -> np.ndarray:
+        """EC8's torsional-radius objective, maximised over analysis angle ``x``."""
         return (np.cos(x - b) ** 2) * (c - r * np.cos(-2.0 * x))
 
     x_opt = np.where(has_ecc, _maximize_periodic(_objective, len(I1)), 0.0)
@@ -257,7 +276,8 @@ def optimise_cscr(
 
     b = np.where(has_ecc, _signed_angle(dir1, e_vec), 0.0)
 
-    def _objective(x):
+    def _objective(x: np.ndarray) -> np.ndarray:
+        """CSCR 2010's e/l objective, maximised over analysis angle ``x``."""
         Ij_max = c + r * np.cos(-2.0 * x)
         Ij_min = c - r * np.cos(-2.0 * x)
         # Guard the pole at Ij_min == 0 the same way the old per-row
@@ -265,8 +285,14 @@ def optimise_cscr(
         # rather than propagating inf/nan into the grid/golden-section
         # search); Ij_min is c ∓ r, always >= 0 for I1 >= I2, so this only
         # triggers exactly at the (measure-zero) degenerate angle.
+        # `np.where` evaluates both branches eagerly, so the division is
+        # still computed (and would warn) at those points even though its
+        # result is discarded -- silence just that expected warning rather
+        # than the whole numpy error-state, so an unrelated real
+        # divide-by-zero elsewhere still surfaces normally.
+        safe_min = np.where(np.abs(Ij_min) < 1e-30, 1.0, Ij_min)
         return np.where(
-            np.abs(Ij_min) < 1e-30, 0.0, np.cos(x - b) ** 4 * Ij_max / Ij_min
+            np.abs(Ij_min) < 1e-30, 0.0, np.cos(x - b) ** 4 * Ij_max / safe_min
         )
 
     x_opt = np.where(has_ecc, _maximize_periodic(_objective, len(I1)), 0.0)

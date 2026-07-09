@@ -109,6 +109,11 @@ def _pack(
     L2: list | np.ndarray,
     dir2: np.ndarray,
     mode: str,
+) -> (
+    list[float]
+    | tuple[list, list]
+    | tuple[np.ndarray, np.ndarray]
+    | tuple[list, np.ndarray, list, np.ndarray, list[float]]
 ):
     """Select and return only the quantities requested by *mode*.
 
@@ -151,6 +156,11 @@ def inertia(
     footprints_gdf: gpd.GeoDataFrame | gpd.GeoSeries,
     mode: str = "bearing",
     direction: np.ndarray | None = None,
+) -> (
+    list[float]
+    | tuple[list, list]
+    | tuple[np.ndarray, np.ndarray]
+    | tuple[list, np.ndarray, list, np.ndarray, list[float]]
 ):
     """Building direction from the principal axes of inertia.
 
@@ -201,6 +211,11 @@ def bbox(
     footprints_gdf: gpd.GeoDataFrame | gpd.GeoSeries,
     mode: str = "bearing",
     direction: np.ndarray | None = None,
+) -> (
+    list[float]
+    | tuple[list, list]
+    | tuple[np.ndarray, np.ndarray]
+    | tuple[list, np.ndarray, list, np.ndarray, list[float]]
 ):
     """Building direction from the minimum rotated bounding box.
 
@@ -245,6 +260,11 @@ class _EccentricityDirectionMethod:
     """
 
     def __init__(self, norm: str):
+        """Bind this callable to one seismic code's eccentricity formula.
+
+        Args:
+            norm: ``"EC8"`` or ``"CSCR2010"``.
+        """
         if norm not in ("EC8", "CSCR2010"):
             raise ValueError(f"Unsupported eccentricity norm: {norm!r}")
         self.norm = norm

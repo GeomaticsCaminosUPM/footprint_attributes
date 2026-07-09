@@ -75,7 +75,9 @@ from .eccentricity import optimise_ec8, optimise_cscr
 _DIRECTION_METHODS = {"bbox", "inertia"}
 
 
-def _basic_lengths(gdf: gpd.GeoDataFrame, method: str):
+def _basic_lengths(
+    gdf: gpd.GeoDataFrame, method: str
+) -> tuple[list, np.ndarray, list, np.ndarray]:
     """Dispatch to bbox or inertia direction, returning ``(L1, dir1, L2, dir2)``.
 
     Args:
@@ -119,6 +121,7 @@ class Parameter:
         limits: list[dict] | None = None,
         description: str = "",
     ):
+        """Register this parameter's name, column, limits, and description."""
         self.name = name
         self.column_name = column_name
         self.limits = limits
@@ -129,6 +132,7 @@ class Parameter:
         raise NotImplementedError
 
     def __call__(self, gdf: gpd.GeoDataFrame, **kwargs) -> list:
+        """Shorthand for :meth:`compute`."""
         return self.compute(gdf, **kwargs)
 
 
@@ -145,6 +149,7 @@ class EC8EccentricityRatio(Parameter):
     """
 
     def __init__(self):
+        """Register this parameter's name, column, limits, and description."""
         super().__init__(
             "eccentricityRatio",
             "EC8_eccentricityRatio",
@@ -161,6 +166,7 @@ class EC8EccentricityRatio(Parameter):
         I2: np.ndarray | None = None,
         **kwargs,
     ) -> list:
+        """Compute this parameter's values for each building; see the class docstring for the formula."""
         gdf = ensure_projected(to_gdf(gdf))
         if I1 is None or dir1 is None or I2 is None:
             I1, dir1, I2, _ = calc_principal_inertia(gdf.geometry)
@@ -175,6 +181,7 @@ class EC8RadiusRatio(Parameter):
     """EC8 §4.2.3.2 – radius ratio  r_t / r_g  (≥ 1.0 for regular)."""
 
     def __init__(self):
+        """Register this parameter's name, column, limits, and description."""
         super().__init__(
             "radiusRatio",
             "EC8_radiusRatio",
@@ -191,6 +198,7 @@ class EC8RadiusRatio(Parameter):
         I2: np.ndarray | None = None,
         **kwargs,
     ) -> list:
+        """Compute this parameter's values for each building; see the class docstring for the formula."""
         gdf = ensure_projected(to_gdf(gdf))
         if I1 is None or dir1 is None or I2 is None:
             I1, dir1, I2, _ = calc_principal_inertia(gdf.geometry)
@@ -205,6 +213,7 @@ class EC8Compactness(Parameter):
     """EC8 §4.2.3.2 – compactness  1 – (A_setback / A_total)  (≥ 0.95)."""
 
     def __init__(self):
+        """Register this parameter's name, column, limits, and description."""
         super().__init__(
             "compactness",
             "EC8_compactness",
@@ -213,6 +222,7 @@ class EC8Compactness(Parameter):
         )
 
     def compute(self, gdf: gpd.GeoDataFrame, **kwargs) -> list:
+        """Compute this parameter's values for each building; see the class docstring for the formula."""
         gdf = ensure_projected(to_gdf(gdf))
         # Per the paper: take the set difference between the (hole-filled)
         # footprint and its convex hull, and use the area of the single
@@ -239,6 +249,7 @@ class ASCE7SetbackRatio(Parameter):
     """
 
     def __init__(self):
+        """Register this parameter's name, column, limits, and description."""
         super().__init__(
             "setbackRatio",
             "ASCE7_setbackRatio",
@@ -254,6 +265,7 @@ class ASCE7SetbackRatio(Parameter):
         _gndt_setback: tuple | None = None,
         **kwargs,
     ) -> list:
+        """Compute this parameter's values for each building; see the class docstring for the formula."""
         gdf = ensure_projected(to_gdf(gdf))
         if _gndt_setback is not None:
             ratio, _, _ = _gndt_setback
@@ -267,6 +279,7 @@ class ASCE7HoleRatio(Parameter):
     """ASCE 7 Table 12.3-1 – hole ratio  A_hole / A_filled  (≤ 0.25)."""
 
     def __init__(self):
+        """Register this parameter's name, column, limits, and description."""
         super().__init__(
             "holeRatio",
             "ASCE7_holeRatio",
@@ -275,6 +288,7 @@ class ASCE7HoleRatio(Parameter):
         )
 
     def compute(self, gdf: gpd.GeoDataFrame, **kwargs) -> list:
+        """Compute this parameter's values for each building; see the class docstring for the formula."""
         return max_hole_area_ratio(ensure_projected(to_gdf(gdf)))
 
 
@@ -282,6 +296,7 @@ class ASCE7ParalelityAngle(Parameter):
     """ASCE 7 – parallelity angle (degrees)  (≤ 5° for regular)."""
 
     def __init__(self):
+        """Register this parameter's name, column, limits, and description."""
         super().__init__(
             "parallelityAngle",
             "ASCE7_parallelityAngle",
@@ -296,6 +311,7 @@ class ASCE7ParalelityAngle(Parameter):
         dir1: np.ndarray | None = None,
         **kwargs,
     ) -> list:
+        """Compute this parameter's values for each building; see the class docstring for the formula."""
         gdf = ensure_projected(to_gdf(gdf))
         if dir1 is None:
             _, dir1, _, _, _ = compute_bbox_direction(gdf, mode="all")
@@ -308,7 +324,7 @@ class ASCE7ParalelityAngle(Parameter):
 
 
 def _gndt_dominant_a(
-    gdf, method: str, _basic: tuple | None = None
+    gdf: gpd.GeoDataFrame, method: str, _basic: tuple | None = None
 ) -> tuple[list, list, np.ndarray, np.ndarray]:
     """Shared (a, L, dir1, dir2) dominant-configuration pick for β1/β4.
 
@@ -317,6 +333,8 @@ def _gndt_dominant_a(
     maximises ``L * a`` (paper §3.4.5), per building.
 
     Args:
+        gdf: Projected GeoDataFrame of footprints.
+        method: ``"bbox"`` or ``"inertia"``.
         _basic: Optional precomputed ``(L1, dir1, L2, dir2)`` for *method*
             (see :class:`_SharedGeometryCache`), to avoid re-deriving the
             bbox/inertia axes when a caller already has them cached.
@@ -363,6 +381,7 @@ class _SharedGeometryCache:
     """
 
     def __init__(self, gdf: gpd.GeoDataFrame):
+        """Register this parameter's name, column, limits, and description."""
         self._gdf = gdf
         self._bbox: dict | None = None
         self._inertia: dict | None = None
@@ -370,6 +389,7 @@ class _SharedGeometryCache:
         self._gndt_setback: dict[str, tuple] = {}
 
     def bbox(self) -> dict:
+        """Cached ``{L1, dir1, L2, dir2}`` from the minimum bounding box."""
         if self._bbox is None:
             L1, dir1, L2, dir2, _ = compute_bbox_direction(self._gdf, mode="all")
             self._bbox = dict(L1=L1, dir1=dir1, L2=L2, dir2=dir2)
@@ -404,6 +424,14 @@ class _SharedGeometryCache:
         return L1, i["dir2"], L2, i["dir1"]
 
     def gndt_a(self, method: str) -> tuple:
+        """Cached ``_gndt_dominant_a(gdf, method)`` result for *method*.
+
+        Args:
+            method: ``"bbox"`` or ``"inertia"``.
+
+        Returns:
+            ``(a, L)`` as returned by :func:`_gndt_dominant_a`.
+        """
         if method not in self._gndt_a:
             self._gndt_a[method] = _gndt_dominant_a(
                 self._gdf, method, _basic=self.basic_lengths(method)
@@ -411,6 +439,15 @@ class _SharedGeometryCache:
         return self._gndt_a[method]
 
     def gndt_setback(self, method: str) -> tuple:
+        """Cached ``setback_gndt_metrics(gdf, ...)`` result for *method*.
+
+        Args:
+            method: ``"bbox"`` or ``"inertia"``.
+
+        Returns:
+            The tuple returned by
+            :func:`footprint_attributes.geometry.setback_gndt_metrics`.
+        """
         if method not in self._gndt_setback:
             L1, dir1, L2, dir2 = self.basic_lengths(method)
             self._gndt_setback[method] = setback_gndt_metrics(
@@ -439,6 +476,7 @@ class GNDTIIBeta1MainShapeSlenderness(Parameter):
     """
 
     def __init__(self):
+        """Register this parameter's name, column, limits, and description."""
         super().__init__(
             "beta1_mainShapeSlenderness",
             "GNDTII_beta1_mainShapeSlenderness",
@@ -454,6 +492,7 @@ class GNDTIIBeta1MainShapeSlenderness(Parameter):
         _gndt_a: tuple | None = None,
         **kwargs,
     ) -> list:
+        """Compute this parameter's values for each building; see the class docstring for the formula."""
         gdf = ensure_projected(to_gdf(gdf))
         a_dom, L_dom, _, _ = (
             _gndt_a if _gndt_a is not None else _gndt_dominant_a(gdf, method)
@@ -470,6 +509,7 @@ class GNDTIIBeta2SetbackRatio(Parameter):
     """
 
     def __init__(self):
+        """Register this parameter's name, column, limits, and description."""
         super().__init__(
             "beta2_setbackRatio",
             "GNDTII_beta2_setbackRatio",
@@ -485,6 +525,7 @@ class GNDTIIBeta2SetbackRatio(Parameter):
         _gndt_setback: tuple | None = None,
         **kwargs,
     ) -> list:
+        """Compute this parameter's values for each building; see the class docstring for the formula."""
         gdf = ensure_projected(to_gdf(gdf))
         if _gndt_setback is not None:
             ratio, _, _ = _gndt_setback
@@ -503,6 +544,7 @@ class GNDTIIBeta4EccentricityRatio(Parameter):
     """
 
     def __init__(self):
+        """Register this parameter's name, column, limits, and description."""
         super().__init__(
             "beta4_eccentricityRatio",
             "GNDTII_beta4_eccentricityRatio",
@@ -518,6 +560,7 @@ class GNDTIIBeta4EccentricityRatio(Parameter):
         _gndt_a: tuple | None = None,
         **kwargs,
     ) -> list:
+        """Compute this parameter's values for each building; see the class docstring for the formula."""
         gdf = ensure_projected(to_gdf(gdf))
         a_dom, _, _, _ = (
             _gndt_a if _gndt_a is not None else _gndt_dominant_a(gdf, method)
@@ -537,6 +580,7 @@ class GNDTIIBeta6SetbackSlenderness(Parameter):
     """
 
     def __init__(self):
+        """Register this parameter's name, column, limits, and description."""
         super().__init__(
             "beta6_setbackSlenderness",
             "GNDTII_beta6_setbackSlenderness",
@@ -552,6 +596,7 @@ class GNDTIIBeta6SetbackSlenderness(Parameter):
         _gndt_setback: tuple | None = None,
         **kwargs,
     ) -> list:
+        """Compute this parameter's values for each building; see the class docstring for the formula."""
         gdf = ensure_projected(to_gdf(gdf))
         if _gndt_setback is not None:
             _, b, c = _gndt_setback
@@ -570,6 +615,7 @@ class CSCR2010EccentricityRatio(Parameter):
     """CSCR 2010 – worst-case eccentricity ratio  e / l."""
 
     def __init__(self):
+        """Register this parameter's name, column, limits, and description."""
         super().__init__(
             "eccentricityRatio",
             "CSCR2010_eccentricityRatio",
@@ -586,6 +632,7 @@ class CSCR2010EccentricityRatio(Parameter):
         I2: np.ndarray | None = None,
         **kwargs,
     ) -> list:
+        """Compute this parameter's values for each building; see the class docstring for the formula."""
         gdf = ensure_projected(to_gdf(gdf))
         if I1 is None or dir1 is None or I2 is None:
             I1, dir1, I2, _ = calc_principal_inertia(gdf.geometry)
@@ -610,6 +657,7 @@ class NTC23SetbackRatio(Parameter):
     """
 
     def __init__(self):
+        """Register this parameter's name, column, limits, and description."""
         super().__init__(
             "setbackRatio",
             "NTC23_setbackRatio",
@@ -625,6 +673,7 @@ class NTC23SetbackRatio(Parameter):
         _gndt_setback: tuple | None = None,
         **kwargs,
     ) -> list:
+        """Compute this parameter's values for each building; see the class docstring for the formula."""
         gdf = ensure_projected(to_gdf(gdf))
         if _gndt_setback is not None:
             ratio, _, _ = _gndt_setback
@@ -645,6 +694,7 @@ class NTC23HoleRatio(Parameter):
     """
 
     def __init__(self):
+        """Register this parameter's name, column, limits, and description."""
         super().__init__(
             "holeRatio",
             "NTC23_holeRatio",
@@ -653,6 +703,7 @@ class NTC23HoleRatio(Parameter):
         )
 
     def compute(self, gdf: gpd.GeoDataFrame, **kwargs) -> list:
+        """Compute this parameter's values for each building; see the class docstring for the formula."""
         return hole_h_over_l(ensure_projected(to_gdf(gdf)))
 
 
@@ -741,6 +792,7 @@ class _SlendernessMethod(Parameter):
     """A single slenderness computation using one direction method."""
 
     def __init__(self, direction_method: str):
+        """Register this parameter's name, column, limits, and description."""
         super().__init__(
             "planSlenderness",
             f"slenderness_{direction_method}",
@@ -761,6 +813,7 @@ class _SlendernessMethod(Parameter):
         height_column: str | None = None,
         **kwargs,
     ) -> list:
+        """Compute this parameter's values for each building; see the class docstring for the formula."""
         gdf = ensure_projected(to_gdf(gdf))
 
         if vertical:
@@ -800,12 +853,19 @@ class SlendernessAccessor:
     """
 
     def __init__(self):
+        """Register this parameter's name, column, limits, and description."""
         self._methods: dict[str, _SlendernessMethod] = {}
         # Register built-in methods
         self._register("inertia", _SlendernessMethod("inertia"))
         self._register("bbox", _SlendernessMethod("bbox"))
 
-    def _register(self, name: str, method: _SlendernessMethod):
+    def _register(self, name: str, method: _SlendernessMethod) -> None:
+        """Add *method* to the method registry and expose it as ``self.<name>``.
+
+        Args:
+            name: Attribute name the method is exposed under (e.g. ``"bbox"``).
+            method: The :class:`_SlendernessMethod` instance to register.
+        """
         self._methods[name] = method
         setattr(self, name, method)
 
@@ -856,6 +916,7 @@ class NormAggregate:
     """
 
     def __init__(self, name: str, parameters: dict[str, Parameter]):
+        """Register this parameter's name, column, limits, and description."""
         self.name = name
         self.parameters = parameters
         for attr, param_obj in parameters.items():
