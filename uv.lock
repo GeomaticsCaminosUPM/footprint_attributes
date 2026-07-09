@@ -703,8 +703,8 @@ wheels = [
 
 [[package]]
 name = "fancyfolium"
-version = "0.1.0"
-source = { git = "https://github.com/GeomaticsCaminosUPM/FancyFolium.git#1a37eb2ab9a37c98a702661cab51a394316657a2" }
+version = "1.0.0"
+source = { git = "https://github.com/GeomaticsCaminosUPM/FancyFolium.git?rev=v1.0.0#7fa997f51096340a08e9449cacb80ac33316848c" }
 dependencies = [
     { name = "folium" },
     { name = "geopandas" },
@@ -907,7 +907,7 @@ docs = [
     { name = "sphinx-rtd-theme", specifier = ">=3.1.0" },
 ]
 visualization = [
-    { name = "fancyfolium", git = "https://github.com/GeomaticsCaminosUPM/FancyFolium.git" },
+    { name = "fancyfolium", git = "https://github.com/GeomaticsCaminosUPM/FancyFolium.git?rev=v1.0.0" },
     { name = "folium", specifier = ">=0.20.0" },
     { name = "ipykernel", specifier = ">=6.31.0" },
     { name = "jupyter", specifier = ">=1.1.1" },

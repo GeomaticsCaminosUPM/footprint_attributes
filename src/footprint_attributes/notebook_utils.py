@@ -186,6 +186,7 @@ def dimension_arrow_gdfs(
             caps=ARROW_STYLE[kind]["caps"],
             head_frac=ARROW_STYLE[kind]["head_frac"],
             kind=kind,
+            value=np.linalg.norm(vec, axis=1),
         )
         for kind, (anchor, vec) in centered_specs.items()
     }
@@ -202,6 +203,7 @@ def dimension_arrow_gdfs(
             caps=ARROW_STYLE[kind]["caps"],
             head_frac=ARROW_STYLE[kind]["head_frac"],
             kind=kind,
+            value=np.linalg.norm(axis[f"{kind}_vector"], axis=1),
         )
     return result
 
@@ -239,7 +241,9 @@ def add_dimension_layers(
         m = FancyFolium.vector_layer(
             gdf=arrows,
             layer_name=f"{kind} ({method})",
+            column="value",
             color="black",
+            color_by_column=False,
             overlay=True,
             active=False,
             legend=False,
@@ -322,10 +326,20 @@ def direction_arrow_gdfs(
     L2 = np.asarray(L2, dtype=float)
     return {
         "L1": arrow_gdf(
-            centroids, dir1 * L1[:, None], gdf.crs, caps="arrow", kind="L1"
+            centroids,
+            dir1 * L1[:, None],
+            gdf.crs,
+            caps="arrow",
+            kind="L1",
+            value=L1,
         ),
         "L2": arrow_gdf(
-            centroids, dir2 * L2[:, None], gdf.crs, caps="arrow", kind="L2"
+            centroids,
+            dir2 * L2[:, None],
+            gdf.crs,
+            caps="arrow",
+            kind="L2",
+            value=L2,
         ),
     }
 
@@ -364,7 +378,9 @@ def add_direction_layers(
         m = FancyFolium.vector_layer(
             gdf=arrows,
             layer_name=f"{kind} ({method})",
+            column="value",
             color="black",
+            color_by_column=False,
             overlay=True,
             active=False,
             legend=False,
