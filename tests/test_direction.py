@@ -75,7 +75,6 @@ def test_bbox_bearing_axis_aligned(rect_20x10):
 
 
 def test_bbox_bearing_rotated30(rect_20x10_rot30):
-    # min_bounding_box scans in 1-degree steps -> tolerate ~1 deg error
     bearing = direction.bbox(rect_20x10_rot30)
     assert bearing[0] == pytest.approx(-30.0, abs=1.5)
 

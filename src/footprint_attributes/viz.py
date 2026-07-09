@@ -23,15 +23,18 @@ def arrow_gdf(
     crs: Any,
     *,
     centered: bool = True,
+    caps: str = "arrow",
     head_frac: float = 0.2,
     head_angle_deg: float = 25.0,
     min_length: float = 1e-9,
     **extra_columns: Any,
 ) -> gpd.GeoDataFrame:
-    """Build a GeoDataFrame of arrow ``MultiLineString`` geometries.
+    """Build a GeoDataFrame of arrow/dimension-line ``MultiLineString`` geometries.
 
-    Each arrow is a shaft plus a two-segment arrowhead at its tip, so it
-    renders as a literal arrow (not just a plain line) once styled with
+    Each line is a shaft plus, depending on *caps*, either a single
+    arrowhead at its tip (``caps="arrow"``) or a short perpendicular tick
+    mark ("|") at *both* ends (``caps="bar"``, like a drafting dimension
+    line). Either renders as more than a plain line once styled with
     ``FancyFolium.vector_layer``.
 
     Args:
@@ -46,10 +49,17 @@ def arrow_gdf(
             -- natural for a building's own axis. If ``False``, the anchor
             is the arrow's tail (spans ``anchor`` to ``anchor + vector``)
             -- natural for a force/vector "pushing" from a point.
-        head_frac: Arrowhead barb length, as a fraction of the arrow's own
+        caps: ``"arrow"`` (default) draws one arrowhead at the tip --
+            use this for a true *direction* (e.g. ``L1``/``L2``/``dir1``).
+            ``"bar"`` draws a plain shaft with a perpendicular tick at each
+            end, like a dimension line -- use this for a *measurement*
+            that has no direction of its own (e.g. ``a1``, ``a2``, ``b``,
+            ``c``).
+        head_frac: Arrowhead barb length (``caps="arrow"``) or end-tick
+            length (``caps="bar"``), as a fraction of the line's own
             length.
         head_angle_deg: Half-angle (degrees) between the two arrowhead
-            barbs and the shaft.
+            barbs and the shaft. Only used for ``caps="arrow"``.
         min_length: Rows whose vector magnitude is below this are dropped
             (e.g. isolated buildings with zero contact force) rather than
             drawn as a degenerate zero-length arrow.
@@ -58,8 +68,11 @@ def arrow_gdf(
             after the ``min_length`` filter.
 
     Returns:
-        GeoDataFrame of ``MultiLineString`` arrows, plus any *extra_columns*.
+        GeoDataFrame of ``MultiLineString`` lines, plus any *extra_columns*.
     """
+    if caps not in ("arrow", "bar"):
+        raise ValueError(f"caps must be 'arrow' or 'bar', got {caps!r}")
+
     anchors = np.asarray(anchors, dtype=float)
     vectors = np.asarray(vectors, dtype=float)
     lengths = np.linalg.norm(vectors, axis=1)
@@ -80,19 +93,35 @@ def arrow_gdf(
             p0 = anchor
             p1 = anchor + vec
 
-        head_len = np.linalg.norm(vec) * head_frac
         direction = vec / np.linalg.norm(vec)
-        back1 = p1 - _rotate(direction, cos_a, sin_a) * head_len
-        back2 = p1 - _rotate(direction, cos_a, -sin_a) * head_len
-        lines.append(
-            MultiLineString(
-                [
-                    LineString([tuple(p0), tuple(p1)]),
-                    LineString([tuple(p1), tuple(back1)]),
-                    LineString([tuple(p1), tuple(back2)]),
-                ]
+
+        if caps == "arrow":
+            head_len = np.linalg.norm(vec) * head_frac
+            back1 = p1 - _rotate(direction, cos_a, sin_a) * head_len
+            back2 = p1 - _rotate(direction, cos_a, -sin_a) * head_len
+            lines.append(
+                MultiLineString(
+                    [
+                        LineString([tuple(p0), tuple(p1)]),
+                        LineString([tuple(p1), tuple(back1)]),
+                        LineString([tuple(p1), tuple(back2)]),
+                    ]
+                )
             )
-        )
+        else:  # caps == "bar": a tick mark perpendicular to the shaft at each end
+            perp = np.array([-direction[1], direction[0]])
+            tick_len = np.linalg.norm(vec) * head_frac / 2
+            tick0a, tick0b = p0 - perp * tick_len, p0 + perp * tick_len
+            tick1a, tick1b = p1 - perp * tick_len, p1 + perp * tick_len
+            lines.append(
+                MultiLineString(
+                    [
+                        LineString([tuple(p0), tuple(p1)]),
+                        LineString([tuple(tick0a), tuple(tick0b)]),
+                        LineString([tuple(tick1a), tuple(tick1b)]),
+                    ]
+                )
+            )
 
     data = {}
     for name, values in extra_columns.items():
