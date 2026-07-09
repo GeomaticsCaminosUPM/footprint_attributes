@@ -12,6 +12,8 @@ Automated computation of **seismic behaviour modifiers** from 2-D building footp
 
 Developed by the [Advanced Geomatics group (AGA)](https://blogs.upm.es/aga/en/) at the Universidad Politécnica de Madrid. See [Citation](#citation) below for the full author list, ORCIDs, and funding.
 
+Full documentation: [footprint-attributes.readthedocs.io](https://footprint-attributes.readthedocs.io/en/latest/)
+
 > **Footprint digitalisation** (Mask2Former / SAM2 instance segmentation) is out of scope for this package and lives elsewhere; this package starts from an already-digitised footprint geometry file.
 
 ---
@@ -255,4 +257,4 @@ This research was supported by the Industrial Doctorates of the Community of Mad
 
 ## License
 
-MIT.
+[GPL-3.0](LICENSE).

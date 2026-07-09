@@ -3,6 +3,8 @@ name = "footprint-attributes"
 version = "1.0.0"
 description = "Compute seismic related attributes of building footprints about position and regularity based on international codes"
 readme = "README.md"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
 requires-python = ">=3.10"
 dependencies = [
     "geopandas>=1.1.2",
@@ -36,7 +38,7 @@ build-backend = "hatchling.build"
 packages = ["src/footprint_attributes"]
 
 [tool.uv.sources]
-fancyfolium = { git = "https://github.com/GeomaticsCaminosUPM/FancyFolium.git" }
+fancyfolium = { git = "https://github.com/GeomaticsCaminosUPM/FancyFolium.git", rev = "v1.0.0" }
 
 [dependency-groups]
 dev = [

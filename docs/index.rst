@@ -28,6 +28,7 @@ See :doc:`citation` for the full author list, ORCIDs, and funding.
    api/index
    examples
    citation
+   license
 
 Indices
 -------
