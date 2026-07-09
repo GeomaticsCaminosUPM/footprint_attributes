@@ -16,6 +16,9 @@ Developed by the `Advanced Geomatics group (AGA)
 <https://blogs.upm.es/aga/en/>`_ at the Universidad Politécnica de Madrid.
 See :doc:`citation` for the full author list, ORCIDs, and funding.
 
+Source code: `github.com/GeomaticsCaminosUPM/footprint_attributes
+<https://github.com/GeomaticsCaminosUPM/footprint_attributes>`_
+
 .. image:: ../figures/graphical_abstract.jpg
    :width: 80%
    :align: center
