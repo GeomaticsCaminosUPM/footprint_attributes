@@ -19,7 +19,7 @@ not by colour -- easy to read on a busy satellite basemap and in print):
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import geopandas as gpd
 import numpy as np
@@ -28,6 +28,15 @@ from shapely.geometry import LineString, Point
 
 from .geometry import ensure_projected
 from .viz import arrow_gdf
+
+if TYPE_CHECKING:
+    # Only needed for type hints -- both are optional, notebook-only
+    # dependencies (see the `visualization` extra in pyproject.toml) that
+    # this module otherwise imports lazily, inside the functions that use
+    # them, so importing them here unconditionally would turn them into a
+    # hard runtime dependency of the whole package.
+    import folium
+    import matplotlib.axes
 
 # Per-"kind" drawing style: whether it gets an arrowhead ("arrow") or two
 # end ticks ("bar"), the line-dash pattern used to tell kinds apart now that
@@ -198,18 +207,31 @@ def dimension_arrow_gdfs(
 
 
 def add_dimension_layers(
-    m,
+    m: "folium.Map | None",
     gdf: gpd.GeoDataFrame,
     axis: dict[str, np.ndarray],
     *,
     method: str,
     weight: int = 2,
-):
+) -> "folium.Map":
     """Add one black FancyFolium layer per L1/L2/a1/a2/b/c kind to map *m*.
 
     Each layer is named ``"<kind> (<method>)"`` (e.g. ``"L1 (bbox)"``) and
     starts hidden (``active=False``) so the map isn't cluttered by default;
     toggle individual kinds on from the layer control.
+
+    Args:
+        m: Existing FancyFolium/folium map to add layers to, or ``None``
+            to start a new one.
+        gdf: The footprints these dimensions were computed for (its
+            ``crs`` is used to build the arrow layers).
+        axis: ``basic_length_axis()`` output for this axis convention.
+        method: Axis convention label used in each layer's name (e.g.
+            ``"bbox"`` or ``"inertia"``).
+        weight: Stroke width (px) for every dimension line.
+
+    Returns:
+        The map *m*, with the six new layers added.
     """
     import FancyFolium
 
@@ -232,11 +254,16 @@ def add_dimension_layers(
 
 
 def plot_dimension_arrows(
-    ax, gdf: gpd.GeoDataFrame, axis: dict[str, np.ndarray]
+    ax: "matplotlib.axes.Axes", gdf: gpd.GeoDataFrame, axis: dict[str, np.ndarray]
 ) -> None:
     """Draw L1/L2/a1/a2/b/c on an existing matplotlib ``ax`` -- the Part 1
     "idealized shapes" plots -- one linestyle per kind, all black except
     ``c`` (see :data:`MPL_COLOR`).
+
+    Args:
+        ax: Matplotlib axes to draw on.
+        gdf: The footprints these dimensions were computed for.
+        axis: ``basic_length_axis()`` output for this axis convention.
     """
     for kind, arrows in dimension_arrow_gdfs(gdf, axis).items():
         arrows.plot(
@@ -267,11 +294,26 @@ def dimension_legend_handles() -> list:
 
 
 def direction_arrow_gdfs(
-    gdf: gpd.GeoDataFrame, dir1, L1, dir2, L2
+    gdf: gpd.GeoDataFrame,
+    dir1: np.ndarray,
+    L1: np.ndarray,
+    dir2: np.ndarray,
+    L2: np.ndarray,
 ) -> dict[str, gpd.GeoDataFrame]:
     """Build the ``{"L1": gdf, "L2": gdf}`` pair of direction-arrow GeoDataFrames
     used throughout ``direction.ipynb`` -- one real arrow per axis, anchored
     at each footprint's centroid.
+
+    Args:
+        gdf: The footprints these directions were computed for (only its
+            ``crs`` and centroids are used).
+        dir1: (N, 2) unit vectors for the L1 axis.
+        L1: (N,) lengths along ``dir1``.
+        dir2: (N, 2) unit vectors for the L2 axis.
+        L2: (N,) lengths along ``dir2``.
+
+    Returns:
+        ``{"L1": gdf, "L2": gdf}`` of arrow GeoDataFrames.
     """
     centroids = np.column_stack([gdf.geometry.centroid.x, gdf.geometry.centroid.y])
     dir1 = np.asarray(dir1, dtype=float)
@@ -289,9 +331,33 @@ def direction_arrow_gdfs(
 
 
 def add_direction_layers(
-    m, gdf: gpd.GeoDataFrame, dir1, L1, dir2, L2, *, method: str, weight: int = 2
-):
-    """Add one black ``"L1 (<method>)"``/``"L2 (<method>)"`` FancyFolium layer."""
+    m: "folium.Map | None",
+    gdf: gpd.GeoDataFrame,
+    dir1: np.ndarray,
+    L1: np.ndarray,
+    dir2: np.ndarray,
+    L2: np.ndarray,
+    *,
+    method: str,
+    weight: int = 2,
+) -> "folium.Map":
+    """Add one black ``"L1 (<method>)"``/``"L2 (<method>)"`` FancyFolium layer.
+
+    Args:
+        m: Existing FancyFolium/folium map to add layers to, or ``None``
+            to start a new one.
+        gdf: The footprints these directions were computed for.
+        dir1: (N, 2) unit vectors for the L1 axis.
+        L1: (N,) lengths along ``dir1``.
+        dir2: (N, 2) unit vectors for the L2 axis.
+        L2: (N,) lengths along ``dir2``.
+        method: Axis convention label used in each layer's name (e.g.
+            ``"bbox"`` or ``"inertia"``).
+        weight: Stroke width (px) for both arrows.
+
+    Returns:
+        The map *m*, with the two new layers added.
+    """
     import FancyFolium
 
     for kind, arrows in direction_arrow_gdfs(gdf, dir1, L1, dir2, L2).items():
@@ -313,11 +379,28 @@ def add_direction_layers(
 
 
 def plot_direction_arrows(
-    ax, gdf: gpd.GeoDataFrame, dir1, L1, dir2, L2, *, method: str = "bbox"
+    ax: "matplotlib.axes.Axes",
+    gdf: gpd.GeoDataFrame,
+    dir1: np.ndarray,
+    L1: np.ndarray,
+    dir2: np.ndarray,
+    L2: np.ndarray,
+    *,
+    method: str = "bbox",
 ) -> None:
     """Draw dir1/dir2 as black arrows on an existing matplotlib ``ax``, one
     linestyle per *method* (so bbox vs. inertia stay visually distinct when
     plotted on the same axes).
+
+    Args:
+        ax: Matplotlib axes to draw on.
+        gdf: The footprints these directions were computed for.
+        dir1: (N, 2) unit vectors for the L1 axis.
+        L1: (N,) lengths along ``dir1``.
+        dir2: (N, 2) unit vectors for the L2 axis.
+        L2: (N,) lengths along ``dir2``.
+        method: Which :data:`METHOD_STYLE` linestyle to draw both arrows
+            with (e.g. ``"bbox"`` or ``"inertia"``).
     """
     for arrows in direction_arrow_gdfs(gdf, dir1, L1, dir2, L2).values():
         arrows.plot(
@@ -443,7 +526,11 @@ def _setback_c_extent(
 
 
 def basic_length_axis(
-    gdf: gpd.GeoDataFrame, L1, dir1, L2, dir2
+    gdf: gpd.GeoDataFrame,
+    L1: np.ndarray,
+    dir1: np.ndarray,
+    L2: np.ndarray,
+    dir2: np.ndarray,
 ) -> dict[str, np.ndarray]:
     """Compute the full L1/L2/a1/a2/b/c bundle (anchors + directions) needed
     by :func:`dimension_arrow_gdfs`/:func:`add_dimension_layers`/
@@ -457,6 +544,20 @@ def basic_length_axis(
     axis -- drawing both ``b1`` and ``b2`` unconditionally, as earlier
     versions of this notebook did, mislabels the non-winning one as if it
     were also a real, used dimension.
+
+    Args:
+        gdf: The footprints these dimensions are computed for.
+        L1: (N,) longer plan dimension per footprint.
+        dir1: (N, 2) unit vectors for the L1 axis.
+        L2: (N,) shorter plan dimension per footprint.
+        dir2: (N, 2) unit vectors for the L2 axis.
+
+    Returns:
+        Dict with ``dir1``, ``dir2``, ``L1``, ``L2``, ``a1``, ``a2``,
+        ``b``, ``c``, ``ratio``, ``centroids``, ``a_centers``,
+        ``setback_centroids``, ``b_start``, ``b_vector``, ``c_start``,
+        ``c_vector``, ``b_dir``, ``c_dir`` -- see :func:`dimension_arrow_gdfs`
+        for how these are turned into drawable geometries.
     """
     from .geometry import main_element_a_lengths_batch, setback_gndt_metrics
 

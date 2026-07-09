@@ -228,8 +228,18 @@ def validate_geodataframe(gdf: gpd.GeoDataFrame, *, context: str = "") -> None:
         )
 
 
-def cast(collection) -> np.ndarray:
-    """Cast a geometry collection to a NumPy array of Shapely objects."""
+def cast(
+    collection: gpd.GeoDataFrame | gpd.GeoSeries | np.ndarray | list | shapely.Geometry,
+) -> np.ndarray:
+    """Cast a geometry collection to a NumPy array of Shapely objects.
+
+    Args:
+        collection: A GeoDataFrame/GeoSeries, a list/array of Shapely
+            geometries, or a single Shapely geometry.
+
+    Returns:
+        1-D NumPy array of Shapely geometry objects.
+    """
     if Version(shapely.__version__) < Version("2"):
         raise ImportError("Shapely >= 2.0 is required.")
     if isinstance(collection, (gpd.GeoSeries, gpd.GeoDataFrame)):
@@ -265,7 +275,9 @@ def ring_inertia_z(polygon: shapely.Geometry) -> float:
     return float(np.abs(np.sum(cross * quad) / 12))
 
 
-def calc_inertia_z(collection) -> np.ndarray:
+def calc_inertia_z(
+    collection: gpd.GeoDataFrame | gpd.GeoSeries | np.ndarray | list | shapely.Geometry,
+) -> np.ndarray:
     """Polar second moment of area (I_z) for each geometry in *collection*.
 
     Handles multi-part geometries and interior rings (holes) via the
@@ -546,7 +558,8 @@ def largest_convex_hull_gap_area(geoms: gpd.GeoSeries | gpd.GeoDataFrame) -> np.
     hull = filled.convex_hull
     gaps = hull.difference(filled)
 
-    def _largest_part_area(g):
+    def _largest_part_area(g: shapely.Geometry | None) -> float:
+        """Area of *g*'s largest part (0.0 for ``None``/empty)."""
         if g is None or g.is_empty:
             return 0.0
         if hasattr(g, "geoms"):
@@ -641,6 +654,7 @@ def setback_gndt_metrics(
     Returns:
         ``(ratio, b, c)`` lists, one entry per building (or
         ``(ratio, b, c, b1, b2, cx, cy)`` if ``full_output=True``):
+
         - ``ratio``: ``min(b1/L1, b2/L2)`` for the dominant setback (the
           value to use directly for beta2/setback_ratio); 0 for convex
           footprints.
@@ -858,7 +872,7 @@ def _signed_dist_to_boundary(
 
 
 def max_inscribed_circle(
-    polygon, precision: float | None = None, grid_n: int | None = None
+    polygon: Polygon, precision: float | None = None, grid_n: int | None = None
 ) -> tuple[float, float, float]:
     """Largest circle fitting inside a single polygon (Polylabel).
 
@@ -965,7 +979,7 @@ def max_inscribed_circle(
 
 
 def circle_tangent_points(
-    polygon,
+    polygon: Polygon,
     cx: float,
     cy: float,
     r: float,
@@ -1036,7 +1050,7 @@ def circle_tangent_points(
 
 
 def main_element_a_lengths(
-    polygon,
+    polygon: Polygon,
     dir1: np.ndarray,
     dir2: np.ndarray,
     grid_n: int = 15,
@@ -1117,7 +1131,7 @@ def main_element_a_lengths_batch(
 
 
 def setback_pieces(
-    polygon,
+    polygon: Polygon,
     dir1: np.ndarray,
     dir2: np.ndarray,
     min_area_fraction: float = 0.001,
@@ -1240,7 +1254,7 @@ def hole_h_over_l(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def split_linestring_to_segments(ls) -> shapely.MultiLineString:
+def split_linestring_to_segments(ls: shapely.LineString) -> shapely.MultiLineString:
     """Split any linear geometry into individual two-point segments.
 
     Accepts LineString, LinearRing, or MultiLineString.  Each output segment
@@ -1266,7 +1280,7 @@ def split_linestring_to_segments(ls) -> shapely.MultiLineString:
     return shapely.MultiLineString(segs)
 
 
-def _two_point_segments(ls) -> list:
+def _two_point_segments(ls: shapely.LineString) -> list[shapely.LineString]:
     """Return a list of two-point (coord[i], coord[i+1]) LineStrings."""
     coords = shapely.get_coordinates(ls)
     return [

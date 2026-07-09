@@ -64,7 +64,7 @@ Example usage
 >>> result = position(footprints)
 """
 
-__version__ = "0.2.0"
+__version__ = "1.0.0"
 
 # ── Public module objects ───────────────────────────────────────────────────
 from . import direction  # noqa: F401  direction.inertia / direction.bbox / direction.eccentricity

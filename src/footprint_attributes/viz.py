@@ -82,6 +82,7 @@ def arrow_gdf(
     cos_a, sin_a = np.cos(ang), np.sin(ang)
 
     def _rotate(v: np.ndarray, cos_t: float, sin_t: float) -> np.ndarray:
+        """Rotate 2-D vector *v* by the angle whose cosine/sine are given."""
         return np.array([cos_t * v[0] - sin_t * v[1], sin_t * v[0] + cos_t * v[1]])
 
     lines = []

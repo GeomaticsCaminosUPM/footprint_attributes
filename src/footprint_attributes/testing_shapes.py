@@ -18,6 +18,15 @@ CRS = "EPSG:32630"  # arbitrary projected CRS (metres)
 
 
 def gdf_of(*geoms, crs: str = CRS) -> gpd.GeoDataFrame:
+    """Wrap one or more Shapely geometries in a single-column GeoDataFrame.
+
+    Args:
+        *geoms: One or more Shapely geometries, one per resulting row.
+        crs: CRS assigned to the GeoDataFrame (defaults to :data:`CRS`).
+
+    Returns:
+        GeoDataFrame with a ``geometry`` column and no other attributes.
+    """
     return gpd.GeoDataFrame(geometry=list(geoms), crs=crs)
 
 
@@ -27,6 +36,7 @@ def gdf_of(*geoms, crs: str = CRS) -> gpd.GeoDataFrame:
 
 
 def square_polygon(side: float = 10.0) -> Polygon:
+    """An axis-aligned ``side`` x ``side`` square with one corner at the origin."""
     return box(0, 0, side, side)
 
 
@@ -92,6 +102,7 @@ def thin_cross_polygon() -> Polygon:
 
 
 def isolated_building_gdf() -> gpd.GeoDataFrame:
+    """A single free-standing 10x10 square -> classifies as 'isolated'."""
     return gdf_of(box(0, 0, 10, 10))
 
 

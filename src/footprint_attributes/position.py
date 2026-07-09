@@ -73,7 +73,8 @@ def resultant_angle(
     )
 
     # Compute angle between each force and resultant
-    def angle_to_resultant(row):
+    def angle_to_resultant(row: pd.Series) -> float:
+        """Angle (radians) between one contact-force row and its building's resultant."""
         res = resultants[row[id_column]]
         force = row[vector_column]
         if np.linalg.norm(res) < 1e-12 or np.linalg.norm(force) < 1e-12:
@@ -612,6 +613,7 @@ class _Position:
     # ------------------------------------------------------------------
 
     def __repr__(self) -> str:  # pragma: no cover
+        """One-line usage hint shown by ``repr(position)``."""
         return (
             "position  (callable)\n"
             "  position(footprints_gdf, ...)           → full pipeline\n"
