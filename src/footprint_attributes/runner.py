@@ -247,6 +247,18 @@ def run(
 
     shape_columns, want_position, want_bearing = _expand_columns(columns)
 
+    # "bearing" is normally folded into the same shape() call as any other
+    # requested shape columns: shape.py's shared geometry cache computes
+    # bearing straight from the calc_principal_inertia() result an
+    # inertia-based column (e.g. EC8_eccentricityRatio) may need anyway,
+    # instead of running that same computation a second time via a
+    # separate direction.inertia() call. Only fall back to a standalone
+    # direction.inertia() call when direction_kwargs asks for something
+    # shape.py's bundled bearing can't do (e.g. a forced axis).
+    bundle_bearing = want_bearing and not direction_kwargs
+    if bundle_bearing and (overwrite or "bearing" not in result.columns):
+        shape_columns = shape_columns | {"bearing"}
+
     if shape_columns:
         working = result.copy()
         if overwrite:
@@ -270,7 +282,7 @@ def run(
             for col in _POSITION_COLUMNS:
                 result[col] = pos_result[col].values
 
-    if want_bearing:
+    if want_bearing and not bundle_bearing:
         if overwrite or "bearing" not in result.columns:
             result["bearing"] = _direction_inertia(result, **direction_kwargs)
 

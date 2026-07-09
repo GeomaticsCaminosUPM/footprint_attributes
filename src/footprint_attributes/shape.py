@@ -49,6 +49,8 @@ from .geometry import (
     setback_gndt_metrics,
     angle_between_0_90,
     eq_circle_inertia,
+    inertia_side_lengths,
+    bearing_from_dir,
 )
 from .direction import inertia as compute_inertia_direction
 from .direction import bbox as compute_bbox_direction
@@ -244,10 +246,20 @@ class ASCE7SetbackRatio(Parameter):
             "min(b1/L1, b2/L2) dual-configuration setback ratio (ASCE 7)",
         )
 
-    def compute(self, gdf: gpd.GeoDataFrame, *, method: str = "bbox", **kwargs) -> list:
+    def compute(
+        self,
+        gdf: gpd.GeoDataFrame,
+        *,
+        method: str = "bbox",
+        _gndt_setback: tuple | None = None,
+        **kwargs,
+    ) -> list:
         gdf = ensure_projected(to_gdf(gdf))
-        L1, dir1, L2, dir2 = _basic_lengths(gdf, method)
-        ratio, _, _ = setback_gndt_metrics(gdf, L1, dir1, L2, dir2)
+        if _gndt_setback is not None:
+            ratio, _, _ = _gndt_setback
+        else:
+            L1, dir1, L2, dir2 = _basic_lengths(gdf, method)
+            ratio, _, _ = setback_gndt_metrics(gdf, L1, dir1, L2, dir2)
         return ratio
 
 
@@ -295,18 +307,25 @@ class ASCE7ParalelityAngle(Parameter):
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def _gndt_dominant_a(gdf, method: str) -> tuple[list, list, np.ndarray, np.ndarray]:
+def _gndt_dominant_a(
+    gdf, method: str, _basic: tuple | None = None
+) -> tuple[list, list, np.ndarray, np.ndarray]:
     """Shared (a, L, dir1, dir2) dominant-configuration pick for β1/β4.
 
     Computes a1 (paired with L1) and a2 (paired with L2) via the inscribed-
     circle construction (paper fig. 7), then selects whichever configuration
     maximises ``L * a`` (paper §3.4.5), per building.
 
+    Args:
+        _basic: Optional precomputed ``(L1, dir1, L2, dir2)`` for *method*
+            (see :class:`_SharedGeometryCache`), to avoid re-deriving the
+            bbox/inertia axes when a caller already has them cached.
+
     Returns:
         ``(a_dom, L_dom, dir1, dir2)`` -- the winning a and L per building,
         plus the L1/L2 axis vectors (kept for callers that also need them).
     """
-    L1, dir1, L2, dir2 = _basic_lengths(gdf, method)
+    L1, dir1, L2, dir2 = _basic if _basic is not None else _basic_lengths(gdf, method)
     a1, a2, _centers = main_element_a_lengths_batch(gdf, dir1, dir2)
     a_dom, L_dom = [], []
     for L1v, a1v, L2v, a2v in zip(L1, a1, L2, a2):
@@ -317,6 +336,96 @@ def _gndt_dominant_a(gdf, method: str) -> tuple[list, list, np.ndarray, np.ndarr
             a_dom.append(a2v)
             L_dom.append(L2v)
     return a_dom, L_dom, dir1, dir2
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Shared-computation cache -- lets a single shape()/run() call compute each
+# expensive per-building construction (bbox/inertia axes, GNDT 'a',
+# GNDT setback) at most once, no matter how many requested columns/norms
+# need it. Norm-scoped caching alone (the previous approach) still redoes
+# the same construction once per norm: ASCE7/GNDTII/NTC-23's setback ratios
+# all default to the same bbox-method setback_gndt_metrics() call, so a
+# config requesting all three (a realistic combination -- see
+# runner.run()'s docstring example) used to run it 3 times over.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class _SharedGeometryCache:
+    """Lazily computes and memoises bbox/inertia axes and GNDT constructions
+    for one GeoDataFrame, so every :class:`Parameter` (across every norm)
+    asked to compute against it shares the same underlying work.
+
+    A fresh instance is cheap to create (it does nothing until first used),
+    so :meth:`NormAggregate.__call__` creates its own when called directly
+    (e.g. ``shape.EC8(gdf)``) and :func:`_ShapeModule.__call__` (``shape()``,
+    and hence ``run()``) creates exactly one and shares it across every norm
+    /slenderness/bearing computation in that call.
+    """
+
+    def __init__(self, gdf: gpd.GeoDataFrame):
+        self._gdf = gdf
+        self._bbox: dict | None = None
+        self._inertia: dict | None = None
+        self._gndt_a: dict[str, tuple] = {}
+        self._gndt_setback: dict[str, tuple] = {}
+
+    def bbox(self) -> dict:
+        if self._bbox is None:
+            L1, dir1, L2, dir2, _ = compute_bbox_direction(self._gdf, mode="all")
+            self._bbox = dict(L1=L1, dir1=dir1, L2=L2, dir2=dir2)
+        return self._bbox
+
+    def inertia(self) -> dict:
+        """Raw ``calc_principal_inertia`` output (I1/dir1 <-> larger
+        eigenvalue), the convention EC8's eccentricity/radius-ratio
+        parameters expect -- NOT the physical-length ``dir1`` swap that
+        :func:`direction.inertia` applies (see :meth:`bearing`, which
+        applies that swap itself when deriving the bearing from this same
+        cached computation).
+        """
+        if self._inertia is None:
+            I1, dir1, I2, dir2 = calc_principal_inertia(self._gdf.geometry)
+            self._inertia = dict(I1=I1, dir1=dir1, I2=I2, dir2=dir2)
+        return self._inertia
+
+    def basic_lengths(self, method: str) -> tuple:
+        """``(L1, dir1, L2, dir2)`` for *method*, from the cached bbox/inertia
+        computation -- matches :func:`_basic_lengths` but never triggers a
+        second ``calc_principal_inertia`` call for the inertia method.
+        """
+        if method == "bbox":
+            b = self.bbox()
+            return b["L1"], b["dir1"], b["L2"], b["dir2"]
+        i = self.inertia()
+        area = self._gdf.geometry.area.values
+        L1, L2 = inertia_side_lengths(i["I1"], i["I2"], area)
+        # direction.inertia()'s physical-length swap: the larger-eigenvalue
+        # eigenvector points along the geometrically *shorter* side.
+        return L1, i["dir2"], L2, i["dir1"]
+
+    def gndt_a(self, method: str) -> tuple:
+        if method not in self._gndt_a:
+            self._gndt_a[method] = _gndt_dominant_a(
+                self._gdf, method, _basic=self.basic_lengths(method)
+            )
+        return self._gndt_a[method]
+
+    def gndt_setback(self, method: str) -> tuple:
+        if method not in self._gndt_setback:
+            L1, dir1, L2, dir2 = self.basic_lengths(method)
+            self._gndt_setback[method] = setback_gndt_metrics(
+                self._gdf, L1, dir1, L2, dir2
+            )
+        return self._gndt_setback[method]
+
+    def bearing(self) -> list:
+        """Building bearing (degrees from North), exactly as
+        :func:`direction.inertia` computes it, but reusing this cache's
+        already-computed ``calc_principal_inertia`` result instead of
+        recomputing it from scratch.
+        """
+        dir1_raw = self.inertia()["dir1"]
+        return [bearing_from_dir(d) for d in dir1_raw]
 
 
 class GNDTIIBeta1MainShapeSlenderness(Parameter):
@@ -508,10 +617,20 @@ class NTC23SetbackRatio(Parameter):
             "min(b1/L1, b2/L2) dual-configuration setback ratio (NTC-23)",
         )
 
-    def compute(self, gdf: gpd.GeoDataFrame, *, method: str = "bbox", **kwargs) -> list:
+    def compute(
+        self,
+        gdf: gpd.GeoDataFrame,
+        *,
+        method: str = "bbox",
+        _gndt_setback: tuple | None = None,
+        **kwargs,
+    ) -> list:
         gdf = ensure_projected(to_gdf(gdf))
-        L1, dir1, L2, dir2 = _basic_lengths(gdf, method)
-        ratio, _, _ = setback_gndt_metrics(gdf, L1, dir1, L2, dir2)
+        if _gndt_setback is not None:
+            ratio, _, _ = _gndt_setback
+        else:
+            L1, dir1, L2, dir2 = _basic_lengths(gdf, method)
+            ratio, _, _ = setback_gndt_metrics(gdf, L1, dir1, L2, dir2)
         return ratio
 
 
@@ -745,53 +864,45 @@ class NormAggregate:
     def __call__(
         self,
         gdf: gpd.GeoDataFrame,
+        _cache: "_SharedGeometryCache | None" = None,
+        _columns: set[str] | None = None,
         **kwargs,
     ) -> gpd.GeoDataFrame:
-        """Compute all parameters; skip any column already present in *gdf*."""
+        """Compute all parameters; skip any column already present in *gdf*.
+
+        Args:
+            _cache: Internal. A :class:`_SharedGeometryCache` to reuse
+                (passed by :func:`_ShapeModule.__call__` when several norms
+                are being computed in the same ``shape()``/``run()`` call,
+                so they all share one bbox/inertia/GNDT computation instead
+                of each norm redoing it). Callers using a norm directly
+                (e.g. ``shape.EC8(gdf)``) leave this as ``None`` and get a
+                cache scoped to just this call, same as before.
+            _columns: Internal. If given, only parameters whose own column
+                (or compliance column) is in this set are computed --
+                lets :func:`_ShapeModule.__call__` request e.g. just
+                ``GNDTII_beta2_setbackRatio`` without also paying for
+                beta1/beta4's expensive inscribed-circle construction just
+                because they belong to the same norm. ``None`` (the
+                default, and always the case for a direct ``shape.EC8(gdf)``
+                call) computes every parameter in the norm, as before.
+        """
         gdf = ensure_projected(to_gdf(gdf))
         validate_geodataframe(gdf, context=f"shape.{self.name}")
         result = gdf.copy()
 
-        # Pre-compute shared quantities once to avoid redundant work
-        # (each parameter that accepts precomputed L1/dir1/I1/… will use them)
-        _bbox_cache: dict = {}
-        _inertia_cache: dict = {}
-        # GNDTII-specific: beta1/beta4 share the inscribed-circle 'a'
-        # construction, and beta2/beta6 share the dual-configuration setback
-        # construction -- both are expensive (per-building grid search +
-        # local optimisation), so cache them per method instead of running
-        # twice within the same NormAggregate call.
-        _gndt_a_cache: dict = {}
-        _gndt_setback_cache: dict = {}
-
-        def _bbox():
-            if not _bbox_cache:
-                L1, dir1, L2, dir2, _ = compute_bbox_direction(result, mode="all")
-                _bbox_cache.update(dict(L1=L1, dir1=dir1, L2=L2, dir2=dir2))
-            return _bbox_cache
-
-        def _inertia():
-            if not _inertia_cache:
-                I1, dir1, I2, dir2 = calc_principal_inertia(result.geometry)
-                _inertia_cache.update(dict(I1=I1, dir1=dir1, I2=I2, dir2=dir2))
-            return _inertia_cache
-
-        def _gndt_a(method):
-            if method not in _gndt_a_cache:
-                _gndt_a_cache[method] = _gndt_dominant_a(result, method)
-            return _gndt_a_cache[method]
-
-        def _gndt_setback(method):
-            if method not in _gndt_setback_cache:
-                L1, dir1, L2, dir2 = _basic_lengths(result, method)
-                _gndt_setback_cache[method] = setback_gndt_metrics(
-                    result, L1, dir1, L2, dir2
-                )
-            return _gndt_setback_cache[method]
+        cache = _cache if _cache is not None else _SharedGeometryCache(result)
 
         for param_name, param_obj in self.parameters.items():
             col_name = param_obj.column_name
             comp_col = f"compliance_{col_name}"
+
+            if (
+                _columns is not None
+                and col_name not in _columns
+                and comp_col not in _columns
+            ):
+                continue
 
             if col_name not in result.columns:
                 # Pass precomputed values where the parameter supports it
@@ -799,10 +910,10 @@ class NormAggregate:
 
                 sig = inspect.signature(param_obj.compute)
                 extra = {}
-                if "L1" in sig.parameters:
-                    extra.update(_bbox())
-                if "I1" in sig.parameters:
-                    extra.update(_inertia())
+                if sig.parameters.keys() & {"L1", "dir1", "L2", "dir2"}:
+                    extra.update(cache.bbox())
+                if sig.parameters.keys() & {"I1", "I2"}:
+                    extra.update(cache.inertia())
                 if "_gndt_a" in sig.parameters or "_gndt_setback" in sig.parameters:
                     # Resolve the method this param will actually run with:
                     # the caller's override (applies uniformly to every
@@ -810,9 +921,9 @@ class NormAggregate:
                     # own default.
                     method = kwargs.get("method", sig.parameters["method"].default)
                     if "_gndt_a" in sig.parameters:
-                        extra["_gndt_a"] = _gndt_a(method)
+                        extra["_gndt_a"] = cache.gndt_a(method)
                     if "_gndt_setback" in sig.parameters:
-                        extra["_gndt_setback"] = _gndt_setback(method)
+                        extra["_gndt_setback"] = cache.gndt_setback(method)
                 extra.update(kwargs)  # caller overrides take priority
                 values = param_obj.compute(result, **extra)
                 result[col_name] = values
@@ -923,15 +1034,22 @@ class _ShapeModule:
     ) -> gpd.GeoDataFrame:
         """Compute any mix of shape columns for *gdf*.
 
-        Shared quantities (bounding-box dimensions, principal inertia) are
-        computed at most once, even when multiple parameters need them.
+        Shared quantities (bounding-box dimensions, principal inertia, the
+        GNDT inscribed-circle 'a' construction, the GNDT dual-configuration
+        setback construction) are each computed at most once for the whole
+        call via one shared :class:`_SharedGeometryCache`, no matter how
+        many norms/columns need them -- e.g. requesting ``"ASCE7"``,
+        ``"GNDTII"``, and ``"NTC23_setbackRatio"`` together (a realistic
+        combination) used to run the setback construction 3 times over;
+        now it runs once.
 
         Args:
             gdf:     GeoDataFrame of building footprints.
             columns: List of column names to compute.  Passing ``None``
-                     computes all parameters from all norms plus all
-                     slenderness variants.  Columns already present in *gdf*
-                     are not recomputed.
+                     computes all parameters from all norms, all
+                     slenderness variants, the bearing, and all
+                     code-independent indices. Columns already present in
+                     *gdf* are not recomputed.
             **kwargs: Forwarded to individual parameter compute() calls
                      (e.g. ``height_column="h"``).
 
@@ -941,6 +1059,7 @@ class _ShapeModule:
         gdf = ensure_projected(to_gdf(gdf))
         validate_geodataframe(gdf, context="shape")
         result = gdf.copy()
+        cache = _SharedGeometryCache(result)
 
         # Build a map: column_name → (param_obj or callable, kind)
         column_map: dict[str, tuple] = {}
@@ -960,35 +1079,54 @@ class _ShapeModule:
         for name, fn in _CODE_INDEPENDENT.items():
             column_map[name] = ("independent", fn)
 
+        column_map["bearing"] = ("bearing",)
+
         if columns is None:
             columns = list(column_map.keys())
 
-        # Determine which norms / methods are needed
-        needed_norms: set[str] = set()
+        # Determine which norms / methods are needed -- and, per norm, the
+        # *exact* columns wanted from it, so e.g. requesting only
+        # "GNDTII_beta2_setbackRatio" doesn't also force beta1/beta4's
+        # unrelated (and much more expensive) inscribed-circle construction
+        # just because they happen to belong to the same norm.
+        needed_norm_columns: dict[str, set[str]] = {}
         needed_slenderness: set[str] = set()
         needed_independent: set[str] = set()
+        needed_bearing = False
 
         for col in columns:
             if col not in result.columns and col in column_map:
                 entry = column_map[col]
                 if entry[0] in ("param", "compliance"):
-                    needed_norms.add(entry[1].name)
+                    needed_norm_columns.setdefault(entry[1].name, set()).add(col)
                 elif entry[0] in ("slenderness_param", "slenderness_compliance"):
                     needed_slenderness.add(entry[1].direction_method)
                 elif entry[0] == "independent":
                     needed_independent.add(col)
+                elif entry[0] == "bearing":
+                    needed_bearing = True
 
-        # Compute norms (each handles its own caching internally)
+        # Compute norms, all sharing one cache
         for norm in _ALL_NORMS:
-            if norm.name in needed_norms:
-                result = norm(result, **kwargs)
+            if norm.name in needed_norm_columns:
+                result = norm(
+                    result,
+                    _cache=cache,
+                    _columns=needed_norm_columns[norm.name],
+                    **kwargs,
+                )
 
-        # Compute slenderness methods
+        # Compute slenderness methods -- L1/L2 come from the same shared
+        # bbox/inertia cache the norms above may have already populated.
         for method_name, method_obj in slenderness._methods.items():
             if method_name in needed_slenderness:
                 col = method_obj.column_name
                 if col not in result.columns:
-                    result[col] = method_obj.compute(result, **kwargs)
+                    extra = dict(kwargs)
+                    if "L1" not in extra and "L2" not in extra:
+                        L1, _, L2, _ = cache.basic_lengths(method_obj.direction_method)
+                        extra["L1"], extra["L2"] = L1, L2
+                    result[col] = method_obj.compute(result, **extra)
                 comp = f"compliance_EC8_{col}"
                 if comp not in result.columns and method_obj._compliance_limits:
                     result[comp] = [
@@ -1001,6 +1139,12 @@ class _ShapeModule:
             if name not in result.columns:
                 fn = _CODE_INDEPENDENT[name]
                 result[name] = fn(result, **kwargs)
+
+        # Bearing -- reuses the cache's calc_principal_inertia() result
+        # rather than a separate direction.inertia() call, when it was (or
+        # is about to be) computed anyway for an inertia-based norm/column.
+        if needed_bearing and "bearing" not in result.columns:
+            result["bearing"] = cache.bearing()
 
         # Return only requested columns (plus geometry)
         final_cols = ["geometry"] + [c for c in columns if c in result.columns]
