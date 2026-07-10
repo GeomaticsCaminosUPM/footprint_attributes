@@ -2,10 +2,14 @@ Formulas
 ========
 
 This page gives the exact mathematical formula behind every parameter the
-package can produce, transcribed directly from the implementation (not
-textbook restatements). Notation follows the source code: :math:`\varepsilon`
-denotes a small constant (typically :math:`10^{-12}`, sometimes
-:math:`10^{-30}`) added to denominators to avoid division by zero.
+package can produce, together with the source code that implements it and
+the reasoning behind each design choice. Formulas are transcribed directly
+from the implementation (not textbook restatements) -- the code blocks below
+are pulled live from the source via Sphinx's ``literalinclude``, so they
+always match the installed version of the package. Notation follows the
+source code: :math:`\varepsilon` denotes a small constant (typically
+:math:`10^{-12}`, sometimes :math:`10^{-30}`) added to denominators to avoid
+division by zero.
 
 Position / contact-force pipeline (:mod:`footprint_attributes.position`)
 --------------------------------------------------------------------------
@@ -47,6 +51,19 @@ pressure per unit boundary, dimensionally like force/length). Buildings with
 no touching neighbours get ``contact_force = 0``. Classification divides
 ``force`` by ``height`` before comparing to thresholds, since raw force
 scales linearly with height but thresholds are calibrated for ``height = 1``.
+
+.. literalinclude:: ../src/footprint_attributes/geometry.py
+   :pyobject: edge_normal
+   :language: python
+
+.. literalinclude:: ../src/footprint_attributes/position.py
+   :pyobject: contact_forces_df
+   :language: python
+
+The full ``contact_forces_df`` function above computes ``force``,
+``confinementRatio``, ``angularAcc`` and ``angle`` together in one pass (they
+share the same per-edge force vectors), so it is quoted once here rather than
+split by column; the sections below explain each of its outputs in turn.
 
 ``contact_confinementRatio``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -93,6 +110,10 @@ where :math:`I_{z,i}` is the polygon's polar second moment of area about its
 own centroid. This behaves like a moment/area-normalised angular
 acceleration. It scales linearly with height (through the force magnitudes);
 classification divides by ``height`` before comparing to its threshold.
+
+.. literalinclude:: ../src/footprint_attributes/geometry.py
+   :pyobject: edge_momentum
+   :language: python
 
 ``contact_angle``
 ~~~~~~~~~~~~~~~~~~
@@ -164,6 +185,10 @@ part of the fold).
    for undirected-axis comparisons (e.g. ``ASCE7_parallelityAngle``,
    ``bearing``).
 
+.. literalinclude:: ../src/footprint_attributes/position.py
+   :pyobject: resultant_angle
+   :language: python
+
 ``contact_height``
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -200,6 +225,10 @@ Priority order (later rules override earlier ones):
 ``"isolated"`` buildings (no touching edges) never satisfy rule 2 since
 :math:`\tilde F_i = 0`.
 
+.. literalinclude:: ../src/footprint_attributes/position.py
+   :pyobject: _Position._classify
+   :language: python
+
 Shape irregularity indices (:mod:`footprint_attributes.shape`)
 ------------------------------------------------------------------
 
@@ -215,6 +244,10 @@ Code-independent indices
 :math:`A` is the area and :math:`P` the perimeter of the hole-filled
 footprint. Range :math:`(0, 1]`; 1 for a perfect circle.
 
+.. literalinclude:: ../src/footprint_attributes/shape.py
+   :pyobject: polsby_popper
+   :language: python
+
 **convex_hull_irregularity**:
 
 .. math::
@@ -224,6 +257,10 @@ footprint. Range :math:`(0, 1]`; 1 for a perfect circle.
 :math:`A` is the hole-filled footprint's area, :math:`A_{\text{hull}}` its
 convex hull's area. 0 for a convex shape; larger for deeper/larger setbacks
 relative to the footprint's own area.
+
+.. literalinclude:: ../src/footprint_attributes/shape.py
+   :pyobject: convex_hull_irregularity
+   :language: python
 
 **inertia_circle_ratio**:
 
@@ -236,6 +273,10 @@ relative to the footprint's own area.
 footprint about its own centroid; :math:`I_{z,\text{circle}}` is the polar
 moment of a circle of the same area. Range :math:`(0, 1]`, 1 for a circle
 (the circle maximises :math:`I_z` for a given area).
+
+.. literalinclude:: ../src/footprint_attributes/shape.py
+   :pyobject: inertia_circle_ratio
+   :language: python
 
 EC8 (Eurocode 8)
 ~~~~~~~~~~~~~~~~~~
@@ -250,12 +291,20 @@ optimisation described in *Eccentricity optimisation*.
 
    \text{EC8\_eccentricityRatio} = \frac{e \, |\cos(x_{\text{opt}} - b)|}{r_t(x_{\text{opt}}) + \varepsilon}
 
+.. literalinclude:: ../src/footprint_attributes/shape.py
+   :pyobject: EC8EccentricityRatio
+   :language: python
+
 **EC8_radiusRatio** (:math:`r_t/r_g`), limit :math:`\ge 1.0`:
 
 .. math::
 
    \text{EC8\_radiusRatio} = \frac{r_t(x_{\text{opt}})}{r_g + \varepsilon}, \qquad
    r_g = \sqrt{\frac{I_1+I_2}{A + \varepsilon}}
+
+.. literalinclude:: ../src/footprint_attributes/shape.py
+   :pyobject: EC8RadiusRatio
+   :language: python
 
 **EC8_compactness**, limit :math:`\ge 0.95`:
 
@@ -270,6 +319,10 @@ optimisation described in *Eccentricity optimisation*.
 :math:`A_{\text{gap}}` is the area of the single largest connected component
 of ``hull(filled).difference(filled)`` -- not the sum of all setback pieces.
 
+.. literalinclude:: ../src/footprint_attributes/shape.py
+   :pyobject: EC8Compactness
+   :language: python
+
 ASCE 7
 ~~~~~~~~
 
@@ -282,6 +335,10 @@ ASCE 7
 using the dominant setback piece and bounding-box directions (see
 *GNDT setback construction* below).
 
+.. literalinclude:: ../src/footprint_attributes/shape.py
+   :pyobject: ASCE7SetbackRatio
+   :language: python
+
 **ASCE7_holeRatio**, limit :math:`\le 0.25`:
 
 .. math::
@@ -291,6 +348,14 @@ using the dominant setback piece and bounding-box directions (see
 The largest single hole's area fraction (holes below 0.1% of the filled
 area are ignored).
 
+.. literalinclude:: ../src/footprint_attributes/shape.py
+   :pyobject: ASCE7HoleRatio
+   :language: python
+
+.. literalinclude:: ../src/footprint_attributes/geometry.py
+   :pyobject: max_hole_area_ratio
+   :language: python
+
 **ASCE7_parallelityAngle**, limit :math:`\le 5°`:
 
 .. math::
@@ -299,6 +364,10 @@ area are ignored).
 
 folded to :math:`[0°, 90°]`; :math:`\text{dir}_1` is the building's longer
 bounding-box axis and :math:`\hat{\mathbf{x}} = (1, 0)`.
+
+.. literalinclude:: ../src/footprint_attributes/shape.py
+   :pyobject: ASCE7ParalelityAngle
+   :language: python
 
 GNDTII (Italian GNDT Level II)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -315,20 +384,36 @@ construction, picked per building as whichever of :math:`(L_1, a_1)` /
      (a_2, L_2) & \text{otherwise}
    \end{cases}
 
+.. literalinclude:: ../src/footprint_attributes/shape.py
+   :pyobject: _gndt_dominant_a
+   :language: python
+
 **GNDTII_beta1_mainShapeSlenderness**:
 
 .. math::
 
    \beta_1 = \frac{a_{\text{dom}}}{L_{\text{dom}} + \varepsilon}
 
+.. literalinclude:: ../src/footprint_attributes/shape.py
+   :pyobject: GNDTIIBeta1MainShapeSlenderness
+   :language: python
+
 **GNDTII_beta2_setbackRatio**: same formula as ``ASCE7_setbackRatio`` above,
 under a different compliance table.
+
+.. literalinclude:: ../src/footprint_attributes/shape.py
+   :pyobject: GNDTIIBeta2SetbackRatio
+   :language: python
 
 **GNDTII_beta4_eccentricityRatio**:
 
 .. math::
 
    \beta_4 = \frac{\lVert \mathbf{cm} - \mathbf{cs} \rVert}{a_{\text{dom}} + \varepsilon}
+
+.. literalinclude:: ../src/footprint_attributes/shape.py
+   :pyobject: GNDTIIBeta4EccentricityRatio
+   :language: python
 
 **GNDTII_beta6_setbackSlenderness**:
 
@@ -339,6 +424,10 @@ under a different compliance table.
 where :math:`b` is the winning setback configuration's own width and
 :math:`c` the protrusion width of the solid footprint measured perpendicular
 to :math:`b`, through the setback piece's centroid.
+
+.. literalinclude:: ../src/footprint_attributes/shape.py
+   :pyobject: GNDTIIBeta6SetbackSlenderness
+   :language: python
 
 CSCR 2010 (Costa Rica)
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -353,12 +442,20 @@ CSCR 2010 (Costa Rica)
 Full derivation of :math:`e`, :math:`b`, :math:`x_{\text{opt}}`, :math:`l`
 in *Eccentricity optimisation* below.
 
+.. literalinclude:: ../src/footprint_attributes/shape.py
+   :pyobject: CSCR2010EccentricityRatio
+   :language: python
+
 NTC-23 (Mexico)
 ~~~~~~~~~~~~~~~~~
 
 **NTC23_setbackRatio**: identical formula to ``ASCE7_setbackRatio`` /
 ``GNDTII_beta2_setbackRatio`` above, against a more lenient limit
 (:math:`\le 0.40`).
+
+.. literalinclude:: ../src/footprint_attributes/shape.py
+   :pyobject: NTC23SetbackRatio
+   :language: python
 
 **NTC23_holeRatio**, limit :math:`\le 0.40`:
 
@@ -370,6 +467,14 @@ NTC-23 (Mexico)
 (independent of the building's own axes); :math:`L` is the length of the
 intersection segment of the building's filled footprint with a line through
 the hole's centroid, drawn along the hole's own longer axis direction.
+
+.. literalinclude:: ../src/footprint_attributes/shape.py
+   :pyobject: NTC23HoleRatio
+   :language: python
+
+.. literalinclude:: ../src/footprint_attributes/geometry.py
+   :pyobject: hole_h_over_l
+   :language: python
 
 Slenderness
 ~~~~~~~~~~~~~
@@ -393,6 +498,10 @@ Vertical slenderness (``vertical=True``, either method):
 
 :math:`h` is from the given height column, :math:`L_2` the shorter plan
 dimension for the selected method.
+
+.. literalinclude:: ../src/footprint_attributes/shape.py
+   :pyobject: _SlendernessMethod.compute
+   :language: python
 
 Direction / orientation (:mod:`footprint_attributes.direction`)
 ---------------------------------------------------------------------
@@ -420,9 +529,25 @@ Side lengths via a closed-form approximation:
 exact for a true rectangle (reduces to the real side lengths), an average
 side length otherwise.
 
+.. literalinclude:: ../src/footprint_attributes/direction.py
+   :pyobject: inertia
+   :language: python
+
+.. literalinclude:: ../src/footprint_attributes/geometry.py
+   :pyobject: inertia_side_lengths
+   :language: python
+
 **direction.bbox**: :math:`(L_1, \text{dir}_1, L_2, \text{dir}_2)` directly
 from the exact minimum rotated bounding rectangle (rotating calipers), with
 :math:`L_1 \ge L_2` enforced by swapping if needed.
+
+.. literalinclude:: ../src/footprint_attributes/direction.py
+   :pyobject: bbox
+   :language: python
+
+.. literalinclude:: ../src/footprint_attributes/geometry.py
+   :pyobject: min_bounding_box
+   :language: python
 
 **bearing** column:
 
@@ -446,6 +571,10 @@ Applied to :math:`\text{dir}_2` -- the weak (shorter-dimension) axis.
 Clockwise from geographic North (+y in UTM); folded to :math:`\pm 90°` since
 an axis is undirected (same fold family as ``contact_angle`` and
 ``ASCE7_parallelityAngle`` above).
+
+.. literalinclude:: ../src/footprint_attributes/geometry.py
+   :pyobject: bearing_from_dir
+   :language: python
 
 Eccentricity optimisation (:mod:`footprint_attributes.eccentricity`)
 --------------------------------------------------------------------------
@@ -472,6 +601,14 @@ eccentricity). :math:`x_{\text{opt}}` is found by a coarse grid search over
 :math:`x \in [0, \pi)` followed by golden-section refinement, maximising the
 relevant objective below.
 
+.. literalinclude:: ../src/footprint_attributes/eccentricity.py
+   :pyobject: mohr_params
+   :language: python
+
+.. literalinclude:: ../src/footprint_attributes/eccentricity.py
+   :pyobject: _signed_angle
+   :language: python
+
 **EC8 objective and outputs**:
 
 .. math::
@@ -490,6 +627,10 @@ relevant objective below.
    r_g = \sqrt{\frac{I_1+I_2}{A + \varepsilon}}
 
 :math:`x_{\text{opt}} = 0` trivially when :math:`e < 10^{-10}`.
+
+.. literalinclude:: ../src/footprint_attributes/eccentricity.py
+   :pyobject: optimise_ec8
+   :language: python
 
 **CSCR 2010 objective and outputs**:
 
@@ -514,6 +655,10 @@ relevant objective below.
 
    l = \sqrt{A + \varepsilon} \left( \frac{I_{\text{max}}(x_{\text{opt}})}{I_{\text{min}}(x_{\text{opt}}) + \varepsilon} \right)^{0.25}
 
+.. literalinclude:: ../src/footprint_attributes/eccentricity.py
+   :pyobject: optimise_cscr
+   :language: python
+
 Feeder geometry (:mod:`footprint_attributes.geometry`)
 ------------------------------------------------------------
 
@@ -533,6 +678,10 @@ above.
 wall height (cancels out of CM for identical additional storeys, sets the
 relative weight of wall vs. slab mass for one storey). Degenerate (zero
 area & perimeter) geometries fall back to the slab centroid.
+
+.. literalinclude:: ../src/footprint_attributes/geometry.py
+   :pyobject: centre_of_mass_and_stiffness
+   :language: python
 
 **Principal second moment of area** -- exact closed form per polygon about
 its own centroid, via the shoelace/Green's-theorem identity over polygon
@@ -554,6 +703,10 @@ to positive orientation). :math:`I_1 \ge I_2` and eigenvectors
 eigenvector's sign canonicalised so its largest-magnitude component is
 positive.
 
+.. literalinclude:: ../src/footprint_attributes/geometry.py
+   :pyobject: calc_principal_inertia
+   :language: python
+
 **GNDT setback construction**: for every disconnected piece of
 ``hull(filled).difference(filled)``:
 
@@ -571,6 +724,10 @@ centroid, cast perpendicular to :math:`b`'s own direction. Pieces with
 compactness :math:`1 - A_{\text{piece}}/A_{\text{hull}} \le 0.001` are
 discarded (treated as convex / no setback).
 
+.. literalinclude:: ../src/footprint_attributes/geometry.py
+   :pyobject: setback_gndt_metrics
+   :language: python
+
 **GNDT inscribed-circle "a" construction**: the largest circle
 :math:`(c_x, c_y, r)` fitting inside the polygon is found, then boundary
 points within a tolerance of the circle are projected onto
@@ -586,6 +743,14 @@ points within a tolerance of the circle are projected onto
 there are at most two tangent points (plain rectangle case),
 :math:`a_1 = a_2 = 2r`.
 
+.. literalinclude:: ../src/footprint_attributes/geometry.py
+   :pyobject: max_inscribed_circle
+   :language: python
+
+.. literalinclude:: ../src/footprint_attributes/geometry.py
+   :pyobject: main_element_a_lengths
+   :language: python
+
 **Polar second moment of area** (shoelace, ring-by-ring, holes subtracted
 via the parallel-axis theorem):
 
@@ -593,6 +758,14 @@ via the parallel-axis theorem):
 
    I_z^{\text{ring}} = \left| \frac{1}{12}\sum_k \text{cross}_k \,
    (x_k^2 + x_kx_{k+1} + x_{k+1}^2 + y_k^2 + y_ky_{k+1} + y_{k+1}^2) \right|
+
+.. literalinclude:: ../src/footprint_attributes/geometry.py
+   :pyobject: ring_inertia_z
+   :language: python
+
+.. literalinclude:: ../src/footprint_attributes/geometry.py
+   :pyobject: calc_inertia_z
+   :language: python
 
 **Undirected-axis angle fold** (used by ``ASCE7_parallelityAngle``):
 
@@ -604,3 +777,7 @@ Same :math:`[0, \pi/2]` fold family as ``contact_angle`` and ``bearing``
 above, applied here to compare undirected axes (a line has no inherent
 "positive" direction) rather than to remove double-counted cancellation --
 different motivation, same mechanism.
+
+.. literalinclude:: ../src/footprint_attributes/geometry.py
+   :pyobject: angle_between_0_90
+   :language: python
