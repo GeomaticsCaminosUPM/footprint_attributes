@@ -29,6 +29,7 @@ Source code: `github.com/GeomaticsCaminosUPM/footprint_attributes
 
    installation
    api/index
+   formulas
    examples
    citation
    license

@@ -43,6 +43,17 @@ def test_confined_building_classified_confined(confined_quartet):
     assert all(p == "lateral" for p in out["relativePosition"].iloc[1:])
 
 
+def test_unequal_opposite_pair_not_classified_corner(unequal_opposite_pair):
+    """Regression test for San Jose buildings 1295/1304/3620: a centre
+    building with neighbours on two OPPOSITE sides but very unequal wall
+    lengths used to be misread as 'corner'. The minority wall's force sits
+    ~180deg from the magnitude-dominated resultant, which the unfolded
+    force-weighted angle statistic couldn't distinguish from a genuinely
+    perpendicular (corner) neighbour. Must never be 'corner'."""
+    out = position(unequal_opposite_pair)
+    assert out["relativePosition"].iloc[0] != "corner"
+
+
 def test_relative_position_reuses_existing_columns(lateral_pair):
     """position.relative_position() must reuse prefixed force columns rather
     than recompute them (a fast path documented in the module)."""

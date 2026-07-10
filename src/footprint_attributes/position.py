@@ -74,7 +74,17 @@ def resultant_angle(
 
     # Compute angle between each force and resultant
     def angle_to_resultant(row: pd.Series) -> float:
-        """Angle (radians) between one contact-force row and its building's resultant."""
+        """Angle (radians, folded to [0, pi/2]) between one contact-force row
+        and its building's resultant.
+
+        Folding a near-180 deg deviation down to near-0 is deliberate: a force
+        that opposes the resultant because it's the *smaller* of two unequal
+        anti-parallel walls is a confinement/cancellation effect (already
+        captured by ``confinementRatio``), not directional spread. Without the
+        fold, that minority force reads as ~180 deg off-resultant and inflates
+        the weighted-mean angle as much as a genuinely perpendicular
+        (corner-like) neighbour would, making the two indistinguishable.
+        """
         res = resultants[row[id_column]]
         force = row[vector_column]
         if np.linalg.norm(res) < 1e-12 or np.linalg.norm(force) < 1e-12:
@@ -83,7 +93,8 @@ def resultant_angle(
             np.linalg.norm(force) * np.linalg.norm(res) + 1e-12
         )
         cos_angle = np.clip(cos_angle, -1.0, 1.0)
-        return np.arccos(cos_angle)
+        angle = np.arccos(cos_angle)
+        return min(angle, np.pi - angle)
 
     gdf["angle"] = gdf.apply(angle_to_resultant, axis=1)
     return gdf

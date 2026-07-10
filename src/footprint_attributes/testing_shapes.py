@@ -137,6 +137,21 @@ def confined_quartet_gdf() -> gpd.GeoDataFrame:
     return gdf_of(c, n, s, e)
 
 
+def unequal_opposite_pair_gdf() -> gpd.GeoDataFrame:
+    """Centre square touched on two OPPOSITE sides (N, S) by neighbours of very
+    unequal wall length (N shares the full 10 m side, S shares only 3 m) ->
+    should read as 'lateral'/'confined', never 'corner'. Regression case for a
+    bug where unequal opposing contact lengths produced a large force-weighted
+    'angle' (because the minority wall's force sits ~180deg from the
+    magnitude-dominated resultant) and got misread as corner-like angular
+    spread, even though the two neighbours are directly opposite each other,
+    not perpendicular. See San Jose example buildings 1295/1304/3620."""
+    c = box(10, 10, 20, 20)
+    n = box(10, 20, 20, 30)  # full 10 m shared wall
+    s = box(10, 0, 13, 10)  # only 3 m shared wall, same (opposite) side
+    return gdf_of(c, n, s)
+
+
 def torque_triplet_gdf(frac: float = 0.34) -> gpd.GeoDataFrame:
     """Centre 20x10 rectangle (slenderness 2, matching POSITION_DEFAULTS'
     minAngularAcc derivation) touched on opposite long sides by structures
