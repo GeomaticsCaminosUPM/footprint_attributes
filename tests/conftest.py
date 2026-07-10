@@ -23,6 +23,7 @@ from shapes import (
     torque_triplet_gdf,
     two_isolated_buildings_gdf,
     t_shape_polygon,
+    unequal_opposite_pair_gdf,
     x_shape_polygon,
 )
 
@@ -146,6 +147,14 @@ def confined_quartet():
     """Centre square touched on 3 of its 4 sides (one opposite pair fully
     cancels) -> 'confined'."""
     return confined_quartet_gdf()
+
+
+@pytest.fixture
+def unequal_opposite_pair():
+    """Centre square touched on two OPPOSITE sides by neighbours of very
+    unequal wall length -> should stay 'lateral'/'confined', never 'corner'.
+    Regression fixture for the San Jose 1295/1304/3620 misclassification."""
+    return unequal_opposite_pair_gdf()
 
 
 @pytest.fixture

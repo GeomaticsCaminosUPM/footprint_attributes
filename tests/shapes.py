@@ -24,5 +24,6 @@ from footprint_attributes.testing_shapes import (  # noqa: F401
     torque_triplet_gdf,
     two_isolated_buildings_gdf,
     t_shape_polygon,
+    unequal_opposite_pair_gdf,
     x_shape_polygon,
 )
