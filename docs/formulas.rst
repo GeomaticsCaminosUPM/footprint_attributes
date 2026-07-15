@@ -14,6 +14,21 @@ division by zero.
 Position / contact-force pipeline (:mod:`footprint_attributes.position`)
 --------------------------------------------------------------------------
 
+**Concept.** A building's seismic behaviour depends on how it is attached to
+its neighbours: an isolated building can sway freely, one confined on both
+sides is restrained but may pound against its neighbours, and one touched
+asymmetrically (e.g. only at a corner) can twist. Rather than reasoning about
+adjacency qualitatively, this module models every shared wall as if a
+uniform pressure pushed on it from the neighbour's side, then looks at the
+resulting force pattern: how strong it is, how much it cancels itself out
+(confinement), and how unevenly it is distributed around the building
+(spread/torque).
+
+.. image:: ../figures/relative_position_explanation.jpg
+   :width: 45%
+   :align: center
+   :alt: Contact-force diagram: force vectors on each touching wall and their resultant
+
 Pipeline overview
 ~~~~~~~~~~~~~~~~~~
 
@@ -203,6 +218,21 @@ undo the height scaling of ``force``/``angularAcc``.
 ``relativePosition``
 ~~~~~~~~~~~~~~~~~~~~~~
 
+The four numeric outputs above are combined into a single categorical label
+per building. Conceptually: no contact force means ``isolated``; enough
+force on one side means ``lateral``; if that force is also spread across
+non-opposite directions (a real corner condition, not just an unequal
+opposing pair -- see the note above) it becomes ``corner``; heavy
+cancellation of forces means the building is boxed in on multiple sides
+(``confined``); and any of the touching cases with a large uneven moment
+about the centroid escalates to ``torque``, the case most associated with
+torsional damage.
+
+.. image:: ../figures/relative_position_detail.jpg
+   :width: 55%
+   :align: center
+   :alt: Map of a real urban block coloured by relativePosition class
+
 Classification, evaluated on height-normalised force/angularAcc when a
 height column is available:
 
@@ -232,6 +262,15 @@ Priority order (later rules override earlier ones):
 Shape irregularity indices (:mod:`footprint_attributes.shape`)
 ------------------------------------------------------------------
 
+**Concept.** Seismic codes penalise plan shapes that depart from a compact,
+symmetric rectangle -- setbacks, holes, elongated wings, and mass/stiffness
+offsets all concentrate stress or induce torsion during an earthquake. Each
+code below expresses that departure as one or more dimensionless ratios
+computed from the footprint's geometry (its own outline, its convex hull,
+its bounding box, and its principal axes of inertia). The three
+code-independent indices further down give a code-agnostic summary of
+"how irregular is this shape" for comparison across regions/codes.
+
 Code-independent indices
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -258,6 +297,11 @@ footprint. Range :math:`(0, 1]`; 1 for a perfect circle.
 convex hull's area. 0 for a convex shape; larger for deeper/larger setbacks
 relative to the footprint's own area.
 
+.. image:: ../figures/compactness_1.jpg
+   :width: 35%
+   :align: center
+   :alt: Footprint outline (black) inside its convex hull (green)
+
 .. literalinclude:: ../src/footprint_attributes/shape.py
    :pyobject: convex_hull_irregularity
    :language: python
@@ -283,7 +327,17 @@ EC8 (Eurocode 8)
 
 All EC8 quantities use the centre-of-mass/centre-of-stiffness model and
 principal-inertia computation below, plus the Mohr's-circle worst-case
-optimisation described in *Eccentricity optimisation*.
+optimisation described in *Eccentricity optimisation*. The building is
+idealised as a hollow box (uniform perimeter walls + one slab); the
+eccentricity :math:`e` between its centre of mass and centre of stiffness is
+what drives torsional response under lateral (seismic) loading -- the
+farther apart they are relative to the building's torsional radius, the more
+the building twists instead of translating.
+
+.. image:: ../figures/box_idealization_and_eccentricity.jpg
+   :width: 60%
+   :align: center
+   :alt: Hollow-box idealisation showing centre of mass, centre of stiffness, and eccentricity vector
 
 **EC8_eccentricityRatio** (:math:`e/r_t`), limit :math:`\le 0.30`:
 
@@ -326,7 +380,9 @@ of ``hull(filled).difference(filled)`` -- not the sum of all setback pieces.
 ASCE 7
 ~~~~~~~~
 
-**ASCE7_setbackRatio**, limit :math:`\le 0.20`:
+**ASCE7_setbackRatio** -- how deep is the largest re-entrant corner (a
+protruding "wing" or notch) relative to the building's own footprint
+dimensions -- limit :math:`\le 0.20`:
 
 .. math::
 
@@ -335,11 +391,22 @@ ASCE 7
 using the dominant setback piece and bounding-box directions (see
 *GNDT setback construction* below).
 
+.. image:: ../figures/setback_step_1.jpg
+   :width: 40%
+   :align: center
+   :alt: Convex-hull-minus-footprint setback pieces (green) on a T-shaped building
+
+.. image:: ../figures/setback_step_2.jpg
+   :width: 40%
+   :align: center
+   :alt: b1, b2 measured on the circumscribed rectangle of each setback piece
+
 .. literalinclude:: ../src/footprint_attributes/shape.py
    :pyobject: ASCE7SetbackRatio
    :language: python
 
-**ASCE7_holeRatio**, limit :math:`\le 0.25`:
+**ASCE7_holeRatio** -- how large is the biggest interior courtyard/hole
+relative to the filled footprint -- limit :math:`\le 0.25`:
 
 .. math::
 
@@ -372,8 +439,27 @@ bounding-box axis and :math:`\hat{\mathbf{x}} = (1, 0)`.
 GNDTII (Italian GNDT Level II)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-All use the dominant :math:`(a, L)` configuration from the inscribed-circle
-construction, picked per building as whichever of :math:`(L_1, a_1)` /
+The GNDT parameters need a robust definition of the building's "main
+rectangular element" that works even for very irregular plans -- the
+inscribed-circle construction below finds it by inscribing the largest
+circle that fits in the footprint, then using where that circle touches the
+boundary to infer the width of the solid mass around it.
+
+.. image:: ../figures/circle_step_1.jpg
+   :width: 23%
+.. image:: ../figures/circle_step_2.jpg
+   :width: 23%
+.. image:: ../figures/circle_step_3.jpg
+   :width: 23%
+.. image:: ../figures/circle_step_4.jpg
+   :width: 23%
+
+*Left to right: inscribe the largest circle; find its tangent points on the
+boundary; project them onto the principal axes; circumscribe the
+main-element rectangle* :math:`a_1 \times a_2`.
+
+All GNDTII beta parameters use the dominant :math:`(a, L)` configuration from
+this construction, picked per building as whichever of :math:`(L_1, a_1)` /
 :math:`(L_2, a_2)` maximises :math:`L \cdot a`:
 
 .. math::
@@ -457,7 +543,9 @@ NTC-23 (Mexico)
    :pyobject: NTC23SetbackRatio
    :language: python
 
-**NTC23_holeRatio**, limit :math:`\le 0.40`:
+**NTC23_holeRatio** -- how large the hole is relative to the building's own
+cross-section through it (rather than relative to the whole footprint area,
+as ``ASCE7_holeRatio`` does) -- limit :math:`\le 0.40`:
 
 .. math::
 
@@ -467,6 +555,11 @@ NTC-23 (Mexico)
 (independent of the building's own axes); :math:`L` is the length of the
 intersection segment of the building's filled footprint with a line through
 the hole's centroid, drawn along the hole's own longer axis direction.
+
+.. image:: ../figures/hole_ratio.jpg
+   :width: 45%
+   :align: center
+   :alt: Hole's own bounding box (b1, b2, green) versus the building's bounding box (L1, L2, red)
 
 .. literalinclude:: ../src/footprint_attributes/shape.py
    :pyobject: NTC23HoleRatio
