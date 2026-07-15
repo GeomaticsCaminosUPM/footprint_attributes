@@ -12,7 +12,7 @@ Automated computation of **seismic behaviour modifiers** from 2-D building footp
 
 Developed by the [Advanced Geomatics group (AGA)](https://blogs.upm.es/aga/en/) at the Universidad Politécnica de Madrid. See [Citation](#citation) below for the full author list, ORCIDs, and funding.
 
-Full documentation: [footprint-attributes.readthedocs.io](https://footprint-attributes.readthedocs.io/en/latest/)
+Full documentation: [footprint-attributes.readthedocs.io](https://footprint-attributes.readthedocs.io/en/latest/) — see in particular the [Formulas page](https://footprint-attributes.readthedocs.io/en/latest/formulas.html), which gives the exact mathematical formula, source code, and rationale behind every parameter.
 
 > **Footprint digitalisation** (Mask2Former / SAM2 instance segmentation) is out of scope for this package and lives elsewhere; this package starts from an already-digitised footprint geometry file.
 
@@ -53,7 +53,7 @@ The orientation of the footprint's principal axes, via two independent methods:
 
 ### 2 · Relative position within the block — `position`
 
-Each building is classified into one of five categories using a **contact-force analogy**: a virtual unit pressure is applied to every shared wall segment, and the resultant force, confinement ratio, and angular-acceleration proxy decide the class.
+A building's neighbours change how it behaves in an earthquake: an isolated building sways freely, a confined one is restrained but may pound against its neighbours, and one touched only at a corner can twist. Each building is classified into one of five categories using a **contact-force analogy**: a virtual unit pressure is applied to every shared wall segment (proportional to wall height × length), and the resultant force, confinement ratio, and angular-acceleration proxy decide the class.
 
 <p align="center">
   <img src="figures/relative_position_explanation.jpg" width="40%" alt="Contact force diagram"/>
@@ -63,13 +63,17 @@ Each building is classified into one of five categories using a **contact-force 
 |---|---|
 | **isolated** | No touching neighbours |
 | **lateral** | Touches on one side |
-| **corner** | Touches on two perpendicular sides |
+| **corner** | Touches on two perpendicular (non-opposite) sides |
 | **confined** | Touches on both lateral sides (enclosed) |
 | **torque** | Confined or corner with large angular acceleration |
 
 <p align="center">
   <img src="figures/relative_position_san_jose.jpg" width="55%" alt="Relative position map"/>
 </p>
+<p align="center">
+  <img src="figures/relative_position_detail.jpg" width="45%" alt="Relative position map, block detail with legend"/>
+</p>
+<p align="center"><em>Every building in a real urban block, coloured by its computed <code>relativePosition</code> class.</em></p>
 
 ### 3 · Footprint shape indices — `shape`
 
@@ -95,6 +99,12 @@ Setback and slenderness parameters build on a common construction: the inscribed
 <p align="center"><em>Process to find the main-element side <code>a</code>: inscribe the largest circle, find its tangent points, circumscribe a rectangle along the footprint's own principal axes.</em></p>
 
 <p align="center">
+  <img src="figures/setback_step_1.jpg" width="35%" alt="Convex hull minus footprint = setback pieces"/>&nbsp;&nbsp;
+  <img src="figures/setback_step_2.jpg" width="35%" alt="b1, b2 measured on each setback piece"/>
+</p>
+<p align="center"><em>Setback pieces <code>b</code> come from <code>convex_hull(footprint) − footprint</code>; each disconnected piece is measured against its own circumscribed rectangle (<code>b1</code>, <code>b2</code>), and the piece that most restricts the ratio is used.</em></p>
+
+<p align="center">
   <img src="figures/basic_lengths_example.jpg" width="50%" alt="Basic length examples"/>
 </p>
 
@@ -113,6 +123,18 @@ Plan and vertical slenderness (`shape.slenderness`) and the code-independent ind
 <p align="center">
   <img src="figures/slenderness_san_jose.jpg" width="46%" alt="Slenderness map"/>&nbsp;&nbsp;
   <img src="figures/eccentricity_san_jose.jpg" width="45%" alt="Eccentricity map"/>
+</p>
+
+`ASCE7`'s hole ratio compares a courtyard/hole's own bounding box against the building's; `NTC23`'s hole ratio instead compares the hole's short side to the building's own cross-section width through it — the two answer slightly different questions about how disruptive an interior hole is:
+
+<p align="center">
+  <img src="figures/hole_ratio.jpg" width="40%" alt="Hole bounding box versus building bounding box"/>
+</p>
+
+`ASCE7_parallelityAngle` checks how far the building's own long axis deviates from the reference (North/East) grid — buildings whose walls aren't (roughly) axis-aligned complicate standard structural modelling assumptions:
+
+<p align="center">
+  <img src="figures/parallelity_san_jose.jpg" width="55%" alt="Parallelity angle map"/>
 </p>
 
 Each code parameter has a matching `compliance_{NORM}_{param}` column (0–100 score against the code's own limit).
