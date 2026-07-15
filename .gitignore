@@ -4,7 +4,7 @@ examples/*
 !examples/position.ipynb
 !examples/shape.ipynb
 !examples/building_sizes.ipynb
-!examples/run.ipynb
+!examples/run.ipynb 
 # !examples/data/
 # examples/data/*
 !examples/data/san_jose_pilot_region.gpkg
