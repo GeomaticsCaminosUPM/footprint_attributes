@@ -4,9 +4,11 @@ examples/*
 !examples/position.ipynb
 !examples/shape.ipynb
 !examples/building_sizes.ipynb
-!examples/run.ipynb 
-# !examples/data/
-# examples/data/*
+!examples/run.ipynb
+
+# Sample gpkg datasets: geometry-only (no attribute columns), safe to track.
+!examples/data/
+examples/data/*
 !examples/data/san_jose_pilot_region.gpkg
 !examples/data/guatemala_pilot_region.gpkg
 !examples/data/santo_domingo_pilot_region.gpkg
