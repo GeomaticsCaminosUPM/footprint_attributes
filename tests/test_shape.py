@@ -474,3 +474,77 @@ def test_gndtii_batch_respects_method_override(asymmetric_l_shape):
     assert bbox_batch["GNDTII_beta2_setbackRatio"].iloc[0] != pytest.approx(
         inertia_batch["GNDTII_beta2_setbackRatio"].iloc[0]
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ASCE7_parallelityAngle -- a purely per-building measure of whether a
+# polygon's own edges form a rectilinear (two-perpendicular-directions)
+# frame. No dataset-wide or neighbourhood reference is used at all: this
+# replaced two earlier (both wrong) versions -- first a hardcoded [1, 0] map
+# axis, then the dataset's own dominant orientation, which broke down for
+# datasets spanning multiple genuinely different street-grid orientations
+# (confirmed on real data: Guatemala Zona10 / SanJose Esquivel / SantoDomingo
+# Naco all have multi-modal per-building orientation histograms, so no
+# single "dominant orientation" is meaningful for them).
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _rotated_rect_gdf(angles_deg, w=20.0, h=8.0, spacing=60.0):
+    """One w x h rectangle per angle, each rotated by that angle and spaced
+    apart so they do not overlap."""
+    import geopandas as gpd
+    from shapely.affinity import rotate, translate
+    from shapely.geometry import box
+
+    from footprint_attributes.testing_shapes import CRS
+
+    polys = []
+    for k, ang in enumerate(angles_deg):
+        p = box(-w / 2, -h / 2, w / 2, h / 2)
+        p = rotate(p, ang, origin=(0, 0), use_radians=False)
+        polys.append(translate(p, xoff=k * spacing, yoff=0.0))
+    return gpd.GeoDataFrame(geometry=polys, crs=CRS)
+
+
+def test_parallelity_angle_zero_regardless_of_absolute_rotation():
+    """A rectangle is orthogonal on its own terms no matter which way it's
+    rotated -- every angle must read ~0°, whether rotated 0°, 35°, or 89°.
+    (Both earlier reference-axis versions failed this: they'd read ~ the
+    rotation angle itself for a non-zero rotation.)"""
+    gdf = _rotated_rect_gdf([0.0, 35.0, 89.0, -47.0])
+    vals = np.asarray(shape.ASCE7(gdf)["ASCE7_parallelityAngle"], dtype=float)
+    assert np.allclose(vals, 0.0, atol=1e-6), vals
+
+
+def test_parallelity_angle_zero_for_orthogonal_l_shape():
+    """An L-shaped (still rectilinear) footprint is regular: 0°, regardless
+    of overall rotation."""
+    import geopandas as gpd
+    from shapely.affinity import rotate
+    from shapely.geometry import Polygon
+
+    from footprint_attributes.testing_shapes import CRS
+
+    L = Polygon([(0, 0), (10, 0), (10, 5), (5, 5), (5, 10), (0, 10)])
+    gdf = gpd.GeoDataFrame(geometry=[L, rotate(L, 40.0, origin=(0, 0))], crs=CRS)
+    vals = np.asarray(shape.ASCE7(gdf)["ASCE7_parallelityAngle"], dtype=float)
+    assert np.allclose(vals, 0.0, atol=1e-6), vals
+
+
+def test_parallelity_angle_flags_a_skewed_quadrilateral():
+    """A trapezoid (one pair of edges genuinely not perpendicular to the
+    other) reads a positive, non-trivial angle -- and that value is a
+    property of the one polygon, unaffected by how the whole batch (or a
+    second, differently-oriented trapezoid) is rotated."""
+    import geopandas as gpd
+    from shapely.affinity import rotate
+    from shapely.geometry import Polygon
+
+    from footprint_attributes.testing_shapes import CRS
+
+    trapezoid = Polygon([(0, 0), (10, 0), (8, 5), (2, 5)])
+    rotated_copy = rotate(trapezoid, 63.0, origin=(0, 0))
+    gdf = gpd.GeoDataFrame(geometry=[trapezoid, rotated_copy], crs=CRS)
+    vals = np.asarray(shape.ASCE7(gdf)["ASCE7_parallelityAngle"], dtype=float)
+    assert vals[0] > 5.0, vals
+    assert vals[0] == pytest.approx(vals[1], abs=1e-6), vals

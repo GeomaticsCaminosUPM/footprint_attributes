@@ -23,6 +23,21 @@ Source code: `github.com/GeomaticsCaminosUPM/footprint_attributes
    :width: 80%
    :align: center
 
+Interactive map
+---------------
+
+Every value below is computed by this package, from the raw footprint
+geometry, for three real pilot regions (Guatemala Zona 10, San José Mata
+Redonda, Santo Domingo Ensanche Quisquella). It starts in an auto-playing
+tour -- relative position, then the shape index, then each of the 15 raw
+shape metrics in turn -- and orbits the camera in 3D; interact with it
+(drag/zoom/click) to take over, or see :doc:`examples` for the full
+walkthrough, checkboxes, and screenshots.
+
+.. raw:: html
+
+   <iframe src="_static/maps/index.html" width="100%" height="640" style="border:1px solid #444;" loading="lazy"></iframe>
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents

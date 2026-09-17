@@ -29,6 +29,13 @@ docs = [
     "sphinx>=7.4.7",
     "sphinx-rtd-theme>=3.1.0",
 ]
+# footprint_attributes.visualization: builds the interactive MapLibre +
+# deck.gl pilot-region map (see that submodule's docstring). jinja2 renders
+# the DATASETS/title/subtitle into the bundled main.js/index.html templates
+# under src/footprint_attributes/visualization/_assets/map/.
+vis = [
+    "jinja2>=3.1.0",
+]
 
 [build-system]
 requires = ["hatchling"]

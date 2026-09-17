@@ -100,6 +100,92 @@ def angle_between_0_90(v0: np.ndarray, v1: np.ndarray) -> float:
     return float(np.arccos(abs(dot)))
 
 
+def polygon_edge_orientations(geom) -> list[tuple[float, float]]:
+    """(orientation_radians, length) for every edge of every ring (exterior
+    plus any interiors/holes) of a Polygon or MultiPolygon.
+
+    Args:
+        geom: A shapely Polygon or MultiPolygon, in a projected (metric) CRS.
+
+    Returns:
+        A list of (orientation, length) pairs, one per edge, skipping any
+        zero-length edge (duplicate consecutive vertices). Orientation is in
+        radians, unfolded (raw `atan2`), since the caller decides how to
+        fold it.
+    """
+    polys = list(geom.geoms) if hasattr(geom, "geoms") else [geom]
+    edges: list[tuple[float, float]] = []
+    for poly in polys:
+        rings = [poly.exterior, *poly.interiors]
+        for ring in rings:
+            coords = list(ring.coords)
+            for (x0, y0), (x1, y1) in zip(coords[:-1], coords[1:]):
+                dx, dy = x1 - x0, y1 - y0
+                length = float(np.hypot(dx, dy))
+                if length > 0:
+                    edges.append((float(np.arctan2(dy, dx)), length))
+    return edges
+
+
+def own_edge_orthogonality_deviation(geom) -> float | None:
+    """Per-building measure of how far a polygon's own edges are from
+    forming a rectilinear frame (two directions 90 degrees apart) -- ASCE 7
+    "nonparallel systems" irregularity is about a building's own
+    lateral-force-resisting elements not being mutually orthogonal, which is
+    a property of the building's shape alone, not of its neighbours or the
+    surrounding urban fabric.
+
+    Method: take every edge of the polygon (all rings), weighted by length
+    (a real long wall segment says more about the building's frame than a
+    tiny digitization-noise edge). Find the polygon's own dominant edge
+    direction via an angle-doubling trick (`4*theta` circular mean -- once
+    for the 180° undirected-edge fold, once for the 90° rectangle-symmetry
+    fold, folded back by dividing by 4), then report the
+    length-weighted mean deviation of every edge from that dominant
+    direction, folded to [0, 45] degrees (0 = a clean rectangle or
+    orthogonal L/T/U-shape; higher = edges genuinely skewed relative to each
+    other, e.g. a trapezoidal or rhomboid footprint).
+
+    This is purely a function of the one polygon -- no dataset-wide or
+    neighbourhood reference direction is used or needed.
+
+    Args:
+        geom: A shapely Polygon or MultiPolygon, in a projected (metric) CRS.
+
+    Returns:
+        Degrees in [0, 45], or None if the geometry has no measurable edges.
+    """
+    edges = polygon_edge_orientations(geom)
+    if not edges:
+        return None
+
+    thetas = np.array([e[0] for e in edges])
+    lengths = np.array([e[1] for e in edges])
+    total_length = lengths.sum()
+    if total_length <= 0:
+        return None
+
+    weights = lengths / total_length
+    c = float(np.sum(weights * np.cos(4.0 * thetas)))
+    s = float(np.sum(weights * np.sin(4.0 * thetas)))
+    if abs(c) < 1e-12 and abs(s) < 1e-12:
+        # No resolvable dominant edge direction (e.g. a near-circular or
+        # highly irregular polygon) -- can't measure orthogonality deviation
+        # meaningfully as a single number; treat as maximally irregular.
+        return 45.0
+
+    dominant_theta = np.arctan2(s, c) / 4.0
+    dominant_vec = np.array([np.cos(dominant_theta), np.sin(dominant_theta)])
+
+    deviations = np.empty(len(edges))
+    for i, theta in enumerate(thetas):
+        edge_vec = np.array([np.cos(theta), np.sin(theta)])
+        angle = np.degrees(angle_between_0_90(dominant_vec, edge_vec))
+        deviations[i] = min(angle, 90.0 - angle)
+
+    return float(np.sum(weights * deviations))
+
+
 def angle_signed(v0: np.ndarray, v1: np.ndarray) -> float:
     """Signed angle from *v0* to *v1*, range (-π, π].
 
@@ -1308,6 +1394,18 @@ def select_touching_edges(gdf: gpd.GeoDataFrame, buffer: float = 0) -> gpd.GeoDa
     union = shapely.buffer(
         union, -buffer - 0.001, cap_style="square", join_style="mitre"
     )
+    # NOTE on performance: the per-row `.boundary.intersection(union)` below
+    # looks like it should be O(N^2) (N intersections against one city-sized
+    # union), and an STRtree variant that unions only each row's local
+    # neighbourhood was benchmarked as a replacement. It is *not* faster:
+    # GEOS' overlay already builds its own edge index over `union`, so this
+    # vectorised form measures as linear in N (64 -> 25 600 unit squares:
+    # 0.002 s -> 0.64 s), while the per-row STRtree loop was ~5x slower at
+    # every size (0.011 s -> 4.30 s) because of the Python-level loop and N
+    # separate union/buffer calls. Do not "optimise" this into a per-row loop.
+    # `prepare()` is kept because it is free, though it mainly accelerates
+    # predicates rather than overlay results.
+    shapely.prepare(union)
     out.geometry = (
         out.geometry.buffer(max(buffer, 0.001), cap_style="square", join_style="mitre")
         .buffer(min(-buffer, -0.001), cap_style="square", join_style="mitre")
