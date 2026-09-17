@@ -131,13 +131,42 @@ Plan and vertical slenderness (`shape.slenderness`) and the code-independent ind
   <img src="figures/hole_ratio.jpg" width="40%" alt="Hole bounding box versus building bounding box"/>
 </p>
 
-`ASCE7_parallelityAngle` checks how far the building's own long axis deviates from the reference (North/East) grid — buildings whose walls aren't (roughly) axis-aligned complicate standard structural modelling assumptions:
+`ASCE7_parallelityAngle` checks how far a building's own edges deviate from forming a rectilinear (two-perpendicular-directions) frame, using only that building's own geometry — no reference grid, neighbourhood, or dataset-wide orientation is involved. Buildings whose walls aren't (roughly) mutually orthogonal complicate standard structural modelling assumptions:
 
 <p align="center">
   <img src="figures/parallelity_san_jose.jpg" width="55%" alt="Parallelity angle map"/>
 </p>
 
 Each code parameter has a matching `compliance_{NORM}_{param}` column (0–100 score against the code's own limit).
+
+---
+
+## Interactive map
+
+`footprint_attributes.visualization` (the `vis` extra) builds a self-contained MapLibre + deck.gl 3D map — one dataset per pilot region, colored by relative position, the shape index, or any of the 15 shape metrics, with an auto-playing tour and optional convex-hull / bounding-box / inertia-axis / basic-length / contact-force-arrow overlays:
+
+```bash
+pip install "footprint-attributes[vis]"
+```
+```python
+import geopandas as gpd
+from footprint_attributes.visualization import build_map
+
+datasets = {"guatemala": gpd.read_file("guatemala_pilot_region.gpkg")}
+build_map(datasets, "output/map")
+# then: python -m http.server --directory output/map
+```
+
+<p align="center">
+  <img src="figures/interactive_map_relative_position.jpg" width="48%" alt="Interactive map colored by relative position"/>&nbsp;&nbsp;
+  <img src="figures/interactive_map_shape_index.jpg" width="48%" alt="Interactive map colored by shape index"/>
+</p>
+<p align="center">
+  <img src="figures/interactive_map_ec8_eccentricity.jpg" width="48%" alt="Interactive map colored by EC8 eccentricity ratio, with the norm-exceedance chart"/>&nbsp;&nbsp;
+  <img src="figures/interactive_map_overlays.jpg" width="48%" alt="Interactive map with all five geometry overlays enabled"/>
+</p>
+
+See `examples/generate_interactive_map.py` for a full worked example, or the live version in the [docs](https://footprint-attributes.readthedocs.io/en/latest/examples.html#interactive-map).
 
 ---
 
@@ -150,6 +179,8 @@ pip install "footprint-attributes @ git+https://github.com/GeomaticsCaminosUPM/f
 ```
 
 Dependencies: `geopandas`, `shapely>=2.0`, `numpy`, `pandas`, `scipy`, `scikit-learn`, `statsmodels`, `tabulate`.
+
+The `vis` extra (`pip install "footprint-attributes[vis]"`) additionally pulls in `jinja2`, needed by `footprint_attributes.visualization.build_map` (see [Interactive map](#interactive-map) above).
 
 ---
 

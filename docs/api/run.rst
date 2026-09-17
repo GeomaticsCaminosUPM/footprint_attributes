@@ -29,7 +29,7 @@ ASCE7
      - Max interior hole area / filled area (ASCE 7)
    * - ``ASCE7_parallelityAngle``
      - yes
-     - Angle between bounding-box sides and cardinal axes (ASCE 7)
+     - Length-weighted deviation of a building's own edges from a rectilinear (two-perpendicular-directions) frame (ASCE 7)
 
 Request all of ASCE7's columns at once with ``"ASCE7"`` in ``config["columns"]``, or ``shape.ASCE7(gdf)``.
 

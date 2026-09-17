@@ -197,8 +197,9 @@ part of the fold).
    (forces pointing in different, non-opposite directions -- the true
    "corner" signature) now drives ``contact_angle`` up. This is the same
    fold used by ``angle_between_0_90`` in :mod:`footprint_attributes.geometry`
-   for undirected-axis comparisons (e.g. ``ASCE7_parallelityAngle``,
-   ``bearing``).
+   for undirected-axis comparisons (e.g. ``bearing``, and -- applied twice,
+   to also collapse rectangle symmetry -- inside
+   ``own_edge_orthogonality_deviation`` for ``ASCE7_parallelityAngle``).
 
 .. literalinclude:: ../src/footprint_attributes/position.py
    :pyobject: resultant_angle
@@ -425,12 +426,48 @@ area are ignored).
 
 **ASCE7_parallelityAngle**, limit :math:`\le 5°`:
 
+A purely per-building measure of how far a polygon's own edges are from
+forming a rectilinear frame (two directions 90° apart), computed by
+:func:`~footprint_attributes.geometry.own_edge_orthogonality_deviation`.
+Every edge of every ring (exterior plus holes), weighted by length, votes on
+the polygon's own dominant edge direction :math:`\hat{d}` via an
+angle-doubling circular mean (:math:`4\theta` -- once for the 180°
+undirected-edge fold, once for the 90° rectangle-symmetry fold, undone by
+dividing the resulting angle by 4):
+
 .. math::
 
-   \text{ASCE7\_parallelityAngle} = \frac{180}{\pi}\,\arccos\!\bigl(|\hat{\mathbf{x}} \cdot \text{dir}_1|\bigr)
+   \hat{d} = \tfrac{1}{4}\,\operatorname{atan2}\!\left(
+     \sum_e w_e \sin(4\theta_e),\;
+     \sum_e w_e \cos(4\theta_e)
+   \right), \qquad w_e = \frac{\ell_e}{\sum_e \ell_e}
 
-folded to :math:`[0°, 90°]`; :math:`\text{dir}_1` is the building's longer
-bounding-box axis and :math:`\hat{\mathbf{x}} = (1, 0)`.
+Each edge's deviation from :math:`\hat{d}` is then folded to
+:math:`[0°, 45°]` (the same undirected-axis fold as ``angle_between_0_90``,
+applied a second time to collapse the 90° rectangle symmetry) and averaged,
+length-weighted:
+
+.. math::
+
+   \text{ASCE7\_parallelityAngle} = \sum_e w_e \,
+     \min\!\bigl(\angle(\hat{d}, \hat{e}),\; 90° - \angle(\hat{d}, \hat{e})\bigr)
+
+0° means the building's edges genuinely reduce to two perpendicular
+directions (a rectangle, or any orthogonal L/T/U-shape); higher means the
+edges are mutually skewed (e.g. a trapezoidal or rhomboid footprint). This
+needs no bounding box, neighbour, block, or dataset-wide reference
+direction -- unlike an earlier revision that compared each building against
+the raw +X (map-projection) axis, and a later one against the dataset's own
+dominant orientation, both of which broke down at city scale (see the class
+docstring below for the full rationale).
+
+.. literalinclude:: ../src/footprint_attributes/geometry.py
+   :pyobject: polygon_edge_orientations
+   :language: python
+
+.. literalinclude:: ../src/footprint_attributes/geometry.py
+   :pyobject: own_edge_orthogonality_deviation
+   :language: python
 
 .. literalinclude:: ../src/footprint_attributes/shape.py
    :pyobject: ASCE7ParalelityAngle
@@ -860,7 +897,8 @@ via the parallel-axis theorem):
    :pyobject: calc_inertia_z
    :language: python
 
-**Undirected-axis angle fold** (used by ``ASCE7_parallelityAngle``):
+**Undirected-axis angle fold** (used by ``bearing`` directly, and inside
+``own_edge_orthogonality_deviation`` for ``ASCE7_parallelityAngle``):
 
 .. math::
 

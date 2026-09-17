@@ -47,7 +47,7 @@ from .geometry import (
     hole_h_over_l,
     max_hole_area_ratio,
     setback_gndt_metrics,
-    angle_between_0_90,
+    own_edge_orthogonality_deviation,
     eq_circle_inertia,
     inertia_side_lengths,
     bearing_from_dir,
@@ -293,7 +293,34 @@ class ASCE7HoleRatio(Parameter):
 
 
 class ASCE7ParalelityAngle(Parameter):
-    """ASCE 7 – parallelity angle (degrees)  (≤ 5° for regular)."""
+    """ASCE 7 – parallelity angle (degrees)  (≤ 5° for regular).
+
+    A purely **per-building** measure of how far a polygon's own edges are
+    from forming a rectilinear frame (two directions 90° apart) -- see
+    :func:`footprint_attributes.geometry.own_edge_orthogonality_deviation`.
+    0° means the building's edges (all rings, length-weighted) genuinely
+    reduce to two perpendicular directions (a rectangle, or any orthogonal
+    L/T/U-shape); higher means the edges are mutually skewed (e.g. a
+    trapezoidal or rhomboid footprint).
+
+    Rationale (twice revised): this originally compared each building's
+    bounding-box long axis against a hardcoded ``[1, 0]`` -- the raw +X
+    (East) axis of whatever projected CRS the data was in, a property of
+    the map projection, not the structure (confirmed wrong on real
+    SantoDomingo/EnsancheQuisquella data, where a rotated-but-mutually-
+    parallel street grid scored every building as ~35° irregular). That was
+    then changed to compare against the *dataset's own* dominant
+    orientation -- better for a single compact urban block, but still wrong
+    at city scale: a dataset spanning multiple neighbourhoods with
+    genuinely different street-grid orientations (confirmed on Guatemala
+    Zona10, SanJose Esquivel, SantoDomingo Naco -- their per-building
+    orientation histograms are multi-modal, not a single peak) has no one
+    "dominant orientation" for any external reference to be meaningful
+    against. ASCE 7's nonparallel-systems irregularity is fundamentally
+    about whether *a building's own* lateral-force-resisting elements are
+    mutually orthogonal -- a property of that one polygon, needing no
+    neighbour, block, or dataset-wide reference at all.
+    """
 
     def __init__(self):
         """Register this parameter's name, column, limits, and description."""
@@ -301,21 +328,18 @@ class ASCE7ParalelityAngle(Parameter):
             "parallelityAngle",
             "ASCE7_parallelityAngle",
             ASCE7_LIMITS["parallelityAngle"],
-            "Angle between bounding-box sides and cardinal axes (ASCE 7)",
+            "Length-weighted deviation of a building's own edges from a "
+            "rectilinear (two-perpendicular-directions) frame (ASCE 7)",
         )
 
     def compute(
         self,
         gdf: gpd.GeoDataFrame,
-        *,
-        dir1: np.ndarray | None = None,
         **kwargs,
     ) -> list:
         """Compute this parameter's values for each building; see the class docstring for the formula."""
         gdf = ensure_projected(to_gdf(gdf))
-        if dir1 is None:
-            _, dir1, _, _, _ = compute_bbox_direction(gdf, mode="all")
-        return [np.degrees(angle_between_0_90(np.array([1.0, 0.0]), d)) for d in dir1]
+        return [own_edge_orthogonality_deviation(geom) for geom in gdf.geometry]
 
 
 # ─────────────────────────────────────────────────────────────────────────────

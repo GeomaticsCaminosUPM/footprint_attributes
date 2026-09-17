@@ -231,3 +231,141 @@ def test_hole_h_over_l_recovers_true_hole_size_when_rotated(rotated_hole_buildin
     ntc23_ratio = shape.NTC23(rotated_hole_building)["NTC23_holeRatio"].iloc[0]
     assert ntc23_ratio == pytest.approx(ratio)
     assert ntc23_ratio != pytest.approx(asce7_ratio, rel=0.05)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# select_touching_edges -- prepared-geometry speedup must not change results
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _square_grid(n: int, size: float = 10.0):
+    """n x n grid of `size`-metre squares sharing edges (no gaps)."""
+    import geopandas as gpd
+    from shapely.geometry import box
+
+    from footprint_attributes.testing_shapes import CRS
+
+    polys = [
+        box(i * size, j * size, (i + 1) * size, (j + 1) * size)
+        for i in range(n)
+        for j in range(n)
+    ]
+    return gpd.GeoDataFrame({"i": range(len(polys))}, geometry=polys, crs=CRS)
+
+
+def _isolated_mix():
+    """Touching 3x3 block plus three far-away, non-touching buildings."""
+    import geopandas as gpd
+    from shapely.geometry import box
+
+    from footprint_attributes.testing_shapes import CRS
+
+    polys = list(_square_grid(3).geometry) + [
+        box(500, 500, 510, 510),
+        box(1000, 0, 1007, 1006),
+        box(-200, -200, -190, -185),
+    ]
+    return gpd.GeoDataFrame({"i": range(len(polys))}, geometry=polys, crs=CRS)
+
+
+def _irregular_shapes():
+    """Non-square footprints: L-shapes, triangles, a rotated quad."""
+    import geopandas as gpd
+    from shapely.geometry import Polygon
+
+    from footprint_attributes.testing_shapes import CRS
+
+    polys = [
+        Polygon([(0, 0), (10, 0), (10, 10), (5, 14), (0, 10)]),
+        Polygon([(10, 0), (22, 0), (22, 7), (16, 7), (16, 10), (10, 10)]),
+        Polygon([(0, 10), (5, 14), (0, 18)]),
+        Polygon([(16, 7), (22, 7), (22, 20), (16, 20)]),
+        Polygon([(-12, 0), (0, 0), (0, 10), (-6, 10), (-6, 4), (-12, 4)]),
+        Polygon([(30, 30), (41, 31), (40, 42), (29, 40)]),
+    ]
+    return gpd.GeoDataFrame({"i": range(len(polys))}, geometry=polys, crs=CRS)
+
+
+def _mixed_sizes():
+    """Very large and very small buildings abutting each other."""
+    import geopandas as gpd
+    from shapely.geometry import box
+
+    from footprint_attributes.testing_shapes import CRS
+
+    polys = [
+        box(0, 0, 200, 200),
+        box(200, 0, 202, 2),
+        box(200, 2, 203, 9),
+        box(200, 9, 250, 120),
+        box(-1.5, 200, 0.5, 201),
+        box(0.5, 200, 60, 260),
+    ]
+    return gpd.GeoDataFrame({"i": range(len(polys))}, geometry=polys, crs=CRS)
+
+
+@pytest.mark.parametrize(
+    "gdf_factory",
+    [
+        lambda: _square_grid(8),
+        _isolated_mix,
+        _irregular_shapes,
+        _mixed_sizes,
+    ],
+    ids=["touching-grid", "isolated-mix", "irregular", "mixed-sizes"],
+)
+@pytest.mark.parametrize("buffer", [0.0, 0.5], ids=["buf0", "buf0.5"])
+def test_select_touching_edges_matches_unprepared_reference(gdf_factory, buffer):
+    """`shapely.prepare()` on the union is a pure optimisation: the result
+    must be byte-identical (WKB) to the same computation without preparation,
+    for every footprint arrangement."""
+    import shapely
+    from shapely import wkb
+
+    from footprint_attributes.geometry import select_touching_edges
+
+    gdf = gdf_factory()
+    got = select_touching_edges(gdf, buffer=buffer)
+
+    # Reference implementation: identical, minus the prepare() call.
+    buf = max(buffer, 0.0001)
+    union = shapely.buffer(
+        gdf.geometry.union_all(), buf, cap_style="square", join_style="mitre"
+    )
+    union = shapely.buffer(
+        union, -buffer - 0.001, cap_style="square", join_style="mitre"
+    )
+    expected = (
+        gdf.geometry.buffer(max(buffer, 0.001), cap_style="square", join_style="mitre")
+        .buffer(min(-buffer, -0.001), cap_style="square", join_style="mitre")
+        .boundary.intersection(union)
+    )
+
+    assert len(got) == len(gdf)
+    assert got.crs == gdf.crs
+    assert list(got.columns) == list(gdf.columns)
+    for a, b in zip(got.geometry, expected):
+        assert wkb.dumps(a) == wkb.dumps(b)
+
+
+def test_select_touching_edges_union_is_prepared():
+    """Guard the optimisation itself: `shapely.prepare` must be called on the
+    union geometry before the per-row intersections run."""
+    import shapely
+
+    from footprint_attributes import geometry as geom_mod
+
+    calls = []
+    original = shapely.prepare
+
+    def _spy(geom, *a, **kw):
+        calls.append(geom)
+        return original(geom, *a, **kw)
+
+    shapely.prepare = _spy
+    try:
+        geom_mod.select_touching_edges(_square_grid(4))
+    finally:
+        shapely.prepare = original
+
+    assert calls, "select_touching_edges must prepare the union geometry"
