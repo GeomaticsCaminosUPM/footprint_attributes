@@ -6,7 +6,7 @@ against the three example pilot-region datasets under examples/data/.
 See examples/generate_interactive_map.py for the same thing set up as a
 standalone worked example.
 
-Run with this package's own venv (needs the ``vis`` extra):
+Run with this package's own venv (needs the ``visualization`` extra):
     .venv/bin/python docs/generate_map_data.py
 """
 

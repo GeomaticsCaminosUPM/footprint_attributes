@@ -1,13 +1,13 @@
-"""Build the interactive 3D pilot-region map (MapLibre + deck.gl, no
-backend) -- one dataset per pilot region, colored by relative position,
-shape index, or any of the 15 raw shape/plan-irregularity metrics, with
-optional convex-hull / bounding-box / inertia-axis / basic-length /
-contact-force-arrow overlays.
+"""Build the interactive 3D pilot-region map -- one dataset per pilot
+region, colored by relative position, shape index, or any of the 15 raw
+shape/plan-irregularity metrics, with optional convex-hull / bounding-box /
+inertia-axis / basic-length / contact-force-arrow overlays.
 
-Everything here only *writes files* (GeoJSON data + a static HTML/JS/CSS
-page rendered from the ``_assets/map`` Jinja2 templates); the map itself
-runs entirely in the browser. Needs the ``vis`` extra
-(``pip install "footprint-attributes[vis]"``) for ``jinja2``.
+This module only supplies footprint-specific data (which columns, their
+norm limits/colors, the overlay geometry) and delegates the actual 3D
+MapLibre + deck.gl page to :mod:`FancyFolium.deck3d`, a reusable engine
+that knows nothing about seismic codes or footprints. Needs the ``visualization``
+extra (``pip install "footprint-attributes[visualization]"``).
 
 See ``examples/generate_interactive_map.py`` for a full worked example
 against this package's own pilot-region datasets.
@@ -15,35 +15,158 @@ against this package's own pilot-region datasets.
 
 from __future__ import annotations
 
-import json
-import shutil
 from pathlib import Path
 
 import geopandas as gpd
+import numpy as np
 
 from . import overlays as _overlays
 from ..position import position
 from ..shape import shape
 
-_ASSETS_DIR = Path(__file__).parent / "_assets" / "map"
-
 #: The 15 raw, physical-unit shape/plan-irregularity metrics shown by the
-#: map (norm limits mirrored into ``main.js``'s own ``NORM_INFO``).
-SHAPE_COLUMNS = [
-    "EC8_eccentricityRatio",
-    "EC8_radiusRatio",
-    "EC8_compactness",
-    "ASCE7_setbackRatio",
-    "ASCE7_holeRatio",
-    "ASCE7_parallelityAngle",
-    "GNDTII_beta1_mainShapeSlenderness",
-    "GNDTII_beta2_setbackRatio",
-    "GNDTII_beta4_eccentricityRatio",
-    "GNDTII_beta6_setbackSlenderness",
-    "CSCR2010_eccentricityRatio",
-    "NTC23_setbackRatio",
-    "NTC23_holeRatio",
+#: map, plus each one's code limit/direction/unit -- mirrors
+#: footprint_attributes/config.py's own limits (kept separate since the
+#: map's coloring needs a flat, JS-friendly table, not config.py's
+#: multi-limit-list structure used for compliance scoring).
+_NORM_SPECS = [
+    (
+        "EC8_eccentricityRatio",
+        "EC8 eccentricity ratio",
+        0.30,
+        True,
+        "",
+        "EC8: eccentricity <= 0.30",
+        "EC8",
+    ),
+    (
+        "EC8_radiusRatio",
+        "EC8 radius ratio",
+        1.0,
+        False,
+        "",
+        "EC8: radius ratio >= 1.00",
+        "EC8",
+    ),
+    (
+        "EC8_compactness",
+        "EC8 compactness",
+        0.95,
+        False,
+        "",
+        "EC8: compactness >= 0.95",
+        "EC8",
+    ),
+    (
+        "ASCE7_setbackRatio",
+        "ASCE 7 setback ratio",
+        0.2,
+        True,
+        "",
+        "ASCE 7: setback ratio <= 0.20",
+        "ASCE7",
+    ),
+    (
+        "ASCE7_holeRatio",
+        "ASCE 7 hole ratio",
+        0.25,
+        True,
+        "",
+        "ASCE 7: hole ratio <= 0.25",
+        "ASCE7",
+    ),
+    (
+        "ASCE7_parallelityAngle",
+        "ASCE 7 parallelity angle",
+        10,
+        True,
+        "°",
+        "ASCE 7: angle <= 5°",
+        "ASCE7",
+    ),
+    (
+        "GNDTII_beta1_mainShapeSlenderness",
+        "GNDT-II β1 (slenderness)",
+        0.4,
+        False,
+        "",
+        "GNDT-II β1 >= 0.8",
+        "GNDTII",
+    ),
+    (
+        "GNDTII_beta2_setbackRatio",
+        "GNDT-II β2 (setback ratio)",
+        0.3,
+        True,
+        "",
+        "GNDT-II β2 <= 0.1",
+        "GNDTII",
+    ),
+    (
+        "GNDTII_beta4_eccentricityRatio",
+        "GNDT-II β4 (eccentricity ratio)",
+        0.4,
+        True,
+        "",
+        "GNDT-II β4 <= 0.2",
+        "GNDTII",
+    ),
+    (
+        "GNDTII_beta6_setbackSlenderness",
+        "GNDT-II β6 (setback slenderness)",
+        0.25,
+        False,
+        "",
+        "GNDT-II β6 >= 0.5",
+        "GNDTII",
+    ),
+    (
+        "CSCR2010_eccentricityRatio",
+        "CSCR-2010 eccentricity ratio",
+        0.25,
+        True,
+        "",
+        "CSCR-2010: eccentricity <= 0.05",
+        "CSCR2010",
+    ),
+    (
+        "NTC23_setbackRatio",
+        "NTC-23 setback ratio",
+        0.4,
+        True,
+        "",
+        "NTC-23: setback ratio <= 0.40",
+        "NTC23",
+    ),
+    (
+        "NTC23_holeRatio",
+        "NTC-23 hole ratio",
+        0.4,
+        True,
+        "",
+        "NTC-23: hole ratio <= 0.40",
+        "NTC23",
+    ),
+    (
+        "slenderness_bbox",
+        "Slenderness (bbox)",
+        4.0,
+        True,
+        "",
+        "EC8: slenderness (bbox) <= 4.0",
+        "slenderness",
+    ),
+    (
+        "slenderness_inertia",
+        "Slenderness (inertia)",
+        4.0,
+        True,
+        "",
+        "EC8: slenderness (inertia) <= 4.0",
+        "slenderness",
+    ),
 ]
+SHAPE_COLUMNS = [name for name, *_ in _NORM_SPECS if not name.startswith("slenderness")]
 SLENDERNESS_COLUMNS = ["slenderness_bbox", "slenderness_inertia"]
 
 #: Overlay ids the map's "Overlays" checkboxes expect a matching
@@ -56,6 +179,46 @@ OVERLAY_IDS = [
     "position_arrows",
 ]
 
+_POSITION_COLORS = {
+    "isolated": "#4299e1",
+    "lateral": "#e2a33f",
+    "corner": "#4fbf8f",
+    "confined": "#8744ad",
+    "torque": "#c0392b",
+    "unlabeled": "#6b7280",
+}
+_POSITION_ORDER = ["isolated", "lateral", "corner", "confined", "torque", "unlabeled"]
+_POSITION_LABELS = {
+    "isolated": "Isolated",
+    "lateral": "Lateral",
+    "corner": "Corner",
+    "confined": "Confined",
+    "torque": "Torque",
+    "unlabeled": "Unlabeled",
+}
+
+_FSI_COLORS = {
+    "regular": "#4fbf8f",
+    "shape": "#e2793f",
+    "eccentricity": "#e2c23f",
+    "slenderness": "#c0392b",
+}
+_FSI_ORDER = ["regular", "shape", "eccentricity", "slenderness"]
+_FSI_LABELS = {
+    "regular": "Regular",
+    "shape": "Irregular: shape",
+    "eccentricity": "Irregular: eccentricity",
+    "slenderness": "Irregular: slenderness",
+}
+
+_OVERLAY_STYLE = {
+    "convex_hull": ("Convex hull", "#4299e1", "polygon"),
+    "bounding_box": ("Bounding box", "#e2a33f", "polygon"),
+    "inertia_axis": ("Inertia axis", "#e2938a", "line"),
+    "basic_lengths": ("Building lengths (L1/L2/a1/a2/b/c)", "#111111", "line"),
+    "position_arrows": ("Position force arrows", "#8744ad", "line"),
+}
+
 
 def _default_label(dataset_id: str) -> str:
     return dataset_id.replace("_", " ").title()
@@ -63,45 +226,25 @@ def _default_label(dataset_id: str) -> str:
 
 def _prepare_gdf(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     gdf = gdf.copy()
-    if "id" in gdf.columns:
-        gdf = gdf.rename(columns={"id": "building_uid"})
-    elif "building_uid" not in gdf.columns:
-        gdf["building_uid"] = gdf.index.astype(str)
+    if "id" not in gdf.columns:
+        gdf["id"] = gdf.index.astype(str)
     return gdf
 
 
-def _to_geojson_dict(gdf: gpd.GeoDataFrame) -> dict:
-    return json.loads(gdf.to_crs(epsg=4326).to_json())
-
-
-def _write_geojson(gdf: gpd.GeoDataFrame, out_path: Path) -> None:
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(_to_geojson_dict(gdf)))
-
-
-def _datasets_js(labels: dict[str, str]) -> str:
-    entries = ",\n  ".join(
-        f'{key}: {{ label: {json.dumps(label)}, dir: "data/{key}" }}'
-        for key, label in labels.items()
-    )
-    return "{\n  " + entries + ",\n}"
-
-
-def _render_page(output_dir: Path, context: dict) -> None:
-    try:
-        from jinja2 import Environment, FileSystemLoader
-    except ImportError as exc:
-        raise ImportError(
-            'footprint_attributes.visualization requires the "vis" extra: '
-            'pip install "footprint-attributes[vis]"'
-        ) from exc
-
-    output_dir.mkdir(parents=True, exist_ok=True)
-    env = Environment(loader=FileSystemLoader(_ASSETS_DIR), keep_trailing_newline=True)
-    for name in ("index.html.j2", "main.js.j2"):
-        rendered = env.get_template(name).render(**context)
-        (output_dir / name.removesuffix(".j2")).write_text(rendered)
-    shutil.copyfile(_ASSETS_DIR / "style.css", output_dir / "style.css")
+def _shape_index(result: gpd.GeoDataFrame) -> np.ndarray:
+    """The 4-category shape index shown on the map: start "regular",
+    eccentricity ratio > 0.3 -> "eccentricity", setback ratio > 0.2 ->
+    "shape" (overrides eccentricity), slenderness > 4.0 -> "slenderness"
+    (overrides everything) -- so slenderness always wins if triggered
+    (worst), eccentricity is overridden by either of the other two
+    (mildest). Matches the paper's own analysis notebooks' exact
+    thresholds/override order.
+    """
+    key = np.full(len(result), "regular", dtype=object)
+    key[result["EC8_eccentricityRatio"] > 0.3] = "eccentricity"
+    key[result["ASCE7_setbackRatio"] > 0.2] = "shape"
+    key[result["slenderness_inertia"] > 4.0] = "slenderness"
+    return key
 
 
 def build_map(
@@ -116,19 +259,13 @@ def build_map(
     """Build the interactive map for one or more footprint datasets.
 
     Computes every column the map can color by (the geometric relative
-    position via :func:`~footprint_attributes.position.position`, and the
-    15 shape/plan-irregularity metrics + slenderness via
-    :func:`~footprint_attributes.shape.shape`) plus, unless
-    *with_overlays* is ``False``, the five geometry overlays (convex hull,
-    bounding box, inertia axis, basic lengths, contact-force resultant --
-    see :mod:`.overlays`), and writes everything ``output_dir`` needs to
-    serve the map standalone:
-
-    - ``output_dir/index.html`` / ``main.js`` / ``style.css`` -- the page.
-    - ``output_dir/data/<dataset_id>/buildings.geojson`` -- per-dataset
-      building attributes.
-    - ``output_dir/data/<dataset_id>/overlays/<overlay_id>.geojson`` --
-      per-dataset overlay geometry (if *with_overlays*).
+    position via :func:`~footprint_attributes.position.position`, the 15
+    shape/plan-irregularity metrics + slenderness via
+    :func:`~footprint_attributes.shape.shape`, and the shape index derived
+    from 3 of those) plus, unless *with_overlays* is ``False``, the five
+    geometry overlays (convex hull, bounding box, inertia axis, basic
+    lengths, contact-force resultant -- see :mod:`.overlays`), then calls
+    :func:`FancyFolium.deck3d.build_interactive_map` to render the page.
 
     Serve ``output_dir`` over HTTP (``python -m http.server``) -- the page
     loads its data via ``fetch()``, which ``file://`` does not allow.
@@ -148,42 +285,75 @@ def build_map(
             overlays. Set ``False`` to skip the extra computation when you
             only need the colored buildings.
     """
-    output_dir = Path(output_dir)
-    labels = {k: (labels or {}).get(k, _default_label(k)) for k in datasets}
-    default_dataset = default_dataset or next(iter(datasets))
+    try:
+        from FancyFolium.deck3d import (
+            CategoricalAttribute,
+            NormAttribute,
+            OverlayDef,
+            build_interactive_map,
+        )
+    except ImportError as exc:
+        raise ImportError(
+            'footprint_attributes.visualization requires the "vis" extra: '
+            'pip install "footprint-attributes[visualization]"'
+        ) from exc
 
-    for dataset_id, raw_gdf in datasets.items():
-        gdf = _prepare_gdf(raw_gdf)
+    prepared = {name: _prepare_gdf(gdf) for name, gdf in datasets.items()}
+    map_data: dict[str, gpd.GeoDataFrame] = {}
+    overlay_data: dict[str, dict[str, gpd.GeoDataFrame]] = {}
 
+    for dataset_id, gdf in prepared.items():
         result = shape(gdf, columns=[*SHAPE_COLUMNS, *SLENDERNESS_COLUMNS])
-        result["building_uid"] = gdf["building_uid"].values
+        result["id"] = gdf["id"].values
         if "height" in gdf.columns:
             result["height"] = gdf["height"].values
         result["relativePosition"] = position(gdf)["relativePosition"].values
-        result = result.set_geometry(gdf.geometry.values, crs=gdf.crs)
-
-        _write_geojson(result, output_dir / "data" / dataset_id / "buildings.geojson")
+        result["shape_index"] = _shape_index(result)
+        map_data[dataset_id] = result.set_geometry(gdf.geometry.values, crs=gdf.crs)
 
         if with_overlays:
             height_col = "height" if "height" in gdf.columns else None
-            for overlay_id, overlay_gdf in _overlays.build_overlays(
+            overlay_data[dataset_id] = _overlays.build_overlays(
                 gdf, height_column=height_col
-            ).items():
-                _write_geojson(
-                    overlay_gdf,
-                    output_dir
-                    / "data"
-                    / dataset_id
-                    / "overlays"
-                    / f"{overlay_id}.geojson",
-                )
+            )
 
-    _render_page(
+    attributes = [
+        CategoricalAttribute(
+            "relativePosition",
+            "Relative position",
+            _POSITION_COLORS,
+            _POSITION_ORDER,
+            _POSITION_LABELS,
+        ),
+        CategoricalAttribute(
+            "shape_index", "Shape index", _FSI_COLORS, _FSI_ORDER, _FSI_LABELS
+        ),
+        *(
+            NormAttribute(
+                name,
+                label,
+                limit,
+                worse_is_high=worse_is_high,
+                unit=unit,
+                criteria=criteria,
+                family=family,
+            )
+            for name, label, limit, worse_is_high, unit, criteria, family in _NORM_SPECS
+        ),
+    ]
+    overlay_defs = (
+        [OverlayDef(oid, *_OVERLAY_STYLE[oid]) for oid in OVERLAY_IDS]
+        if with_overlays
+        else []
+    )
+
+    build_interactive_map(
+        map_data,
+        attributes,
         output_dir,
-        {
-            "datasets_js": _datasets_js(labels),
-            "default_dataset": default_dataset,
-            "title": title,
-            "subtitle": labels[default_dataset],
-        },
+        overlays=overlay_data,
+        overlay_defs=overlay_defs,
+        labels=labels,
+        default_dataset=default_dataset,
+        title=title,
     )

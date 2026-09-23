@@ -24,26 +24,26 @@ from ..viz import arrow_gdf
 
 
 def _convex_hull(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    out = gdf[["building_uid"]].copy()
+    out = gdf[["id"]].copy()
     out["geometry"] = gdf.geometry.convex_hull
     return gpd.GeoDataFrame(out, geometry="geometry", crs=gdf.crs)
 
 
 def _bounding_box(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    out = gdf[["building_uid"]].copy()
+    out = gdf[["id"]].copy()
     out["geometry"] = gdf.geometry.apply(lambda g: g.minimum_rotated_rectangle)
     return gpd.GeoDataFrame(out, geometry="geometry", crs=gdf.crs)
 
 
 def _inertia_axis(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     # Reimplements notebook_utils.direction_arrow_gdfs's two specs directly
-    # (rather than calling it) so building_uid can ride along as an
+    # (rather than calling it) so `id` can ride along as an
     # arrow_gdf extra_column, correctly sliced to whichever rows actually
     # get an arrow -- see the _basic_lengths comment below for why that
     # matters.
     L1, dir1, L2, dir2, _ = direction.inertia(gdf, mode="all")
     centroids = np.column_stack([gdf.geometry.centroid.x, gdf.geometry.centroid.y])
-    uid = gdf["building_uid"].values
+    uid = gdf["id"].values
     L1, L2 = np.asarray(L1, dtype=float), np.asarray(L2, dtype=float)
     dir1, dir2 = np.asarray(dir1, dtype=float), np.asarray(dir2, dtype=float)
     arrows = [
@@ -54,7 +54,7 @@ def _inertia_axis(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
             caps="arrow",
             kind="L1",
             value=L1,
-            building_uid=uid,
+            id=uid,
         ),
         arrow_gdf(
             centroids,
@@ -63,7 +63,7 @@ def _inertia_axis(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
             caps="arrow",
             kind="L2",
             value=L2,
-            building_uid=uid,
+            id=uid,
         ),
     ]
     return gpd.GeoDataFrame(pd.concat(arrows, ignore_index=True), crs=gdf.crs)
@@ -71,14 +71,14 @@ def _inertia_axis(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
 def _basic_lengths(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     # Reimplements notebook_utils.dimension_arrow_gdfs's specs directly
-    # (rather than calling it) so building_uid can ride along as an
+    # (rather than calling it) so `id` can ride along as an
     # arrow_gdf extra_column: a1/a2/b/c aren't defined for every building
     # (e.g. no setback -> no b/c), and arrow_gdf drops those rows via its
-    # own min_length filter -- assigning building_uid *after* the fact,
+    # own min_length filter -- assigning `id` *after* the fact,
     # positionally, would then misalign with whichever rows survived.
     L1, dir1, L2, dir2, _ = direction.bbox(gdf, mode="all")
     axis = basic_length_axis(gdf, np.asarray(L1), dir1, np.asarray(L2), dir2)
-    uid = gdf["building_uid"].values
+    uid = gdf["id"].values
     centered_specs = {
         "L1": (axis["centroids"], axis["dir1"] * axis["L1"][:, None]),
         "L2": (axis["centroids"], axis["dir2"] * axis["L2"][:, None]),
@@ -94,7 +94,7 @@ def _basic_lengths(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
             head_frac=ARROW_STYLE[kind]["head_frac"],
             kind=kind,
             value=np.linalg.norm(vec, axis=1),
-            building_uid=uid,
+            id=uid,
         )
         for kind, (anchor, vec) in centered_specs.items()
     ]
@@ -109,7 +109,7 @@ def _basic_lengths(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
                 head_frac=ARROW_STYLE[kind]["head_frac"],
                 kind=kind,
                 value=np.linalg.norm(axis[f"{kind}_vector"], axis=1),
-                building_uid=uid,
+                id=uid,
             )
         )
     return gpd.GeoDataFrame(pd.concat(arrows, ignore_index=True), crs=gdf.crs)
@@ -120,14 +120,12 @@ def _position_arrows(
 ) -> gpd.GeoDataFrame:
     _, resultants = contact_force_vectors(gdf, height_column=height_column)
     if len(resultants) == 0:
-        return gpd.GeoDataFrame(
-            {"building_uid": [], "kind": []}, geometry=[], crs=gdf.crs
-        )
+        return gpd.GeoDataFrame({"id": [], "kind": []}, geometry=[], crs=gdf.crs)
     anchors = np.stack(resultants["anchor"].to_numpy())
     vectors = np.stack(resultants["vector"].to_numpy())
-    uid = gdf.loc[resultants["geom_id"], "building_uid"].to_numpy()
+    uid = gdf.loc[resultants["geom_id"], "id"].to_numpy()
     return arrow_gdf(
-        anchors, vectors, gdf.crs, caps="arrow", kind="contact_force", building_uid=uid
+        anchors, vectors, gdf.crs, caps="arrow", kind="contact_force", id=uid
     )
 
 
@@ -139,7 +137,7 @@ def build_overlays(
     """Build all five map overlays for one dataset.
 
     Args:
-        gdf: Footprints with a ``building_uid`` column (see
+        gdf: Footprints with an ``id`` column (see
             :func:`.maps.build_map`), any CRS.
         height_column: Column with building heights in metres, forwarded to
             :func:`~footprint_attributes.position.contact_force_vectors`

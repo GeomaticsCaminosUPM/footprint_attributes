@@ -1177,14 +1177,32 @@ def main_element_a_lengths(
     touch_pts = circle_tangent_points(polygon, cx, cy, r)
     if len(touch_pts) <= 2:
         return 2 * r, 2 * r, (cx, cy)
-    P = np.array(touch_pts)
+    # Project relative to the circle centre, not raw (UTM-scale, ~1e5-1e6)
+    # world coordinates: dir1/dir2 are only orthogonal to ~1e-5 in practice
+    # (e.g. min_bounding_box's two directions come from independently
+    # normalising two consecutive minimum_rotated_rectangle edges, not a
+    # single rotation angle, so they're never exactly perpendicular), and
+    # reconstructing a point as proj1*dir1 + proj2*dir2 amplifies that
+    # tiny non-orthogonality by however large proj1/proj2 are. Projected
+    # from the origin, proj1/proj2 are themselves ~1e5-1e6 (dominated by
+    # the polygon's absolute position, not its few-metre size), turning a
+    # 1e-5 basis error into a many-metre error in `center` -- confirmed on
+    # real pilot-region data placing `center` 20+ m from the footprint.
+    # Projected from the circle centre instead, proj1/proj2 are only ever
+    # a few metres (the footprint's own size), so the same 1e-5 error
+    # stays microscopic. a1/a2 (pure differences, no basis recombination)
+    # were never affected either way.
+    P = np.array(touch_pts) - (cx, cy)
     proj1 = P @ dir1
     proj2 = P @ dir2
     a2 = float(proj1.max() - proj1.min())
     a1 = float(proj2.max() - proj2.min())
     mid1 = (proj1.max() + proj1.min()) / 2
     mid2 = (proj2.max() + proj2.min()) / 2
-    center = (mid1 * dir1[0] + mid2 * dir2[0], mid1 * dir1[1] + mid2 * dir2[1])
+    center = (
+        cx + mid1 * dir1[0] + mid2 * dir2[0],
+        cy + mid1 * dir1[1] + mid2 * dir2[1],
+    )
     return a1, a2, center
 
 

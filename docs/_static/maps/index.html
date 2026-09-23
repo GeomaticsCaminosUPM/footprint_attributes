@@ -51,11 +51,10 @@
         </div>
       </aside>
 
-      <!-- Left control panel: dataset (one per pilot region), color-by
-           (relative position, shape index, or one of 15 shape-irregularity
-           metrics -- see main.js's ATTRIBUTES), the legend (swatches or a
-           5-bin percentile gradient, recomputed per attribute+dataset), and
-           the geometry-overlay checkboxes. -->
+      <!-- Left control panel: dataset switcher, color-by dropdown (see
+           main.js's ATTRIBUTES), the legend (swatches or a 5-bin percentile
+           gradient, recomputed per attribute+dataset), and the geometry-
+           overlay checkboxes (hidden entirely if none were configured). -->
       <aside id="controls" class="glass-panel">
         <button id="controls-toggle" type="button" class="collapsed" aria-label="Show controls" title="Show controls">⟨</button>
         <div id="controls-body">
@@ -78,8 +77,10 @@
             <label>Color by</label>
             <div id="attribute-select"></div>
 
-            <label>Overlays</label>
-            <div id="overlay-checkboxes"></div>
+            <div id="overlays-section" class="hidden">
+              <label>Overlays</label>
+              <div id="overlay-checkboxes"></div>
+            </div>
           </div>
 
           <div id="legend"></div>
@@ -89,7 +90,8 @@
 
       <!-- Right side panel: norm-exceedance chart for the currently-shown
            attribute (good -> bad, % of buildings that value or worse), plus
-           a per-category count chart for relative position / shape index. -->
+           a per-category count chart when a categorical attribute is
+           selected. -->
       <aside id="charts-panel" class="glass-panel">
         <div id="charts-panel-content">
           <div id="charts-body">
@@ -98,9 +100,9 @@
               <div id="norm-chart"></div>
               <p class="hint" id="norm-chart-caption"></p>
             </div>
-            <div class="chart-card" id="shape-index-chart-card">
-              <h3 id="shape-index-chart-title">Shape index</h3>
-              <div id="shape-index-chart"></div>
+            <div class="chart-card" id="categorical-chart-card">
+              <h3 id="categorical-chart-title">Category counts</h3>
+              <div id="categorical-chart"></div>
             </div>
           </div>
         </div>

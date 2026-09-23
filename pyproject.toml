@@ -29,12 +29,23 @@ docs = [
     "sphinx>=7.4.7",
     "sphinx-rtd-theme>=3.1.0",
 ]
-# footprint_attributes.visualization: builds the interactive MapLibre +
-# deck.gl pilot-region map (see that submodule's docstring). jinja2 renders
-# the DATASETS/title/subtitle into the bundled main.js/index.html templates
-# under src/footprint_attributes/visualization/_assets/map/.
-vis = [
-    "jinja2>=3.1.0",
+# Mirrors [dependency-groups].visualization below -- kept as a real pip
+# extra so `pip install .[visualization]` works for non-uv consumers. Keep
+# the two lists in sync by hand if either changes. Covers both this
+# package's own footprint_attributes.visualization (the interactive
+# MapLibre + deck.gl pilot-region map, via FancyFolium.deck3d) and the
+# example notebooks' FancyFolium/matplotlib static maps (notebook_utils.py,
+# viz.py).
+visualization = [
+    "folium>=0.20.0",
+    "ipykernel>=6.31.0",
+    "jupyter>=1.1.1",
+    "jupyter-server>=2.20.0",
+    "mapclassify>=2.8.1",
+    "matplotlib>=3.9.4",
+    "nbconvert>=7.17.1",
+    "pillow>=12.2.0",
+    "fancyfolium[deck3d]",
 ]
 
 [build-system]
@@ -45,7 +56,11 @@ build-backend = "hatchling.build"
 packages = ["src/footprint_attributes"]
 
 [tool.uv.sources]
-fancyfolium = { git = "https://github.com/GeomaticsCaminosUPM/FancyFolium.git", rev = "v1.0.0" }
+# Local path during development against this monorepo's own FancyFolium
+# checkout, which has the deck3d engine the `visualization` extra needs;
+# switch back to a pinned `git`+`rev` (e.g. a v1.1.0 tag once cut) for a
+# released version.
+fancyfolium = { path = "../FancyFolium", editable = true }
 
 [dependency-groups]
 dev = [
@@ -69,7 +84,7 @@ visualization = [
     "matplotlib>=3.9.4",
     "nbconvert>=7.17.1",
     "pillow>=12.2.0",
-    "fancyfolium",
+    "fancyfolium[deck3d]",
 ]
 
 [tool.uv]
