@@ -704,7 +704,7 @@ wheels = [
 [[package]]
 name = "fancyfolium"
 version = "1.1.0"
-source = { editable = "../FancyFolium" }
+source = { git = "https://github.com/GeomaticsCaminosUPM/FancyFolium.git?rev=9cebbdb138943d2477d77cc641c3fb00e0a8b04d#9cebbdb138943d2477d77cc641c3fb00e0a8b04d" }
 dependencies = [
     { name = "folium" },
     { name = "geopandas" },
@@ -720,29 +720,6 @@ dependencies = [
 [package.optional-dependencies]
 deck3d = [
     { name = "jinja2" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "fancyfolium", extras = ["raster", "deck3d", "notebook"], marker = "extra == 'all'" },
-    { name = "folium", specifier = ">=0.20.0" },
-    { name = "geopandas", specifier = ">=1.0.1" },
-    { name = "ipykernel", marker = "extra == 'notebook'", specifier = ">=6.31.0" },
-    { name = "jinja2", marker = "extra == 'deck3d'", specifier = ">=3.1.0" },
-    { name = "mapclassify", marker = "extra == 'notebook'", specifier = ">=2.8.1" },
-    { name = "matplotlib", marker = "extra == 'notebook'", specifier = ">=3.9.4" },
-    { name = "numpy", specifier = ">=2.0.2" },
-    { name = "pandas", specifier = ">=2.3.3" },
-    { name = "pillow", specifier = ">=10.0.0" },
-    { name = "rasterio", marker = "extra == 'raster'", specifier = ">=1.4.3" },
-    { name = "shapely", specifier = ">=2.0.7" },
-]
-provides-extras = ["raster", "deck3d", "notebook", "all"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "fancyfolium", extras = ["raster", "notebook"] },
-    { name = "pytest", specifier = ">=8.0.0" },
 ]
 
 [[package]]
@@ -918,7 +895,7 @@ visualization = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fancyfolium", extras = ["deck3d"], marker = "extra == 'visualization'", editable = "../FancyFolium" },
+    { name = "fancyfolium", extras = ["deck3d"], marker = "extra == 'visualization'", git = "https://github.com/GeomaticsCaminosUPM/FancyFolium.git?rev=9cebbdb138943d2477d77cc641c3fb00e0a8b04d" },
     { name = "folium", marker = "extra == 'visualization'", specifier = ">=0.20.0" },
     { name = "geopandas", specifier = ">=1.1.2" },
     { name = "ipykernel", marker = "extra == 'visualization'", specifier = ">=6.31.0" },
@@ -957,7 +934,7 @@ docs = [
     { name = "sphinx-rtd-theme", specifier = ">=3.1.0" },
 ]
 visualization = [
-    { name = "fancyfolium", extras = ["deck3d"], editable = "../FancyFolium" },
+    { name = "fancyfolium", extras = ["deck3d"], git = "https://github.com/GeomaticsCaminosUPM/FancyFolium.git?rev=9cebbdb138943d2477d77cc641c3fb00e0a8b04d" },
     { name = "folium", specifier = ">=0.20.0" },
     { name = "ipykernel", specifier = ">=6.31.0" },
     { name = "jupyter", specifier = ">=1.1.1" },

@@ -56,11 +56,11 @@ build-backend = "hatchling.build"
 packages = ["src/footprint_attributes"]
 
 [tool.uv.sources]
-# Local path during development against this monorepo's own FancyFolium
-# checkout, which has the deck3d engine the `visualization` extra needs;
-# switch back to a pinned `git`+`rev` (e.g. a v1.1.0 tag once cut) for a
-# released version.
-fancyfolium = { path = "../FancyFolium", editable = true }
+# Pinned to the FancyFolium commit that adds the deck3d engine the
+# `visualization` extra needs (swap for a v1.1.0 tag once cut). For local
+# development against a sibling checkout, temporarily use:
+#   fancyfolium = { path = "../FancyFolium", editable = true }
+fancyfolium = { git = "https://github.com/GeomaticsCaminosUPM/FancyFolium.git", rev = "9cebbdb138943d2477d77cc641c3fb00e0a8b04d" }
 
 [dependency-groups]
 dev = [
