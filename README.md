@@ -1,114 +1,101 @@
-# footprint_attributes
+<h1 align="center">footprint_attributes</h1>
 
 <p align="center">
-  <img src="figures/graphical_abstract.jpg" width="80%" alt="Graphical abstract"/>
+  <strong>Seismic behaviour modifiers from 2-D building footprints — automated, objective, reproducible.</strong>
 </p>
 
-Automated computation of **seismic behaviour modifiers** from 2-D building footprint polygons, implementing the methodology described in:
+<p align="center">
+  <a href="https://github.com/GeomaticsCaminosUPM/footprint_attributes/actions/workflows/tests.yml"><img src="https://github.com/GeomaticsCaminosUPM/footprint_attributes/actions/workflows/tests.yml/badge.svg" alt="tests"/></a>
+  <a href="https://footprint-attributes.readthedocs.io/en/latest/"><img src="https://readthedocs.org/projects/footprint-attributes/badge/?version=latest" alt="docs"/></a>
+  <a href="https://doi.org/10.1186/s40323-026-00323-y"><img src="https://img.shields.io/badge/DOI-10.1186%2Fs40323--026--00323--y-blue" alt="DOI"/></a>
+  <img src="https://img.shields.io/badge/python-%E2%89%A53.10-blue" alt="Python ≥ 3.10"/>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-green" alt="GPL-3.0"/></a>
+</p>
+
+<p align="center">
+  <a href="https://footprint-attributes.readthedocs.io/en/latest/">Documentation</a> ·
+  <a href="https://footprint-attributes.readthedocs.io/en/latest/concepts.html">Concepts</a> ·
+  <a href="https://footprint-attributes.readthedocs.io/en/latest/formulas.html">Formulas</a> ·
+  <a href="https://footprint-attributes.readthedocs.io/en/latest/examples.html#interactive-map">Interactive map</a> ·
+  <a href="#citation">Citation</a>
+</p>
+
+<p align="center">
+  <img src="docs/maps/relative_position.jpg" width="100%" alt="Relative position of every building in three pilot regions"/>
+</p>
+
+`footprint_attributes` turns a file of building footprint polygons into the attributes seismic risk models need for every building: its **direction**, its **position within the urban block**, and its **plan-shape irregularity** under five international seismic codes. Each is computed with a deterministic geometric algorithm, not expert judgement. It implements the methodology of:
 
 > Ureña-Pliego, M., Rodríguez-Saiz, J., Núñez-Álvarez, G., Marchamalo-Sacristán, M., González-Rodrigo, B. (2026).
 > *A methodology for the automated estimation of footprint-derived seismic behaviour modifiers in building exposure assessment.*
 > Advanced Modeling and Simulation in Engineering Sciences, 13:3. [doi.org/10.1186/s40323-026-00323-y](https://link.springer.com/content/pdf/10.1186/s40323-026-00323-y.pdf)
 
-Developed by the [Advanced Geomatics group (AGA)](https://blogs.upm.es/aga/en/) at the Universidad Politécnica de Madrid. See [Citation](#citation) below for the full author list, ORCIDs, and funding.
+Developed by the [Advanced Geomatics group (AGA)](https://blogs.upm.es/aga/en/) at the Universidad Politécnica de Madrid.
 
-Full documentation: [footprint-attributes.readthedocs.io](https://footprint-attributes.readthedocs.io/en/latest/) — see in particular the [Formulas page](https://footprint-attributes.readthedocs.io/en/latest/formulas.html), which gives the exact mathematical formula, source code, and rationale behind every parameter.
+> **Footprint digitalisation** (Mask2Former / SAM2 instance segmentation) is out of scope; this package starts from an already-digitised footprint file.
 
-> **Footprint digitalisation** (Mask2Former / SAM2 instance segmentation) is out of scope for this package and lives elsewhere; this package starts from an already-digitised footprint geometry file.
+---
+
+## Contents
+
+- [Why this package?](#why-this-package)
+- [What is computed?](#what-is-computed)
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [Interactive map](#interactive-map)
+- [Validation](#validation)
+- [Repository layout](#repository-layout)
+- [Documentation](#documentation)
+- [Citation](#citation)
+- [License](#license)
 
 ---
 
 ## Why this package?
 
-Seismic risk models require, for each building, a set of *behaviour modifiers* — attributes that adjust the base vulnerability of a structural typology. Several of these modifiers are derivable directly from a building's 2-D footprint, but their calculation usually requires subjective expert judgement based on seismic codes.
+Seismic risk models adjust each structural typology's vulnerability with *behaviour modifiers*. Several of them can be derived from the 2-D footprint alone, but they are usually assigned by hand by surveyors reading code provisions. This package turns those provisions into geometric algorithms, so the same footprint always gets the same answer and a national inventory takes minutes, not field campaigns.
 
 <p align="center">
-  <img src="figures/DNA.jpg" width="65%" alt="GEM taxonomy attributes; red boxes mark those automated here"/>
-  <br>
-  <em>GEM building-taxonomy attributes. Red boxes mark the ones automated by this package: direction, position, plan shape and structural irregularity.</em>
+  <img src="docs/figures/graphical_abstract.jpg" width="80%" alt="Graphical abstract"/>
 </p>
 
-This package translates the relevant code provisions into deterministic geometric algorithms, making the assessment **objective, reproducible, and scalable** to national-level inventories.
+<p align="center">
+  <img src="docs/figures/DNA.jpg" width="60%" alt="GEM taxonomy attributes; red boxes mark those automated here"/>
+  <br>
+  <em>GEM building-taxonomy attributes. The red boxes (direction, position, plan shape and structural irregularity) are automated by this package.</em>
+</p>
 
 ---
 
 ## What is computed?
 
-### 1 · Building direction — `direction`
+Every map and chart below was computed by this package from nothing but the raw footprint geometry of three pilot regions: Guatemala City (Zona 10), San José (Mata Redonda) and Santo Domingo (Ensanche Quisquella). They are all generated by [`docs/docs_maps_and_plots.py`](docs/docs_maps_and_plots.py).
 
-The orientation of the footprint's principal axes, via two independent methods:
+### 1 · Relative position within the block — `position`
 
-- `direction.bbox` — axes of the minimum rotated bounding box.
-- `direction.inertia` — principal axes of the second moment of area (exact closed-form). The *weak* axis (smaller moment) defines the building's `bearing`.
-
-<p align="center">
-  <img src="figures/axis_inertia_2b.jpg" width="40%" alt="Second moment of area axes"/>&nbsp;&nbsp;
-  <img src="figures/axis_inertia_3.jpg" width="40%" alt="Minimum bounding box axes"/>
-</p>
-<p align="center"><em>Left: principal axes of inertia. Right: minimum bounding box axes.</em></p>
-
-<p align="center">
-  <img src="figures/direction_san_jose.jpg" width="55%" alt="Building direction map"/>
-</p>
-
-### 2 · Relative position within the block — `position`
-
-A building's neighbours change how it behaves in an earthquake: an isolated building sways freely, a confined one is restrained but may pound against its neighbours, and one touched only at a corner can twist. Each building is classified into one of five categories using a **contact-force analogy**: a virtual unit pressure is applied to every shared wall segment (proportional to wall height × length), and the resultant force, confinement ratio, and angular-acceleration proxy decide the class.
-
-<p align="center">
-  <img src="figures/relative_position_explanation.jpg" width="40%" alt="Contact force diagram"/>
-</p>
+A building's neighbours change how it behaves in an earthquake: an isolated building sways freely, a confined one is restrained but may pound against its neighbours, and one touched unevenly can twist. A **contact-force analogy** applies a virtual unit pressure to every shared wall; the size of the resultant, how much it cancels out and how much it would twist the building decide the class.
 
 | Class | Meaning |
 |---|---|
 | **isolated** | No touching neighbours |
-| **lateral** | Touches on one side |
-| **corner** | Touches on two perpendicular (non-opposite) sides |
-| **confined** | Touches on both lateral sides (enclosed) |
-| **torque** | Confined or corner with large angular acceleration |
+| **lateral** | Pushed from one side |
+| **corner** | Pushed from two non-opposite sides |
+| **confined** | Pushed from opposite sides that largely cancel |
+| **torque** | Corner or confined, but unevenly enough to twist |
 
 <p align="center">
-  <img src="figures/relative_position_san_jose.jpg" width="55%" alt="Relative position map"/>
+  <img src="docs/figures/position_scenarios.png" width="100%" alt="One hand-built scenario per class, with contact-force arrows"/>
+  <br><em>One hand-built scenario per class: thin arrows are the push on each shared wall, the thick arrow their resultant.</em>
 </p>
-<p align="center">
-  <img src="figures/relative_position_detail.jpg" width="45%" alt="Relative position map, block detail with legend"/>
-</p>
-<p align="center"><em>Every building in a real urban block, coloured by its computed <code>relativePosition</code> class.</em></p>
-
-### 3 · Footprint shape indices — `shape`
-
-Plan-irregularity parameters from **five international seismic codes**, plus three code-independent compactness indices (`polsby_popper`, `convex_hull_irregularity`, `inertia_circle_ratio`).
-
-#### Structural model
-
-All shape indices are computed under a *hollow-box* approximation: continuous uniform walls of height 3 m, one ceiling slab, identical materials throughout.
 
 <p align="center">
-  <img src="figures/box_idealization_and_eccentricity.jpg" width="60%" alt="Hollow-box model"/>
+  <img src="docs/maps/detail_contact_forces.jpg" width="100%" alt="Contact forces on real buildings"/>
+  <br><em>The same construction on real buildings in each pilot region.</em>
 </p>
 
-The **centre of mass** is the area-weighted average of the ceiling centroid and the perimeter centroid. The **centre of stiffness** is the perimeter centroid (boundary of the footprint).
+### 2 · Footprint shape indices — `shape`
 
-#### Basic plan dimensions
-
-Setback and slenderness parameters build on a common construction: the inscribed circle for the main shape element `a` (fig. below), and the convex-hull difference for setback pieces `b`/`c`.
-
-<p align="center">
-  <img src="figures/circle_step_1.jpg" width="23%"/>&nbsp;<img src="figures/circle_step_2.jpg" width="23%"/>&nbsp;<img src="figures/circle_step_3.jpg" width="23%"/>&nbsp;<img src="figures/circle_step_4.jpg" width="23%"/>
-</p>
-<p align="center"><em>Process to find the main-element side <code>a</code>: inscribe the largest circle, find its tangent points, circumscribe a rectangle along the footprint's own principal axes.</em></p>
-
-<p align="center">
-  <img src="figures/setback_step_1.jpg" width="35%" alt="Convex hull minus footprint = setback pieces"/>&nbsp;&nbsp;
-  <img src="figures/setback_step_2.jpg" width="35%" alt="b1, b2 measured on each setback piece"/>
-</p>
-<p align="center"><em>Setback pieces <code>b</code> come from <code>convex_hull(footprint) − footprint</code>; each disconnected piece is measured against its own circumscribed rectangle (<code>b1</code>, <code>b2</code>), and the piece that most restricts the ratio is used.</em></p>
-
-<p align="center">
-  <img src="figures/basic_lengths_example.jpg" width="50%" alt="Basic length examples"/>
-</p>
-
-#### Supported codes
+Plan-irregularity parameters from **five international seismic codes**, plus three code-independent compactness indices (`polsby_popper`, `convex_hull_irregularity`, `inertia_circle_ratio`). Every code parameter also gets a `compliance_{NORM}_{param}` column (a 0–100 score against the code's own limit).
 
 | Code | `shape.<NORM>` | Parameters |
 |---|---|---|
@@ -118,55 +105,60 @@ Setback and slenderness parameters build on a common construction: the inscribed
 | **US ASCE 7** | `ASCE7` | setback ratio, hole ratio, parallelity angle |
 | **Mexican NTC-23** | `NTC23` | setback ratio, hole ratio |
 
-Plan and vertical slenderness (`shape.slenderness`) and the code-independent indices apply across codes rather than belonging to one.
+Plan slenderness (`shape.slenderness`) applies across codes.
 
 <p align="center">
-  <img src="figures/slenderness_san_jose.jpg" width="46%" alt="Slenderness map"/>&nbsp;&nbsp;
-  <img src="figures/eccentricity_san_jose.jpg" width="45%" alt="Eccentricity map"/>
+  <img src="docs/maps/shape_index.jpg" width="100%" alt="Shape index in the three pilot regions"/>
+  <br><em>The shape index condenses three code checks: EC8 eccentricity > 0.3, ASCE 7 setback > 0.2, slenderness > 4.</em>
 </p>
-
-`ASCE7`'s hole ratio compares a courtyard/hole's own bounding box against the building's; `NTC23`'s hole ratio instead compares the hole's short side to the building's own cross-section width through it — the two answer slightly different questions about how disruptive an interior hole is:
 
 <p align="center">
-  <img src="figures/hole_ratio.jpg" width="40%" alt="Hole bounding box versus building bounding box"/>
+  <img src="docs/maps/EC8_eccentricityRatio.jpg" width="100%" alt="EC8 eccentricity ratio in the three pilot regions"/>
+  <br><em>Each of the 15 code metrics is mapped against its own limit (green complies, red exceeds). The <a href="https://footprint-attributes.readthedocs.io/en/latest/formulas.html">Formulas page</a> has all of them.</em>
 </p>
 
-`ASCE7_parallelityAngle` checks how far a building's own edges deviate from forming a rectilinear (two-perpendicular-directions) frame, using only that building's own geometry — no reference grid, neighbourhood, or dataset-wide orientation is involved. Buildings whose walls aren't (roughly) mutually orthogonal complicate standard structural modelling assumptions:
+All shape indices use a *hollow-box* model: uniform walls and one slab. The offset between the centre of mass and the centre of stiffness is the eccentricity that makes a building twist:
 
 <p align="center">
-  <img src="figures/parallelity_san_jose.jpg" width="55%" alt="Parallelity angle map"/>
-</p>
-
-Each code parameter has a matching `compliance_{NORM}_{param}` column (0–100 score against the code's own limit).
-
----
-
-## Interactive map
-
-`footprint_attributes.visualization` (the `visualization` extra) builds a self-contained MapLibre + deck.gl 3D map — one dataset per pilot region, colored by relative position, the shape index, or any of the 15 shape metrics, with an auto-playing tour and optional convex-hull / bounding-box / inertia-axis / basic-length / contact-force-arrow overlays:
-
-```bash
-pip install "footprint-attributes[visualization]"
-```
-```python
-import geopandas as gpd
-from footprint_attributes.visualization import build_map
-
-datasets = {"guatemala": gpd.read_file("guatemala_pilot_region.gpkg")}
-build_map(datasets, "output/map")
-# then: python -m http.server --directory output/map
-```
-
-<p align="center">
-  <img src="figures/interactive_map_relative_position.jpg" width="48%" alt="Interactive map colored by relative position"/>&nbsp;&nbsp;
-  <img src="figures/interactive_map_shape_index.jpg" width="48%" alt="Interactive map colored by shape index"/>
+  <img src="docs/figures/box_idealization_and_eccentricity.jpg" width="45%" alt="Hollow-box model"/>
 </p>
 <p align="center">
-  <img src="figures/interactive_map_ec8_eccentricity.jpg" width="48%" alt="Interactive map colored by EC8 eccentricity ratio, with the norm-exceedance chart"/>&nbsp;&nbsp;
-  <img src="figures/interactive_map_overlays.jpg" width="48%" alt="Interactive map with all five geometry overlays enabled"/>
+  <img src="docs/figures/shape_centre_of_mass_stiffness.png" width="100%" alt="Centre of mass and stiffness on test shapes"/>
 </p>
 
-See `examples/generate_interactive_map.py` for a full worked example, or the live version in the [docs](https://footprint-attributes.readthedocs.io/en/latest/examples.html#interactive-map).
+<p align="center">
+  <img src="docs/figures/shape_code_exceedance.png" width="75%" alt="Share of buildings exceeding each code limit"/>
+  <br><em>How often each code limit is exceeded, per pilot region.</em>
+</p>
+
+### 3 · Building direction — `direction`
+
+The orientation of the footprint's principal axes, by two independent methods:
+
+- `direction.bbox` — axes of the minimum rotated bounding box.
+- `direction.inertia` — principal axes of the second moment of area (exact closed form). The *weak* axis defines the building's `bearing`.
+
+<p align="center">
+  <img src="docs/figures/direction_methods_test_shapes.png" width="100%" alt="bbox vs inertia axes on test shapes"/>
+</p>
+<p align="center">
+  <img src="docs/maps/bearing.jpg" width="100%" alt="Bearing of every building in the three pilot regions"/>
+  <br><em>Bearing (inertia) on a cyclic colour ramp: each street grid shows up clearly.</em>
+</p>
+
+### 4 · Basic plan dimensions
+
+Setback and slenderness parameters are built from a few lengths read off each footprint. These are its overall dimensions `L1`/`L2`, the main rectangular element `a1`/`a2` (found with the largest inscribed circle), and the largest setback `b`/`c` (from `convex_hull − footprint`):
+
+<p align="center">
+  <img src="docs/figures/circle_step_1.jpg" width="23%"/>&nbsp;<img src="docs/figures/circle_step_2.jpg" width="23%"/>&nbsp;<img src="docs/figures/circle_step_3.jpg" width="23%"/>&nbsp;<img src="docs/figures/circle_step_4.jpg" width="23%"/>
+</p>
+<p align="center">
+  <img src="docs/figures/basic_lengths_test_shapes_bbox.png" width="100%" alt="Basic lengths on test shapes"/>
+</p>
+<p align="center">
+  <img src="docs/maps/detail_basic_lengths.jpg" width="100%" alt="Basic lengths on real buildings"/>
+</p>
 
 ---
 
@@ -180,7 +172,7 @@ pip install "footprint-attributes @ git+https://github.com/GeomaticsCaminosUPM/f
 
 Dependencies: `geopandas`, `shapely>=2.0`, `numpy`, `pandas`, `scipy`, `scikit-learn`, `statsmodels`, `tabulate`.
 
-The `visualization` extra (`pip install "footprint-attributes[visualization]"`) additionally pulls in `jinja2`, needed by `footprint_attributes.visualization.build_map` (see [Interactive map](#interactive-map) above).
+The `visualization` extra (`pip install "footprint-attributes[visualization]"`) adds what `footprint_attributes.visualization` needs for the [interactive map](#interactive-map) and the example notebooks' maps.
 
 ---
 
@@ -213,7 +205,39 @@ result = footprint_attributes.run(
 footprints.to_file("results.gpkg")
 ```
 
-See the [`examples/`](examples/) notebooks for full walkthroughs of every module on real footprint data, and the [Sphinx docs](docs/) for the complete API reference.
+The [`examples/`](examples/) notebooks walk through every module on the real pilot-region data; each opens in Colab.
+
+---
+
+## Interactive map
+
+`footprint_attributes.visualization.build_map` builds a self-contained MapLibre + deck.gl 3D map. It shows one dataset per region, coloured by relative position, the shape index or any of the 15 shape metrics. It has an auto-playing tour and overlays for the convex hull, bounding box, inertia axis, basic lengths and contact-force arrows. Try it live [in the docs](https://footprint-attributes.readthedocs.io/en/latest/examples.html#interactive-map).
+
+```python
+import geopandas as gpd
+from footprint_attributes.visualization import build_map
+
+datasets = {"guatemala": gpd.read_file("guatemala_pilot_region.gpkg")}
+build_map(datasets, "output/map")
+# then: python -m http.server --directory output/map
+```
+
+<p align="center">
+  <img src="docs/figures/interactive_map_shape_index.jpg" width="48%" alt="Interactive map colored by shape index"/>&nbsp;&nbsp;
+  <img src="docs/figures/interactive_map_overlays.jpg" width="48%" alt="Interactive map with all five geometry overlays enabled"/>
+</p>
+
+---
+
+## Validation
+
+The methodology was validated against hand-labelled building inventories from the three pilot areas. The automated shape and position classifications were comparable in accuracy to the variability between independent human surveyors.
+
+<p align="center">
+  <img src="docs/figures/confusion_matrix_relative_position.jpg" width="42%" alt="Relative position confusion matrix"/>&nbsp;&nbsp;
+  <img src="docs/figures/relative_position_sensibility.jpg" width="48%" alt="Relative position accuracy vs contact buffer"/>
+</p>
+<p align="center"><em>Left: relative-position confusion matrix. Right: accuracy vs. contact buffer, peaking near the 0.1 m default.</em></p>
 
 ---
 
@@ -222,47 +246,37 @@ See the [`examples/`](examples/) notebooks for full walkthroughs of every module
 ```
 footprint_attributes/
 ├── src/footprint_attributes/
-│   ├── __init__.py       # public entry points: direction, shape, position, run
-│   ├── direction.py       # building orientation (bbox / inertia methods)
-│   ├── shape.py            # seismic-code shape indices (EC8, ASCE7, GNDTII, CSCR2010, NTC23)
-│   ├── position.py         # contact forces + relative-position classification
-│   ├── eccentricity.py     # Mohr's-circle worst-case eccentricity optimisation
+│   ├── __init__.py          # public entry points: direction, shape, position, run
+│   ├── direction.py         # building orientation (bbox / inertia methods)
+│   ├── shape.py             # seismic-code shape indices (EC8, ASCE7, GNDTII, CSCR2010, NTC23)
+│   ├── position.py          # contact forces + relative-position classification
+│   ├── eccentricity.py      # Mohr's-circle worst-case eccentricity optimisation
 │   ├── geometry.py          # shared low-level geometry primitives
 │   ├── config.py            # code limits, compliance grades, default thresholds
-│   └── runner.py             # `run()` single entry point
+│   ├── runner.py            # `run()` single entry point
+│   └── visualization/       # interactive 3D map (`visualization` extra)
 ├── examples/
-│   ├── direction.ipynb, position.ipynb, shape.ipynb, building_sizes.ipynb
-│   └── data/                 # sample footprints, one file per pilot area:
-│       ├── san_jose_pilot_region.gpkg
-│       ├── guatemala_pilot_region.gpkg
-│       └── santo_domingo_pilot_region.gpkg
-├── docs/                     # Sphinx documentation (Google-style autodoc + notebooks)
-├── tests/                    # pytest suite
-└── figures/                   # images used in this README, the docs, and the paper
+│   ├── direction.ipynb, position.ipynb, shape.ipynb, building_sizes.ipynb, run.ipynb
+│   └── data/                # sample footprints, one file per pilot area
+├── docs/                    # Sphinx documentation
+│   ├── docs_maps_and_plots.py   # regenerates every map and plot below
+│   ├── figures/             # plots and paper figures used by the docs and this README
+│   └── maps/                # static pilot-region maps
+├── tests/                   # pytest suite
+└── figures/                 # paper sources (LaTeX, BibTeX, per-city paper figures)
 ```
 
 ---
 
 ## Documentation
 
-Full API reference (Google-style docstrings via Sphinx/autodoc) and rendered example notebooks:
+Full docs at **[footprint-attributes.readthedocs.io](https://footprint-attributes.readthedocs.io/en/latest/)**: a visual [concepts](https://footprint-attributes.readthedocs.io/en/latest/concepts.html) walkthrough, the [formula, source code and pilot-region map](https://footprint-attributes.readthedocs.io/en/latest/formulas.html) behind every column, the API reference and the rendered notebooks. To build them locally:
 
 ```bash
-uv sync --group docs
+uv sync --all-groups
+uv run python docs/docs_maps_and_plots.py   # regenerate maps and plots (optional)
 uv run sphinx-build -b html docs docs/_build/html
 ```
-
----
-
-## Validation
-
-The methodology was validated against hand-labelled building inventories from three Central-American / Caribbean pilot areas (San José, Santo Domingo, Guatemala City).
-
-<p align="center">
-  <img src="figures/confusion_matrix_relative_position.jpg" width="45%" alt="Relative position confusion matrix"/>
-</p>
-
-The automated shape and position classifications were found to be comparable in accuracy to the variability observed between independent human surveyors.
 
 ---
 

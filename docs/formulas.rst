@@ -24,10 +24,24 @@ resulting force pattern: how strong it is, how much it cancels itself out
 (confinement), and how unevenly it is distributed around the building
 (spread/torque).
 
-.. image:: ../figures/relative_position_explanation.jpg
+.. image:: figures/relative_position_explanation.jpg
    :width: 45%
    :align: center
    :alt: Contact-force diagram: force vectors on each touching wall and their resultant
+
+
+.. figure:: figures/position_scenarios.png
+   :width: 100%
+   :align: center
+   :alt: The five classes on hand-built scenarios (``testing_shapes``): the coloured building is the one being classified, thin arrows are the unit pressure on each shared wall, the thick arrow is their resultant (arrows scaled for readability)
+
+   The five classes on hand-built scenarios (``testing_shapes``): the coloured building is the one being classified, thin arrows are the unit pressure on each shared wall, the thick arrow is their resultant (arrows scaled for readability). Each scenario's computed class matches its name.
+
+Every class and contact-force arrow in the pilot regions, live:
+
+.. raw:: html
+
+   <iframe src="_static/maps/index.html?dataset=guatemala&attribute=relativePosition&overlays=position_arrows&zoom=17" width="100%" height="480" style="border:1px solid #cbd5e0;border-radius:6px;" loading="lazy"></iframe>
 
 Pipeline overview
 ~~~~~~~~~~~~~~~~~~
@@ -80,6 +94,22 @@ The full ``contact_forces_df`` function above computes ``force``,
 share the same per-edge force vectors), so it is quoted once here rather than
 split by column; the sections below explain each of its outputs in turn.
 
+
+.. figure:: maps/contact_force.jpg
+   :width: 100%
+   :align: center
+   :alt: ``contact_force`` on the three pilot regions (no height column, so every building has height 1)
+
+   ``contact_force`` on the three pilot regions (no height column, so every building has height 1).
+
+
+.. figure:: maps/detail_contact_forces.jpg
+   :width: 100%
+   :align: center
+   :alt: Close-up: the per-wall force vectors and their resultant, drawn on real buildings; fill is the resulting ``relativePosition`` class
+
+   Close-up: the per-wall force vectors and their resultant, drawn on real buildings; fill is the resulting ``relativePosition`` class.
+
 ``contact_confinementRatio``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -94,6 +124,14 @@ fully lateral); tends to 1 when forces cancel almost completely in the vector
 sum (fully enclosed / surrounded on opposing sides). This is the metric that
 captures "opposing-wall cancellation" -- see the note on ``contact_angle``
 below for why that matters. It is height-invariant (ratio of two force sums).
+
+
+.. figure:: maps/contact_confinement_ratio.jpg
+   :width: 100%
+   :align: center
+   :alt: ``contact_confinementRatio``: near 0 for buildings pushed from one side, near 1 for buildings whose shared walls face each other and cancel out -- the long rows of terraced houses stand out
+
+   ``contact_confinementRatio``: near 0 for buildings pushed from one side, near 1 for buildings whose shared walls face each other and cancel out -- the long rows of terraced houses stand out.
 
 ``contact_angularAcc``
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -205,6 +243,14 @@ part of the fold).
    :pyobject: resultant_angle
    :language: python
 
+
+.. figure:: figures/position_metric_space.png
+   :width: 100%
+   :align: center
+   :alt: Where each class sits in the space of the four contact metrics, for every building in the three pilot regions
+
+   Where each class sits in the space of the four contact metrics, for every building in the three pilot regions.
+
 ``contact_height``
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -229,7 +275,7 @@ cancellation of forces means the building is boxed in on multiple sides
 about the centroid escalates to ``torque``, the case most associated with
 torsional damage.
 
-.. image:: ../figures/relative_position_detail.jpg
+.. image:: figures/relative_position_detail.jpg
    :width: 55%
    :align: center
    :alt: Map of a real urban block coloured by relativePosition class
@@ -260,6 +306,30 @@ Priority order (later rules override earlier ones):
    :pyobject: _Position._classify
    :language: python
 
+
+.. figure:: maps/relative_position.jpg
+   :width: 100%
+   :align: center
+   :alt: ``relativePosition`` for every building in the three pilot regions
+
+   ``relativePosition`` for every building in the three pilot regions.
+
+
+.. figure:: figures/position_class_shares.png
+   :width: 90%
+   :align: center
+   :alt: Share of each class per pilot region
+
+   Share of each class per pilot region.
+
+
+.. figure:: figures/position_buffer_sensitivity.png
+   :width: 100%
+   :align: center
+   :alt: Sensitivity to ``buffer`` (how far apart two footprints may be and still count as touching), all three regions combined
+
+   Sensitivity to ``buffer`` (how far apart two footprints may be and still count as touching), all three regions combined. The default 0.1 m bridges digitisation gaps without merging buildings across narrow alleys.
+
 Shape irregularity indices (:mod:`footprint_attributes.shape`)
 ------------------------------------------------------------------
 
@@ -271,6 +341,12 @@ computed from the footprint's geometry (its own outline, its convex hull,
 its bounding box, and its principal axes of inertia). The three
 code-independent indices further down give a code-agnostic summary of
 "how irregular is this shape" for comparison across regions/codes.
+
+Every code metric below, live on the pilot regions -- switch "Color by" to any of them; the chart on the right shows how many buildings exceed the code limit:
+
+.. raw:: html
+
+   <iframe src="_static/maps/index.html?dataset=san_jose&attribute=EC8_eccentricityRatio&overlays=convex_hull" width="100%" height="480" style="border:1px solid #cbd5e0;border-radius:6px;" loading="lazy"></iframe>
 
 Code-independent indices
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -288,6 +364,14 @@ footprint. Range :math:`(0, 1]`; 1 for a perfect circle.
    :pyobject: polsby_popper
    :language: python
 
+
+.. figure:: maps/polsby_popper.jpg
+   :width: 100%
+   :align: center
+   :alt: ``polsby_popper`` on the pilot regions (green: compact, red: elongated or jagged)
+
+   ``polsby_popper`` on the pilot regions (green: compact, red: elongated or jagged).
+
 **convex_hull_irregularity**:
 
 .. math::
@@ -298,7 +382,7 @@ footprint. Range :math:`(0, 1]`; 1 for a perfect circle.
 convex hull's area. 0 for a convex shape; larger for deeper/larger setbacks
 relative to the footprint's own area.
 
-.. image:: ../figures/compactness_1.jpg
+.. image:: figures/compactness_1.jpg
    :width: 35%
    :align: center
    :alt: Footprint outline (black) inside its convex hull (green)
@@ -306,6 +390,22 @@ relative to the footprint's own area.
 .. literalinclude:: ../src/footprint_attributes/shape.py
    :pyobject: convex_hull_irregularity
    :language: python
+
+
+.. figure:: maps/convex_hull_irregularity.jpg
+   :width: 100%
+   :align: center
+   :alt: ``convex_hull_irregularity`` on the pilot regions (green: convex)
+
+   ``convex_hull_irregularity`` on the pilot regions (green: convex).
+
+
+.. figure:: maps/detail_convex_hull.jpg
+   :width: 100%
+   :align: center
+   :alt: Close-up: each footprint's convex hull (dashed) and the setback pieces ``hull − footprint`` (hatched) that ``convex_hull_irregularity``, ``EC8_compactness`` and the setback ratios are built from
+
+   Close-up: each footprint's convex hull (dashed) and the setback pieces ``hull − footprint`` (hatched) that ``convex_hull_irregularity``, ``EC8_compactness`` and the setback ratios are built from.
 
 **inertia_circle_ratio**:
 
@@ -323,6 +423,30 @@ moment of a circle of the same area. Range :math:`(0, 1]`, 1 for a circle
    :pyobject: inertia_circle_ratio
    :language: python
 
+
+.. figure:: figures/shape_idealized_shapes.png
+   :width: 100%
+   :align: center
+   :alt: The code-independent indices on idealised shapes with a known answer: convex hull (dashed), hull − footprint (hatched), and the largest inscribed circle used by the GNDT construction below
+
+   The code-independent indices on idealised shapes with a known answer: convex hull (dashed), hull − footprint (hatched), and the largest inscribed circle used by the GNDT construction below.
+
+
+.. figure:: figures/shape_idealized_indices.png
+   :width: 85%
+   :align: center
+   :alt: The three code-independent indices side by side on the same shapes
+
+   The three code-independent indices side by side on the same shapes.
+
+
+.. figure:: figures/shape_buffer_sensitivity.png
+   :width: 70%
+   :align: center
+   :alt: Mean index over all pilot-region footprints after a morphological closing ``buffer(+b)
+
+   Mean index over all pilot-region footprints after a morphological closing ``buffer(+b).buffer(−b)``: how much small digitisation noise moves each index.
+
 EC8 (Eurocode 8)
 ~~~~~~~~~~~~~~~~~~
 
@@ -335,10 +459,18 @@ what drives torsional response under lateral (seismic) loading -- the
 farther apart they are relative to the building's torsional radius, the more
 the building twists instead of translating.
 
-.. image:: ../figures/box_idealization_and_eccentricity.jpg
+.. image:: figures/box_idealization_and_eccentricity.jpg
    :width: 60%
    :align: center
    :alt: Hollow-box idealisation showing centre of mass, centre of stiffness, and eccentricity vector
+
+
+.. figure:: figures/shape_centre_of_mass_stiffness.png
+   :width: 100%
+   :align: center
+   :alt: Centre of mass (slab + walls) and centre of stiffness (walls only) under the hollow-box model, on four test shapes
+
+   Centre of mass (slab + walls) and centre of stiffness (walls only) under the hollow-box model, on four test shapes. A symmetric shape has zero eccentricity; the asymmetric L has the largest offset.
 
 **EC8_eccentricityRatio** (:math:`e/r_t`), limit :math:`\le 0.30`:
 
@@ -350,6 +482,14 @@ the building twists instead of translating.
    :pyobject: EC8EccentricityRatio
    :language: python
 
+
+.. figure:: maps/EC8_eccentricityRatio.jpg
+   :width: 100%
+   :align: center
+   :alt: ``EC8_eccentricityRatio``
+
+   ``EC8_eccentricityRatio``. Green complies with the code limit, red exceeds it; the share of buildings exceeding the limit is given above each region.
+
 **EC8_radiusRatio** (:math:`r_t/r_g`), limit :math:`\ge 1.0`:
 
 .. math::
@@ -360,6 +500,14 @@ the building twists instead of translating.
 .. literalinclude:: ../src/footprint_attributes/shape.py
    :pyobject: EC8RadiusRatio
    :language: python
+
+
+.. figure:: maps/EC8_radiusRatio.jpg
+   :width: 100%
+   :align: center
+   :alt: ``EC8_radiusRatio``
+
+   ``EC8_radiusRatio``. Green complies with the code limit, red exceeds it; the share of buildings exceeding the limit is given above each region.
 
 **EC8_compactness**, limit :math:`\ge 0.95`:
 
@@ -378,6 +526,14 @@ of ``hull(filled).difference(filled)`` -- not the sum of all setback pieces.
    :pyobject: EC8Compactness
    :language: python
 
+
+.. figure:: maps/EC8_compactness.jpg
+   :width: 100%
+   :align: center
+   :alt: ``EC8_compactness``
+
+   ``EC8_compactness``. Green complies with the code limit, red exceeds it; the share of buildings exceeding the limit is given above each region.
+
 ASCE 7
 ~~~~~~~~
 
@@ -392,12 +548,12 @@ dimensions -- limit :math:`\le 0.20`:
 using the dominant setback piece and bounding-box directions (see
 *GNDT setback construction* below).
 
-.. image:: ../figures/setback_step_1.jpg
+.. image:: figures/setback_step_1.jpg
    :width: 40%
    :align: center
    :alt: Convex-hull-minus-footprint setback pieces (green) on a T-shaped building
 
-.. image:: ../figures/setback_step_2.jpg
+.. image:: figures/setback_step_2.jpg
    :width: 40%
    :align: center
    :alt: b1, b2 measured on the circumscribed rectangle of each setback piece
@@ -405,6 +561,14 @@ using the dominant setback piece and bounding-box directions (see
 .. literalinclude:: ../src/footprint_attributes/shape.py
    :pyobject: ASCE7SetbackRatio
    :language: python
+
+
+.. figure:: maps/ASCE7_setbackRatio.jpg
+   :width: 100%
+   :align: center
+   :alt: ``ASCE7_setbackRatio``
+
+   ``ASCE7_setbackRatio``. Green complies with the code limit, red exceeds it; the share of buildings exceeding the limit is given above each region.
 
 **ASCE7_holeRatio** -- how large is the biggest interior courtyard/hole
 relative to the filled footprint -- limit :math:`\le 0.25`:
@@ -423,6 +587,14 @@ area are ignored).
 .. literalinclude:: ../src/footprint_attributes/geometry.py
    :pyobject: max_hole_area_ratio
    :language: python
+
+
+.. figure:: maps/ASCE7_holeRatio.jpg
+   :width: 100%
+   :align: center
+   :alt: ``ASCE7_holeRatio`` -- courtyards are rare in these regions, so nearly every building complies
+
+   ``ASCE7_holeRatio`` -- courtyards are rare in these regions, so nearly every building complies. Green complies with the code limit, red exceeds it; the share of buildings exceeding the limit is given above each region.
 
 **ASCE7_parallelityAngle**, limit :math:`\le 5°`:
 
@@ -473,6 +645,14 @@ docstring below for the full rationale).
    :pyobject: ASCE7ParalelityAngle
    :language: python
 
+
+.. figure:: maps/ASCE7_parallelityAngle.jpg
+   :width: 100%
+   :align: center
+   :alt: ``ASCE7_parallelityAngle``
+
+   ``ASCE7_parallelityAngle``. Green complies with the code limit, red exceeds it; the share of buildings exceeding the limit is given above each region.
+
 GNDTII (Italian GNDT Level II)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -482,18 +662,56 @@ inscribed-circle construction below finds it by inscribing the largest
 circle that fits in the footprint, then using where that circle touches the
 boundary to infer the width of the solid mass around it.
 
-.. image:: ../figures/circle_step_1.jpg
+.. image:: figures/circle_step_1.jpg
    :width: 23%
-.. image:: ../figures/circle_step_2.jpg
+.. image:: figures/circle_step_2.jpg
    :width: 23%
-.. image:: ../figures/circle_step_3.jpg
+.. image:: figures/circle_step_3.jpg
    :width: 23%
-.. image:: ../figures/circle_step_4.jpg
+.. image:: figures/circle_step_4.jpg
    :width: 23%
 
 *Left to right: inscribe the largest circle; find its tangent points on the
 boundary; project them onto the principal axes; circumscribe the
 main-element rectangle* :math:`a_1 \times a_2`.
+
+
+The same construction on four prototype plans -- L, T, cross-like (Q) and
+L-with-a-diagonal-wing (LT) -- showing the resulting :math:`L_1, L_2`,
+:math:`a_1, a_2` and setback :math:`b` dimensions:
+
+.. image:: figures/L_3.jpg
+   :width: 24%
+.. image:: figures/T_3.jpg
+   :width: 24%
+.. image:: figures/Q_3.jpg
+   :width: 24%
+.. image:: figures/LT_3.jpg
+   :width: 24%
+
+
+.. figure:: figures/basic_lengths_test_shapes_bbox.png
+   :width: 100%
+   :align: center
+   :alt: The package's own computation of every basic length on the hand-built test shapes (bounding-box axes)
+
+   The package's own computation of every basic length on the hand-built test shapes (bounding-box axes). The asymmetric L's setback ratio comes out at exactly 0.40, the value built into the shape.
+
+
+.. figure:: figures/basic_lengths_test_shapes_inertia.png
+   :width: 100%
+   :align: center
+   :alt: The same dimensions measured along the principal axes of inertia instead
+
+   The same dimensions measured along the principal axes of inertia instead.
+
+
+.. figure:: maps/detail_basic_lengths.jpg
+   :width: 100%
+   :align: center
+   :alt: Close-up: the basic lengths drawn on real irregular buildings in each pilot region
+
+   Close-up: the basic lengths drawn on real irregular buildings in each pilot region.
 
 All GNDTII beta parameters use the dominant :math:`(a, L)` configuration from
 this construction, picked per building as whichever of :math:`(L_1, a_1)` /
@@ -521,12 +739,28 @@ this construction, picked per building as whichever of :math:`(L_1, a_1)` /
    :pyobject: GNDTIIBeta1MainShapeSlenderness
    :language: python
 
+
+.. figure:: maps/GNDTII_beta1_mainShapeSlenderness.jpg
+   :width: 100%
+   :align: center
+   :alt: ``GNDTII_beta1_mainShapeSlenderness`` (grade A: β1 ≥ 0
+
+   ``GNDTII_beta1_mainShapeSlenderness`` (grade A: β1 ≥ 0.8). Green complies with the code limit, red exceeds it; the share of buildings exceeding the limit is given above each region.
+
 **GNDTII_beta2_setbackRatio**: same formula as ``ASCE7_setbackRatio`` above,
 under a different compliance table.
 
 .. literalinclude:: ../src/footprint_attributes/shape.py
    :pyobject: GNDTIIBeta2SetbackRatio
    :language: python
+
+
+.. figure:: maps/GNDTII_beta2_setbackRatio.jpg
+   :width: 100%
+   :align: center
+   :alt: ``GNDTII_beta2_setbackRatio`` (grade A: β2 ≤ 0
+
+   ``GNDTII_beta2_setbackRatio`` (grade A: β2 ≤ 0.1). Green complies with the code limit, red exceeds it; the share of buildings exceeding the limit is given above each region.
 
 **GNDTII_beta4_eccentricityRatio**:
 
@@ -537,6 +771,14 @@ under a different compliance table.
 .. literalinclude:: ../src/footprint_attributes/shape.py
    :pyobject: GNDTIIBeta4EccentricityRatio
    :language: python
+
+
+.. figure:: maps/GNDTII_beta4_eccentricityRatio.jpg
+   :width: 100%
+   :align: center
+   :alt: ``GNDTII_beta4_eccentricityRatio`` (grade A: β4 ≤ 0
+
+   ``GNDTII_beta4_eccentricityRatio`` (grade A: β4 ≤ 0.2). Green complies with the code limit, red exceeds it; the share of buildings exceeding the limit is given above each region.
 
 **GNDTII_beta6_setbackSlenderness**:
 
@@ -551,6 +793,22 @@ to :math:`b`, through the setback piece's centroid.
 .. literalinclude:: ../src/footprint_attributes/shape.py
    :pyobject: GNDTIIBeta6SetbackSlenderness
    :language: python
+
+
+.. figure:: maps/GNDTII_beta6_setbackSlenderness.jpg
+   :width: 100%
+   :align: center
+   :alt: ``GNDTII_beta6_setbackSlenderness`` (grade A: β6 ≥ 0
+
+   ``GNDTII_beta6_setbackSlenderness`` (grade A: β6 ≥ 0.5). Green complies with the code limit, red exceeds it; the share of buildings exceeding the limit is given above each region.
+
+
+.. figure:: figures/basic_lengths_gndt_ratios.png
+   :width: 100%
+   :align: center
+   :alt: Distribution of the three GNDT ratios built on the basic lengths, per pilot region; dashed line = grade-A boundary
+
+   Distribution of the three GNDT ratios built on the basic lengths, per pilot region; dashed line = grade-A boundary.
 
 CSCR 2010 (Costa Rica)
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -569,6 +827,14 @@ in *Eccentricity optimisation* below.
    :pyobject: CSCR2010EccentricityRatio
    :language: python
 
+
+.. figure:: maps/CSCR2010_eccentricityRatio.jpg
+   :width: 100%
+   :align: center
+   :alt: ``CSCR2010_eccentricityRatio`` (regular: e/l ≤ 0
+
+   ``CSCR2010_eccentricityRatio`` (regular: e/l ≤ 0.05). Green complies with the code limit, red exceeds it; the share of buildings exceeding the limit is given above each region.
+
 NTC-23 (Mexico)
 ~~~~~~~~~~~~~~~~~
 
@@ -579,6 +845,14 @@ NTC-23 (Mexico)
 .. literalinclude:: ../src/footprint_attributes/shape.py
    :pyobject: NTC23SetbackRatio
    :language: python
+
+
+.. figure:: maps/NTC23_setbackRatio.jpg
+   :width: 100%
+   :align: center
+   :alt: ``NTC23_setbackRatio`` -- same ratio as ASCE 7 against the more lenient 0
+
+   ``NTC23_setbackRatio`` -- same ratio as ASCE 7 against the more lenient 0.40 limit. Green complies with the code limit, red exceeds it; the share of buildings exceeding the limit is given above each region.
 
 **NTC23_holeRatio** -- how large the hole is relative to the building's own
 cross-section through it (rather than relative to the whole footprint area,
@@ -593,7 +867,7 @@ as ``ASCE7_holeRatio`` does) -- limit :math:`\le 0.40`:
 intersection segment of the building's filled footprint with a line through
 the hole's centroid, drawn along the hole's own longer axis direction.
 
-.. image:: ../figures/hole_ratio.jpg
+.. image:: figures/hole_ratio.jpg
    :width: 45%
    :align: center
    :alt: Hole's own bounding box (b1, b2, green) versus the building's bounding box (L1, L2, red)
@@ -605,6 +879,14 @@ the hole's centroid, drawn along the hole's own longer axis direction.
 .. literalinclude:: ../src/footprint_attributes/geometry.py
    :pyobject: hole_h_over_l
    :language: python
+
+
+.. figure:: maps/NTC23_holeRatio.jpg
+   :width: 100%
+   :align: center
+   :alt: ``NTC23_holeRatio``
+
+   ``NTC23_holeRatio``. Green complies with the code limit, red exceeds it; the share of buildings exceeding the limit is given above each region.
 
 Slenderness
 ~~~~~~~~~~~~~
@@ -633,10 +915,47 @@ dimension for the selected method.
    :pyobject: _SlendernessMethod.compute
    :language: python
 
+
+.. figure:: maps/slenderness_inertia.jpg
+   :width: 100%
+   :align: center
+   :alt: ``slenderness_inertia`` (EC8 limit: 4
+
+   ``slenderness_inertia`` (EC8 limit: 4.0). Green complies with the code limit, red exceeds it; the share of buildings exceeding the limit is given above each region.
+
+
+.. figure:: maps/slenderness_bbox.jpg
+   :width: 100%
+   :align: center
+   :alt: ``slenderness_bbox`` -- same limit, bounding-box dimensions
+
+   ``slenderness_bbox`` -- same limit, bounding-box dimensions.
+
+
+.. figure:: figures/shape_metric_distributions.png
+   :width: 100%
+   :align: center
+   :alt: Distribution of every code shape metric in the three pilot regions, with each code's limit
+
+   Distribution of every code shape metric in the three pilot regions, with each code's limit.
+
+
+.. figure:: figures/shape_code_exceedance.png
+   :width: 85%
+   :align: center
+   :alt: Share of buildings exceeding each code limit, per pilot region
+
+   Share of buildings exceeding each code limit, per pilot region.
+
 Direction / orientation (:mod:`footprint_attributes.direction`)
 ---------------------------------------------------------------------
 
 Two methods, both returning :math:`(L_1, \text{dir}_1, L_2, \text{dir}_2, \text{bearing})`.
+Both are drawn live below (bounding box and inertia axis overlays):
+
+.. raw:: html
+
+   <iframe src="_static/maps/index.html?dataset=santo_domingo&attribute=slenderness_bbox&overlays=bounding_box,inertia_axis&zoom=17.5&view=2d" width="100%" height="480" style="border:1px solid #cbd5e0;border-radius:6px;" loading="lazy"></iframe>
 
 **direction.inertia** (used for the ``bearing`` column and EC8-style
 eccentricity): the inertia tensor's larger eigenvalue corresponds to the
@@ -679,6 +998,22 @@ from the exact minimum rotated bounding rectangle (rotating calipers), with
    :pyobject: min_bounding_box
    :language: python
 
+
+.. figure:: figures/direction_methods_test_shapes.png
+   :width: 100%
+   :align: center
+   :alt: Both axis methods on the hand-built test shapes: minimum bounding box (orange) vs
+
+   Both axis methods on the hand-built test shapes: minimum bounding box (orange) vs. principal axes of inertia (dashed). They agree on simple shapes and can differ on irregular ones such as the X-shape, whose minimum-area box is tilted.
+
+
+.. figure:: figures/direction_rectangle_bearing.png
+   :width: 100%
+   :align: center
+   :alt: Validation: a 20 × 10 m rectangle rotated by a known angle -- both methods return ``bearing = −angle``
+
+   Validation: a 20 × 10 m rectangle rotated by a known angle -- both methods return ``bearing = −angle``.
+
 **bearing** column:
 
 .. math::
@@ -705,6 +1040,46 @@ an axis is undirected (same fold family as ``contact_angle`` and
 .. literalinclude:: ../src/footprint_attributes/geometry.py
    :pyobject: bearing_from_dir
    :language: python
+
+
+.. figure:: maps/bearing.jpg
+   :width: 100%
+   :align: center
+   :alt: ``bearing`` (inertia method) on the pilot regions; the colour ramp is cyclic because −90° and +90° are the same axis
+
+   ``bearing`` (inertia method) on the pilot regions; the colour ramp is cyclic because −90° and +90° are the same axis.
+
+
+.. figure:: maps/detail_direction.jpg
+   :width: 100%
+   :align: center
+   :alt: Close-up: minimum bounding boxes (orange) and inertia axes (solid: L1, dashed: L2) on real buildings
+
+   Close-up: minimum bounding boxes (orange) and inertia axes (solid: L1, dashed: L2) on real buildings.
+
+
+.. figure:: figures/direction_bbox_vs_inertia.png
+   :width: 100%
+   :align: center
+   :alt: ``bearing`` from the two methods, per building: most points lie on the diagonal; the off-diagonal points are irregular or near-square footprints
+
+   ``bearing`` from the two methods, per building: most points lie on the diagonal; the off-diagonal points are irregular or near-square footprints.
+
+
+.. figure:: figures/direction_bearing_rose.png
+   :width: 100%
+   :align: center
+   :alt: Orientation roses of the short axis: each region's street grid shows up as two peaks 90° apart
+
+   Orientation roses of the short axis: each region's street grid shows up as two peaks 90° apart.
+
+
+.. figure:: maps/L1.jpg
+   :width: 100%
+   :align: center
+   :alt: ``L1`` (longer plan dimension, bounding-box method)
+
+   ``L1`` (longer plan dimension, bounding-box method).
 
 Eccentricity optimisation (:mod:`footprint_attributes.eccentricity`)
 --------------------------------------------------------------------------
