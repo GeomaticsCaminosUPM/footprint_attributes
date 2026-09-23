@@ -1,0 +1,38 @@
+name: docs
+
+# Ask Read the Docs to rebuild whenever main or a release tag changes,
+# instead of relying only on RTD's own GitHub webhook. Needs a repository
+# secret RTD_TOKEN (readthedocs.org -> Account -> API Tokens).
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  trigger-readthedocs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Read the Docs build
+        env:
+          RTD_TOKEN: ${{ secrets.RTD_TOKEN }}
+          PROJECT: footprint-attributes
+        run: |
+          if [ -z "$RTD_TOKEN" ]; then
+            echo "::error::RTD_TOKEN secret is not set"
+            exit 1
+          fi
+          api="https://readthedocs.org/api/v3/projects/$PROJECT"
+          auth="Authorization: Token $RTD_TOKEN"
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            # a new or moved tag: let RTD resync its versions, activate the
+            # tag's version, then build it and "stable"
+            curl -fsS -X POST -H "$auth" "$api/sync-versions/" || true
+            sleep 20
+            curl -fsS -X PATCH -H "$auth" -H "Content-Type: application/json" \
+              -d '{"active": true}' "$api/versions/$GITHUB_REF_NAME/"
+            curl -fsS -X POST -H "$auth" "$api/versions/$GITHUB_REF_NAME/builds/"
+            curl -fsS -X POST -H "$auth" "$api/versions/stable/builds/"
+          else
+            curl -fsS -X POST -H "$auth" "$api/versions/latest/builds/"
+          fi
