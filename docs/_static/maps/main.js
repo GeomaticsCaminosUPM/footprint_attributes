@@ -810,7 +810,7 @@ function stopShowcase({ resumeAfterIdle = true } = {}) {
   state.showcaseActive = false;
 
   if (showcaseIdleTimer !== null) clearTimeout(showcaseIdleTimer);
-  if (resumeAfterIdle) showcaseIdleTimer = setTimeout(startShowcase, SHOWCASE_IDLE_RESUME_MS);
+  if (resumeAfterIdle && EMBED.tour) showcaseIdleTimer = setTimeout(startShowcase, SHOWCASE_IDLE_RESUME_MS);
 }
 function registerUserInteraction() {
   stopShowcase({ resumeAfterIdle: true });
@@ -884,7 +884,7 @@ async function bootstrap() {
   });
   document.getElementById("building-panel-close").addEventListener("click", closeBuildingPanel);
 
-  startShowcase();
+  await applyEmbedParams();
 }
 
 map.on("load", () => {
@@ -897,3 +897,36 @@ map.on("load", () => {
     controls.appendChild(message);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Docs embed parameters (appended by footprint_attributes'
+// docs/docs_maps_and_plots.py): ?dataset=&attribute=&overlays=&zoom=&view=&tour=
+const EMBED = (() => {
+  const keys = ["dataset", "attribute", "overlays", "zoom", "view", "tour"];
+  const any = keys.some((k) => URL_PARAMS.has(k));
+  return { any, tour: URL_PARAMS.has("tour") ? URL_PARAMS.get("tour") === "1" : !any };
+})();
+
+async function applyEmbedParams() {
+  const datasetId = URL_PARAMS.get("dataset");
+  if (datasetId && DATASETS[datasetId] && datasetId !== state.datasetId) {
+    await setDataset(datasetId, { fromShowcase: true });
+  }
+  const overlays = (URL_PARAMS.get("overlays") || "").split(",").filter((id) => id in state.overlaysActive);
+  if (overlays.length) {
+    overlays.forEach((id) => (state.overlaysActive[id] = true));
+    renderOverlayCheckboxes();
+    document.getElementById("controls-fields").classList.remove("hidden");
+    document.getElementById("controls-toggle").classList.remove("collapsed");
+  }
+  const attribute = ATTRIBUTES.find((a) => a.name === URL_PARAMS.get("attribute"));
+  if (attribute) {
+    showcaseAttributeIndex = ATTRIBUTES.indexOf(attribute);
+    setAttribute(attribute, { fromShowcase: true });
+  }
+  const zoom = parseFloat(URL_PARAMS.get("zoom"));
+  if (Number.isFinite(zoom)) map.jumpTo({ zoom });
+  if (URL_PARAMS.get("view") === "2d") toggle3D(false);
+  if (EMBED.tour) startShowcase();
+  else renderLayer();
+}

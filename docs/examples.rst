@@ -1,8 +1,20 @@
 Examples
 ========
 
-Each notebook loads the real sample dataset under ``examples/data/`` and
-ends with a GeoDataFrame plus a suggested list of columns to plot on a map.
+Each notebook loads the real sample datasets under ``examples/data/``,
+checks every computation on hand-built shapes with a known answer, then runs
+it on the three pilot regions. Every notebook page below includes both of
+its interactive maps: the 2-D Folium map with one layer per column, and the
+3-D MapLibre + deck.gl viewer, opened on that notebook's topic.
+
+The same 3-D viewer can be opened on any attribute or overlay from its URL
+(``?dataset=``, ``?attribute=``, ``?overlays=``, ``?zoom=``, ``?tour=``);
+see ``docs/docs_maps_and_plots.py``. For example, `relative position in
+Guatemala City with the contact-force arrows
+<_static/maps/index.html?dataset=guatemala&attribute=relativePosition&overlays=position_arrows&zoom=17>`_
+or `the shape index in San José with convex hulls
+<_static/maps/index.html?dataset=san_jose&attribute=shape_index&overlays=convex_hull>`_
+opens full-screen.
 
 Interactive map
 ----------------
@@ -10,7 +22,7 @@ Interactive map
 Runs entirely client-side (MapLibre + deck.gl, no backend) and computes
 nothing itself -- everything it shows is precomputed from the pilot-region
 footprints by :func:`footprint_attributes.visualization.build_map` (see
-``docs/generate_map_data.py``), using this package's own
+``docs/docs_maps_and_plots.py``), using this package's own
 :func:`~footprint_attributes.shape.shape` and
 :func:`~footprint_attributes.position.position`. Requires the ``visualization``
 extra: ``pip install "footprint-attributes[visualization]"``.
@@ -28,27 +40,47 @@ turn, one every 10s.
 
 .. raw:: html
 
-   <iframe src="_static/maps/index.html" width="100%" height="640" style="border:1px solid #444;" loading="lazy"></iframe>
+   <iframe src="_static/maps/index.html" width="100%" height="640" style="border:1px solid #cbd5e0;border-radius:6px;" loading="lazy"></iframe>
 
-.. image:: ../figures/interactive_map_relative_position.jpg
+.. image:: figures/interactive_map_relative_position.jpg
    :width: 49%
    :alt: Interactive map colored by relative position
 
-.. image:: ../figures/interactive_map_shape_index.jpg
+.. image:: figures/interactive_map_shape_index.jpg
    :width: 49%
    :alt: Interactive map colored by shape index
 
-.. image:: ../figures/interactive_map_ec8_eccentricity.jpg
+.. image:: figures/interactive_map_ec8_eccentricity.jpg
    :width: 49%
    :alt: Interactive map colored by EC8 eccentricity ratio, with the norm-exceedance chart
 
-.. image:: ../figures/interactive_map_overlays.jpg
+.. image:: figures/interactive_map_overlays.jpg
    :width: 49%
    :alt: Interactive map with all five geometry overlays enabled
 
 Build it yourself against this repo's own pilot-region datasets with
 ``examples/generate_interactive_map.py``, or against your own footprints
 with :func:`footprint_attributes.visualization.build_map` directly.
+
+Static maps
+-----------
+
+Every static map and plot in these docs is generated from the same
+pilot-region footprints by ``docs/docs_maps_and_plots.py`` (see
+:doc:`concepts` and :doc:`formulas` for all of them). Two examples -- the
+contact forces behind ``relativePosition`` and the convex-hull setback
+pieces behind the shape indices, drawn on real buildings:
+
+.. image:: maps/detail_contact_forces.jpg
+   :width: 100%
+   :alt: Close-up map with per-wall contact forces
+
+.. image:: maps/detail_convex_hull.jpg
+   :width: 100%
+   :alt: Close-up map with convex hulls and setback pieces
+
+Notebooks
+---------
 
 .. toctree::
    :maxdepth: 1
