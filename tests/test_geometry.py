@@ -88,6 +88,34 @@ def test_a_lengths_batch_matches_single_call(l_shape_notch_half):
     assert batch[2][0] == pytest.approx(single[2])
 
 
+def test_a_lengths_center_stays_near_footprint_far_from_origin(t_shape):
+    """Regression test: `center` used to be reconstructed from projections
+    onto raw (un-centred) world coordinates, which amplified dir1/dir2's
+    real-world ~1e-5 non-orthogonality (e.g. `min_bounding_box` normalises
+    two consecutive `minimum_rotated_rectangle` edges independently, so
+    they're never exactly perpendicular) by however large those
+    coordinates are -- harmless near the origin, but on real UTM-scale
+    footprints (~1e5-1e6) this placed `center` many metres outside the
+    building entirely. Translating the fixture far from the origin and
+    using a deliberately slightly-non-orthogonal (dir1, dir2) reproduces
+    that regime.
+    """
+    import shapely.affinity
+
+    poly = shapely.affinity.translate(
+        t_shape.geometry.iloc[0], xoff=767_000.0, yoff=1_620_000.0
+    )
+    angle = 1e-5  # radians -- realistic real-world non-orthogonality
+    dir1 = np.array([1.0, 0.0])
+    dir2 = np.array([-np.sin(angle), np.cos(angle)])  # not quite perpendicular to dir1
+
+    _, _, center = main_element_a_lengths(poly, dir1, dir2)
+    minx, miny, maxx, maxy = poly.bounds
+    margin = 1e-3  # centre must land inside the footprint's own bbox, not merely nearby
+    assert minx - margin <= center[0] <= maxx + margin
+    assert miny - margin <= center[1] <= maxy + margin
+
+
 def test_a_lengths_center_not_circle_center_when_asymmetric(t_shape):
     """For a shape where the inscribed circle's tangent points are NOT
     symmetric about the circle's own centre (e.g. the T-shape, whose circle

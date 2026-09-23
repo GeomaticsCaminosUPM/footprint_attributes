@@ -12,8 +12,8 @@ nothing itself -- everything it shows is precomputed from the pilot-region
 footprints by :func:`footprint_attributes.visualization.build_map` (see
 ``docs/generate_map_data.py``), using this package's own
 :func:`~footprint_attributes.shape.shape` and
-:func:`~footprint_attributes.position.position`. Requires the ``vis``
-extra: ``pip install "footprint-attributes[vis]"``.
+:func:`~footprint_attributes.position.position`. Requires the ``visualization``
+extra: ``pip install "footprint-attributes[visualization]"``.
 
 Switch dataset with the top-left dropdown (Guatemala Zona 10, San José Mata
 Redonda, Santo Domingo Ensanche Quisquella); color by relative position,

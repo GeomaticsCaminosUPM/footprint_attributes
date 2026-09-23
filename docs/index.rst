@@ -19,6 +19,12 @@ See :doc:`citation` for the full author list, ORCIDs, and funding.
 Source code: `github.com/GeomaticsCaminosUPM/footprint_attributes
 <https://github.com/GeomaticsCaminosUPM/footprint_attributes>`_
 
+See :doc:`concepts` for a walkthrough of the three things this package
+computes (building direction, relative position, footprint shape indices)
+with figures and interactive maps from the example notebooks, or jump
+straight to :doc:`formulas` for the exact formula and source code behind
+every column.
+
 .. image:: ../figures/graphical_abstract.jpg
    :width: 80%
    :align: center
@@ -38,11 +44,23 @@ walkthrough, checkboxes, and screenshots.
 
    <iframe src="_static/maps/index.html" width="100%" height="640" style="border:1px solid #444;" loading="lazy"></iframe>
 
+.. image:: ../figures/interactive_map_shape_index.jpg
+   :width: 32%
+.. image:: ../figures/interactive_map_ec8_eccentricity.jpg
+   :width: 32%
+.. image:: ../figures/interactive_map_overlays.jpg
+   :width: 32%
+
+*Left to right: the shape index, a norm-based metric with its exceedance
+chart, and all five geometry overlays enabled -- see* :doc:`examples` *and*
+:doc:`concepts` *for more.*
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents
 
    installation
+   concepts
    api/index
    formulas
    examples

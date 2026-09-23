@@ -2,15 +2,21 @@
 footprint_attributes.visualization
 ===================================
 
-Interactive 3D map builder (MapLibre + deck.gl, client-side, no backend) for
-this package's outputs: the geometric relative-position classification, the
-4-category shape index, and the 15 EC8/ASCE7/GNDT-II/CSCR2010/NTC-23
-shape-irregularity metrics, plus optional convex-hull / bounding-box /
-inertia-axis / basic-length / contact-force-arrow geometry overlays.
+Two complementary map builders for this package's outputs (the geometric
+relative-position classification, the 4-category shape index, and the 15
+EC8/ASCE7/GNDT-II/CSCR2010/NTC-23 shape-irregularity metrics):
 
-Requires the ``vis`` extra::
+- :func:`build_map` -- an interactive 3D map (MapLibre + deck.gl,
+  client-side, no backend), buildings extruded by height, with an
+  auto-playing showcase tour and optional convex-hull / bounding-box /
+  inertia-axis / basic-length / contact-force-arrow geometry overlays.
+- :func:`build_comparison_map` -- a 2D FancyFolium map (folium/Leaflet)
+  with a dataset switcher and one flat choropleth layer per column, using
+  FancyFolium's own layer-control panel and popups.
 
-    pip install "footprint-attributes[vis]"
+Requires the ``visualization`` extra::
+
+    pip install "footprint-attributes[visualization]"
 
 Example
 -------
@@ -27,7 +33,8 @@ Example
 
 from __future__ import annotations
 
+from .comparison_map import build_comparison_map
 from .maps import build_map
 from .overlays import build_overlays
 
-__all__ = ["build_map", "build_overlays"]
+__all__ = ["build_map", "build_comparison_map", "build_overlays"]

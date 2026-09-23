@@ -143,10 +143,10 @@ Each code parameter has a matching `compliance_{NORM}_{param}` column (0–100 s
 
 ## Interactive map
 
-`footprint_attributes.visualization` (the `vis` extra) builds a self-contained MapLibre + deck.gl 3D map — one dataset per pilot region, colored by relative position, the shape index, or any of the 15 shape metrics, with an auto-playing tour and optional convex-hull / bounding-box / inertia-axis / basic-length / contact-force-arrow overlays:
+`footprint_attributes.visualization` (the `visualization` extra) builds a self-contained MapLibre + deck.gl 3D map — one dataset per pilot region, colored by relative position, the shape index, or any of the 15 shape metrics, with an auto-playing tour and optional convex-hull / bounding-box / inertia-axis / basic-length / contact-force-arrow overlays:
 
 ```bash
-pip install "footprint-attributes[vis]"
+pip install "footprint-attributes[visualization]"
 ```
 ```python
 import geopandas as gpd
@@ -180,7 +180,7 @@ pip install "footprint-attributes @ git+https://github.com/GeomaticsCaminosUPM/f
 
 Dependencies: `geopandas`, `shapely>=2.0`, `numpy`, `pandas`, `scipy`, `scikit-learn`, `statsmodels`, `tabulate`.
 
-The `vis` extra (`pip install "footprint-attributes[vis]"`) additionally pulls in `jinja2`, needed by `footprint_attributes.visualization.build_map` (see [Interactive map](#interactive-map) above).
+The `visualization` extra (`pip install "footprint-attributes[visualization]"`) additionally pulls in `jinja2`, needed by `footprint_attributes.visualization.build_map` (see [Interactive map](#interactive-map) above).
 
 ---
 
