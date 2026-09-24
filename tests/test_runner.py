@@ -41,20 +41,20 @@ def test_run_position_shorthand(lateral_pair):
         "contact_confinementRatio",
         "contact_angularAcc",
         "contact_angle",
-        "relativePosition",
+        "blockPosition",
     ):
         assert col in result.columns
-    assert result["relativePosition"].tolist() == ["lateral", "lateral"]
+    assert result["blockPosition"].tolist() == ["lateral", "lateral"]
 
 
 def test_run_position_exact_column_name_triggers_full_pipeline(lateral_pair):
-    """Requesting just 'relativePosition' (not the "position" shorthand) must
+    """Requesting just 'blockPosition' (not the "position" shorthand) must
     still run the full (atomic) position pipeline, since the classification
     can't be computed without the contact-force columns."""
     result = footprint_attributes.run(
-        lateral_pair, config={"columns": ["relativePosition"]}
+        lateral_pair, config={"columns": ["blockPosition"]}
     )
-    assert result["relativePosition"].tolist() == ["lateral", "lateral"]
+    assert result["blockPosition"].tolist() == ["lateral", "lateral"]
 
 
 def test_run_bearing_shorthand(rect_20x10):
@@ -144,10 +144,10 @@ def test_run_forwards_position_kwargs(torque_triplet):
     """A stricter minAngularAcc threshold should prevent the torque
     upgrade, proving config["position"] kwargs actually reach position()."""
     default = footprint_attributes.run(torque_triplet, config={"columns": ["position"]})
-    assert default["relativePosition"].iloc[0] == "torque"
+    assert default["blockPosition"].iloc[0] == "torque"
 
     stricter = footprint_attributes.run(
         torque_triplet,
         config={"columns": ["position"], "position": {"minAngularAcc": 100.0}},
     )
-    assert stricter["relativePosition"].iloc[0] != "torque"
+    assert stricter["blockPosition"].iloc[0] != "torque"

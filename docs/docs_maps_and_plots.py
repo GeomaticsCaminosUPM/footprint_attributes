@@ -675,7 +675,7 @@ def detail_maps(data) -> None:
     # -- contact forces: per-wall arrows + resultant, coloured by class
     def draw_position(ax, sel):
         g = sel.to_crs(3857)
-        colors = sel["relativePosition"].map(_POSITION_COLORS).fillna("#a0aec0")
+        colors = sel["blockPosition"].map(_POSITION_COLORS).fillna("#a0aec0")
         g.plot(
             ax=ax,
             color=colors.values,
@@ -700,7 +700,7 @@ def detail_maps(data) -> None:
             )
 
     panels(
-        "Relative position — contact force on every shared wall and its resultant",
+        "Block position — contact force on every shared wall and its resultant",
         draw_position,
         [
             *(
@@ -764,12 +764,12 @@ def detail_maps(data) -> None:
 def all_region_maps(data) -> None:
     region_map_categorical(
         data,
-        "relativePosition",
+        "blockPosition",
         _POSITION_COLORS,
         _POSITION_LABELS,
         POSITION_ORDER,
-        "Relative position within the block",
-        MAPS / "relative_position.jpg",
+        "Block position within the block",
+        MAPS / "block_position.jpg",
     )
     region_map_categorical(
         data,
@@ -1000,7 +1000,7 @@ def fig_position(data) -> None:
     for ax, (name, gdf) in zip(axes, scenarios.items()):
         gdf = gdf.reset_index(drop=True)
         res = position(gdf)
-        cls = res["relativePosition"].iloc[0]
+        cls = res["blockPosition"].iloc[0]
         gdf.iloc[1:].plot(ax=ax, facecolor=FILL, edgecolor="#a0aec0", lw=1)
         gdf.iloc[[0]].plot(
             ax=ax, facecolor=_POSITION_COLORS[cls], edgecolor=INK, lw=1.3, alpha=0.85
@@ -1063,7 +1063,7 @@ def fig_position(data) -> None:
     fig, ax = plt.subplots(figsize=(10, 2.8))
     ax.grid(False)
     for i, (city, gdf) in enumerate(data.items()):
-        share = gdf["relativePosition"].value_counts(normalize=True)
+        share = gdf["blockPosition"].value_counts(normalize=True)
         left = 0
         for k in POSITION_ORDER:
             w = share.get(k, 0) * 100
@@ -1099,7 +1099,7 @@ def fig_position(data) -> None:
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.4))
     allg = pd.concat([pd.DataFrame(g.drop(columns="geometry")) for g in data.values()])
     for k in POSITION_ORDER:
-        s = allg[allg["relativePosition"] == k]
+        s = allg[allg["blockPosition"] == k]
         axes[0].scatter(
             s["contact_confinementRatio"],
             s["contact_force"],
@@ -1136,7 +1136,7 @@ def _position_sweep(buf: float) -> dict[str, float]:
         gdf = load_city(str(DATA / fname)).drop(columns="height", errors="ignore")
         parts.append(pd.DataFrame(position(gdf, buffer=buf).drop(columns="geometry")))
     df = pd.concat(parts, ignore_index=True)
-    vc = df["relativePosition"].value_counts(normalize=True)
+    vc = df["blockPosition"].value_counts(normalize=True)
     out = {k: vc.get(k, 0.0) for k in POSITION_ORDER}
     out["force"] = df["contact_force"].mean()
     out["confinement"] = df["contact_confinementRatio"].mean()
@@ -1201,7 +1201,7 @@ def fig_sensitivity() -> None:
     )
     axes[0].set_xlabel("contact buffer (m)")
     axes[0].set_ylabel("share of buildings (%)")
-    axes[0].set_title("relativePosition vs. buffer")
+    axes[0].set_title("blockPosition vs. buffer")
     axes[0].legend(ncol=2)
     axes[1].plot(
         buffers,
@@ -1627,7 +1627,7 @@ def interactive_map() -> None:
 # several places, each opened on the attribute/overlays that section is
 # about, via URL parameters:
 #
-#   index.html?dataset=san_jose&attribute=relativePosition&overlays=position_arrows&zoom=17
+#   index.html?dataset=san_jose&attribute=blockPosition&overlays=position_arrows&zoom=17
 #
 #   dataset    guatemala | san_jose | santo_domingo
 #   attribute  any "Color by" attribute name (e.g. shape_index, EC8_compactness)

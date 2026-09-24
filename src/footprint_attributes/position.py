@@ -18,11 +18,11 @@ Typical usage
 >>>
 >>> # Full pipeline — computes forces and classifies
 >>> result = position(footprints)
->>> result[['relativePosition', 'contact_force', 'contact_confinementRatio']]
+>>> result[['blockPosition', 'contact_force', 'contact_confinementRatio']]
 >>>
 >>> # Classification only — reuses pre-computed force columns when present
->>> labels = position.relative_position(result)          # fast: columns exist
->>> labels = position.relative_position(footprints)      # slow: recomputes forces
+>>> labels = position.block_position(result)          # fast: columns exist
+>>> labels = position.block_position(footprints)      # slow: recomputes forces
 """
 
 from __future__ import annotations
@@ -360,7 +360,7 @@ def contact_force_vectors(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Callable class — exposes position() and position.relative_position()
+# Callable class — exposes position() and position.block_position()
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Mapping from the prefixed column names stored by position() to the plain
@@ -380,14 +380,14 @@ class _Position:
     """Callable namespace for building position attributes.
 
     Call the object itself for the full pipeline, or use the
-    :meth:`relative_position` method to (re-)classify an existing GeoDataFrame
+    :meth:`block_position` method to (re-)classify an existing GeoDataFrame
     without recomputing forces.
 
     Examples
     --------
     >>> result = position(footprints)                        # full pipeline
-    >>> labels = position.relative_position(result)          # reuses columns
-    >>> labels = position.relative_position(footprints)      # computes forces
+    >>> labels = position.block_position(result)          # reuses columns
+    >>> labels = position.block_position(footprints)      # computes forces
     """
 
     # ------------------------------------------------------------------
@@ -422,7 +422,7 @@ class _Position:
         Returns:
             GeoDataFrame with position columns added:
             ``contact_force``, ``contact_confinementRatio``,
-            ``contact_angularAcc``, ``contact_angle``, ``relativePosition``.
+            ``contact_angularAcc``, ``contact_angle``, ``blockPosition``.
         """
         gdf = ensure_projected(to_gdf(footprints_gdf))
 
@@ -435,7 +435,7 @@ class _Position:
         )
 
         # Store force columns with the prefixed API names. `contact_height`
-        # is kept too so a later `relative_position()` call reusing these
+        # is kept too so a later `block_position()` call reusing these
         # prefixed columns can still undo the height scaling of
         # contact_force/contact_angularAcc when classifying (see _classify).
         gdf["contact_force"] = forces["force"]
@@ -445,7 +445,7 @@ class _Position:
         gdf["contact_height"] = forces["height"]
 
         # Classify (forces already has the plain column names)
-        gdf["relativePosition"] = self._classify(
+        gdf["blockPosition"] = self._classify(
             forces,
             minAngularAcc=minAngularAcc,
             minConfinement=minConfinement,
@@ -460,10 +460,10 @@ class _Position:
         return gdf
 
     # ------------------------------------------------------------------
-    # relative_position — classification only, reuses columns when present
+    # block_position — classification only, reuses columns when present
     # ------------------------------------------------------------------
 
-    def relative_position(
+    def block_position(
         self,
         footprints_gdf: gpd.GeoDataFrame | pd.DataFrame,
         minAngularAcc: float = POSITION_DEFAULTS["minAngularAcc"],
@@ -584,7 +584,7 @@ class _Position:
             List of category strings aligned with *forces*.
         """
         out = forces.copy()
-        out["relativePosition"] = "isolated"
+        out["blockPosition"] = "isolated"
 
         # `force`/`angularAcc` scale linearly with building height (a taller
         # shared wall really does carry more contact force), but minForce/
@@ -600,24 +600,22 @@ class _Position:
         force_for_classification = out["force"] / height
         angular_acc_for_classification = out["angularAcc"] / height
 
-        out.loc[force_for_classification > minForce, "relativePosition"] = "lateral"
+        out.loc[force_for_classification > minForce, "blockPosition"] = "lateral"
 
         out.loc[
-            (out["angle"] > minAngle) & (out["relativePosition"] == "lateral"),
-            "relativePosition",
+            (out["angle"] > minAngle) & (out["blockPosition"] == "lateral"),
+            "blockPosition",
         ] = "corner"
 
-        out.loc[out["confinementRatio"] > minConfinement, "relativePosition"] = (
-            "confined"
-        )
+        out.loc[out["confinementRatio"] > minConfinement, "blockPosition"] = "confined"
 
         out.loc[
-            out["relativePosition"].isin(["corner", "confined"])
+            out["blockPosition"].isin(["corner", "confined"])
             & (angular_acc_for_classification > minAngularAcc),
-            "relativePosition",
+            "blockPosition",
         ] = "torque"
 
-        return list(out["relativePosition"])
+        return list(out["blockPosition"])
 
     # ------------------------------------------------------------------
     # Repr
@@ -628,7 +626,7 @@ class _Position:
         return (
             "position  (callable)\n"
             "  position(footprints_gdf, ...)           → full pipeline\n"
-            "  position.relative_position(gdf, ...)    → classification only"
+            "  position.block_position(gdf, ...)    → classification only"
         )
 
 

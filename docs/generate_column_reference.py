@@ -34,7 +34,7 @@ _POSITION_DESCRIPTIONS = {
     ),
     "contact_angle": "Direction of the net contact-force resultant",
     "contact_height": "Height used for the contact-force computation",
-    "relativePosition": "Categorical class: isolated / lateral / corner / confined / torque",
+    "blockPosition": "Categorical class: isolated / lateral / corner / confined / torque",
 }
 
 

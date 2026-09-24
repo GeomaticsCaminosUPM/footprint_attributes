@@ -53,13 +53,13 @@ Every value on this page is computed by this package from nothing but the
 raw footprint geometry of three pilot regions: Guatemala City (Zona 10),
 San José (Mata Redonda) and Santo Domingo (Ensanche Quisquella).
 
-**1 · Relative position within the block** --
+**1 · Block position within the block** --
 :mod:`~footprint_attributes.position`. A contact-force analogy classifies
 each building as isolated, lateral, corner, confined or torque:
 
-.. figure:: maps/relative_position.jpg
+.. figure:: maps/block_position.jpg
    :width: 100%
-   :alt: Relative position of every building in the three pilot regions
+   :alt: Block position of every building in the three pilot regions
 
 .. figure:: figures/position_scenarios.png
    :width: 100%
@@ -68,7 +68,26 @@ each building as isolated, lateral, corner, confined or torque:
    One hand-built scenario per class, with the contact force on each shared
    wall and its resultant.
 
-**2 · Footprint shape indices** -- :mod:`~footprint_attributes.shape`.
+**2 · Building direction** -- :mod:`~footprint_attributes.direction`.
+Each footprint's principal axes come from its minimum bounding box or its
+second moment of area, and its bearing is the heading of the short axis:
+
+.. figure:: maps/bearing.jpg
+   :width: 100%
+   :alt: Bearing of every building in the three pilot regions
+
+.. figure:: maps/detail_direction.jpg
+   :width: 100%
+   :alt: Close-up of bounding boxes and inertia axes on real buildings
+
+**3 · Basic plan dimensions** -- the :math:`L_1, L_2, a_1, a_2, b, c`
+lengths that the setback and slenderness parameters are built from:
+
+.. figure:: maps/detail_basic_lengths.jpg
+   :width: 100%
+   :alt: Close-up of basic-length dimension lines on real buildings
+
+**4 · Footprint shape indices** -- :mod:`~footprint_attributes.shape`.
 The package computes 15 plan-irregularity parameters from EC8, ASCE 7,
 GNDT-II, CSCR 2010 and NTC-23, plus three code-independent compactness
 indices. Three of the code checks are condensed into a single shape index:
@@ -82,25 +101,6 @@ indices. Three of the code checks are condensed into a single shape index:
    :alt: Share of buildings exceeding each code limit
 
    How often each code limit is exceeded in each pilot region.
-
-**3 · Building direction** -- :mod:`~footprint_attributes.direction`.
-Each footprint's principal axes come from its minimum bounding box or its
-second moment of area, and its bearing is the heading of the short axis:
-
-.. figure:: maps/bearing.jpg
-   :width: 100%
-   :alt: Bearing of every building in the three pilot regions
-
-.. figure:: maps/detail_direction.jpg
-   :width: 100%
-   :alt: Close-up of bounding boxes and inertia axes on real buildings
-
-**4 · Basic plan dimensions** -- the :math:`L_1, L_2, a_1, a_2, b, c`
-lengths that the setback and slenderness parameters are built from:
-
-.. figure:: maps/detail_basic_lengths.jpg
-   :width: 100%
-   :alt: Close-up of basic-length dimension lines on real buildings
 
 See :doc:`concepts` for the full visual walkthrough of each attribute and
 :doc:`formulas` for the exact formula, source code and pilot-region map
@@ -130,7 +130,7 @@ Interactive map
 ---------------
 
 The same attributes for every building in one client-side 3D map. It opens
-in an auto-playing tour -- relative position, the shape index, then each of
+in an auto-playing tour -- block position, the shape index, then each of
 the 15 shape metrics -- with the camera orbiting. Drag, zoom or click to
 take over; tick the overlays to draw the convex hull, bounding box, inertia
 axis, basic lengths or contact-force arrows on the buildings (see
