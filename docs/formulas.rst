@@ -24,7 +24,7 @@ resulting force pattern: how strong it is, how much it cancels itself out
 (confinement), and how unevenly it is distributed around the building
 (spread/torque).
 
-.. image:: figures/relative_position_explanation.jpg
+.. image:: figures/block_position_explanation.jpg
    :width: 45%
    :align: center
    :alt: Contact-force diagram: force vectors on each touching wall and their resultant
@@ -41,7 +41,7 @@ Every class and contact-force arrow in the pilot regions, live:
 
 .. raw:: html
 
-   <iframe src="_static/maps/index.html?dataset=guatemala&attribute=relativePosition&overlays=position_arrows&zoom=17" width="100%" height="480" style="border:1px solid #cbd5e0;border-radius:6px;" loading="lazy"></iframe>
+   <iframe src="_static/maps/index.html?dataset=guatemala&attribute=blockPosition&overlays=position_arrows&zoom=17" width="100%" height="480" style="border:1px solid #cbd5e0;border-radius:6px;" loading="lazy"></iframe>
 
 Pipeline overview
 ~~~~~~~~~~~~~~~~~~
@@ -106,9 +106,9 @@ split by column; the sections below explain each of its outputs in turn.
 .. figure:: maps/detail_contact_forces.jpg
    :width: 100%
    :align: center
-   :alt: Close-up: the per-wall force vectors and their resultant, drawn on real buildings; fill is the resulting ``relativePosition`` class
+   :alt: Close-up: the per-wall force vectors and their resultant, drawn on real buildings; fill is the resulting ``blockPosition`` class
 
-   Close-up: the per-wall force vectors and their resultant, drawn on real buildings; fill is the resulting ``relativePosition`` class.
+   Close-up: the per-wall force vectors and their resultant, drawn on real buildings; fill is the resulting ``blockPosition`` class.
 
 ``contact_confinementRatio``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -262,7 +262,7 @@ The height value used for the computation (1.0 if no height column is
 given); carried through so downstream reuse of the prefixed columns can
 undo the height scaling of ``force``/``angularAcc``.
 
-``relativePosition``
+``blockPosition``
 ~~~~~~~~~~~~~~~~~~~~~~
 
 The four numeric outputs above are combined into a single categorical label
@@ -275,10 +275,10 @@ cancellation of forces means the building is boxed in on multiple sides
 about the centroid escalates to ``torque``, the case most associated with
 torsional damage.
 
-.. image:: figures/relative_position_detail.jpg
+.. image:: figures/block_position_detail.jpg
    :width: 55%
    :align: center
-   :alt: Map of a real urban block coloured by relativePosition class
+   :alt: Map of a real urban block coloured by blockPosition class
 
 Classification, evaluated on height-normalised force/angularAcc when a
 height column is available:
@@ -307,12 +307,12 @@ Priority order (later rules override earlier ones):
    :language: python
 
 
-.. figure:: maps/relative_position.jpg
+.. figure:: maps/block_position.jpg
    :width: 100%
    :align: center
-   :alt: ``relativePosition`` for every building in the three pilot regions
+   :alt: ``blockPosition`` for every building in the three pilot regions
 
-   ``relativePosition`` for every building in the three pilot regions.
+   ``blockPosition`` for every building in the three pilot regions.
 
 
 .. figure:: figures/position_class_shares.png

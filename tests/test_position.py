@@ -9,7 +9,7 @@ from footprint_attributes import position
 
 def test_isolated_building_classified_isolated(isolated_building):
     out = position(isolated_building)
-    assert out["relativePosition"].tolist() == ["isolated"]
+    assert out["blockPosition"].tolist() == ["isolated"]
     assert out["contact_force"].iloc[0] == pytest.approx(0.0)
 
 
@@ -19,28 +19,28 @@ def test_no_contacts_in_whole_batch_does_not_crash(two_isolated_buildings):
     empty frame, and geoms['edge_center'] = normal_results[0] fails because
     an empty apply(result_type='expand') has no column 0)."""
     out = position(two_isolated_buildings)
-    assert out["relativePosition"].tolist() == ["isolated", "isolated"]
+    assert out["blockPosition"].tolist() == ["isolated", "isolated"]
 
 
 def test_lateral_pair_classified_lateral(lateral_pair):
     out = position(lateral_pair)
-    assert out["relativePosition"].tolist() == ["lateral", "lateral"]
+    assert out["blockPosition"].tolist() == ["lateral", "lateral"]
     assert (out["contact_force"] > 0).all()
 
 
 def test_corner_building_classified_corner(corner_triplet):
     out = position(corner_triplet)
     # index 0 = centre building, touched on two perpendicular sides
-    assert out["relativePosition"].iloc[0] == "corner"
-    assert out["relativePosition"].iloc[1] == "lateral"
-    assert out["relativePosition"].iloc[2] == "lateral"
+    assert out["blockPosition"].iloc[0] == "corner"
+    assert out["blockPosition"].iloc[1] == "lateral"
+    assert out["blockPosition"].iloc[2] == "lateral"
 
 
 def test_confined_building_classified_confined(confined_quartet):
     out = position(confined_quartet)
     # index 0 = centre building, touched on 3 of 4 sides (N, S, E)
-    assert out["relativePosition"].iloc[0] == "confined"
-    assert all(p == "lateral" for p in out["relativePosition"].iloc[1:])
+    assert out["blockPosition"].iloc[0] == "confined"
+    assert all(p == "lateral" for p in out["blockPosition"].iloc[1:])
 
 
 def test_unequal_opposite_pair_not_classified_corner(unequal_opposite_pair):
@@ -51,27 +51,27 @@ def test_unequal_opposite_pair_not_classified_corner(unequal_opposite_pair):
     force-weighted angle statistic couldn't distinguish from a genuinely
     perpendicular (corner) neighbour. Must never be 'corner'."""
     out = position(unequal_opposite_pair)
-    assert out["relativePosition"].iloc[0] != "corner"
+    assert out["blockPosition"].iloc[0] != "corner"
 
 
-def test_relative_position_reuses_existing_columns(lateral_pair):
-    """position.relative_position() must reuse prefixed force columns rather
+def test_block_position_reuses_existing_columns(lateral_pair):
+    """position.block_position() must reuse prefixed force columns rather
     than recompute them (a fast path documented in the module)."""
     full = position(lateral_pair)
-    labels = position.relative_position(full)
-    assert labels == full["relativePosition"].tolist()
+    labels = position.block_position(full)
+    assert labels == full["blockPosition"].tolist()
 
 
-def test_relative_position_computes_when_columns_absent(lateral_pair):
-    labels = position.relative_position(lateral_pair)
+def test_block_position_computes_when_columns_absent(lateral_pair):
+    labels = position.block_position(lateral_pair)
     assert labels == ["lateral", "lateral"]
 
 
 def test_buffer_zero_vs_positive_buffer_isolated_stays_isolated(isolated_building):
     out_default = position(isolated_building, buffer=0.0)
     out_buffered = position(isolated_building, buffer=0.15)
-    assert out_default["relativePosition"].tolist() == ["isolated"]
-    assert out_buffered["relativePosition"].tolist() == ["isolated"]
+    assert out_default["blockPosition"].tolist() == ["isolated"]
+    assert out_buffered["blockPosition"].tolist() == ["isolated"]
 
 
 def test_torque_building_classified_torque(torque_triplet):
@@ -80,7 +80,7 @@ def test_torque_building_classified_torque(torque_triplet):
     POSITION_DEFAULTS['minAngularAcc'] is derived from) must be upgraded
     from 'confined' to 'torque'."""
     out = position(torque_triplet)
-    assert out["relativePosition"].iloc[0] == "torque"
+    assert out["blockPosition"].iloc[0] == "torque"
     assert out["contact_angularAcc"].iloc[0] > 2.133
 
 
@@ -103,7 +103,7 @@ def test_edge_normal_handles_looped_segment_without_nan():
 def test_all_five_position_classes_are_reachable(
     isolated_building, lateral_pair, corner_triplet, confined_quartet, torque_triplet
 ):
-    """Sanity check that every documented relativePosition category
+    """Sanity check that every documented blockPosition category
     (isolated, lateral, corner, confined, torque) is actually reachable with
     a concrete, idealised geometric configuration."""
     seen = set()
@@ -114,5 +114,5 @@ def test_all_five_position_classes_are_reachable(
         confined_quartet,
         torque_triplet,
     ):
-        seen.update(position(gdf)["relativePosition"].tolist())
+        seen.update(position(gdf)["blockPosition"].tolist())
     assert seen == {"isolated", "lateral", "corner", "confined", "torque"}

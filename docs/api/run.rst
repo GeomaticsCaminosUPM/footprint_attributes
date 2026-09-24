@@ -173,7 +173,7 @@ Requesting ``"position"`` (or any one of the five columns below, which always tr
      - Direction of the net contact-force resultant
    * - ``contact_height``
      - Height used for the contact-force computation
-   * - ``relativePosition``
+   * - ``blockPosition``
      - Categorical class: isolated / lateral / corner / confined / torque
 
 Direction

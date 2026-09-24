@@ -9,9 +9,9 @@ its interactive maps: the 2-D Folium map with one layer per column, and the
 
 The same 3-D viewer can be opened on any attribute or overlay from its URL
 (``?dataset=``, ``?attribute=``, ``?overlays=``, ``?zoom=``, ``?tour=``);
-see ``docs/docs_maps_and_plots.py``. For example, `relative position in
+see ``docs/docs_maps_and_plots.py``. For example, `block position in
 Guatemala City with the contact-force arrows
-<_static/maps/index.html?dataset=guatemala&attribute=relativePosition&overlays=position_arrows&zoom=17>`_
+<_static/maps/index.html?dataset=guatemala&attribute=blockPosition&overlays=position_arrows&zoom=17>`_
 or `the shape index in San José with convex hulls
 <_static/maps/index.html?dataset=san_jose&attribute=shape_index&overlays=convex_hull>`_
 opens full-screen.
@@ -28,23 +28,23 @@ footprints by :func:`footprint_attributes.visualization.build_map` (see
 extra: ``pip install "footprint-attributes[visualization]"``.
 
 Switch dataset with the top-left dropdown (Guatemala Zona 10, San José Mata
-Redonda, Santo Domingo Ensanche Quisquella); color by relative position,
+Redonda, Santo Domingo Ensanche Quisquella); color by block position,
 the 4-category shape index, or any of the 15 EC8/ASCE7/GNDT-II/CSCR2010/
 NTC-23 shape-irregularity metrics described in :doc:`formulas`; click a
 building for its full value breakdown. The "Overlays" checkboxes draw
 per-building geometry on top of the map: convex hull, minimum bounding box,
 inertia axis, the L1/L2/a1/a2/b/c basic-length dimensions, and the net
 contact-force resultant arrow. The auto-playing tour (▶ button, top right)
-cycles relative position, then the shape index, then each shape metric in
+cycles block position, then the shape index, then each shape metric in
 turn, one every 10s.
 
 .. raw:: html
 
    <iframe src="_static/maps/index.html" width="100%" height="640" style="border:1px solid #cbd5e0;border-radius:6px;" loading="lazy"></iframe>
 
-.. image:: figures/interactive_map_relative_position.jpg
+.. image:: figures/interactive_map_block_position.jpg
    :width: 49%
-   :alt: Interactive map colored by relative position
+   :alt: Interactive map colored by block position
 
 .. image:: figures/interactive_map_shape_index.jpg
    :width: 49%
@@ -68,7 +68,7 @@ Static maps
 Every static map and plot in these docs is generated from the same
 pilot-region footprints by ``docs/docs_maps_and_plots.py`` (see
 :doc:`concepts` and :doc:`formulas` for all of them). Two examples -- the
-contact forces behind ``relativePosition`` and the convex-hull setback
+contact forces behind ``blockPosition`` and the convex-hull setback
 pieces behind the shape indices, drawn on real buildings:
 
 .. image:: maps/detail_contact_forces.jpg

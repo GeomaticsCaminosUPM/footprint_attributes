@@ -1,5 +1,5 @@
 """Build the interactive 3D pilot-region map -- one dataset per pilot
-region, colored by relative position, shape index, or any of the 15 raw
+region, colored by block position, shape index, or any of the 15 raw
 shape/plan-irregularity metrics, with optional convex-hull / bounding-box /
 inertia-axis / basic-length / contact-force-arrow overlays.
 
@@ -307,7 +307,7 @@ def build_map(
         result["id"] = gdf["id"].values
         if "height" in gdf.columns:
             result["height"] = gdf["height"].values
-        result["relativePosition"] = position(gdf)["relativePosition"].values
+        result["blockPosition"] = position(gdf)["blockPosition"].values
         result["shape_index"] = _shape_index(result)
         map_data[dataset_id] = result.set_geometry(gdf.geometry.values, crs=gdf.crs)
 
@@ -319,8 +319,8 @@ def build_map(
 
     attributes = [
         CategoricalAttribute(
-            "relativePosition",
-            "Relative position",
+            "blockPosition",
+            "Block position",
             _POSITION_COLORS,
             _POSITION_ORDER,
             _POSITION_LABELS,

@@ -11,7 +11,7 @@ Main modules
 - **shape**:     Plan-irregularity indices (EC8, ASCE7, GNDTII, CSCR2010, NTC23,
                  slenderness, polsby_popper, convex_hull_irregularity,
                  inertia_circle_ratio)
-- **position**:  Relative position within urban block (isolated / lateral /
+- **position**:  Block position within urban block (isolated / lateral /
                  corner / confined / torque)
 - **run**:       Single entry point -- request columns by name (or by norm)
                  across direction/shape/position in one call.

@@ -39,7 +39,7 @@ _POSITION_COLUMNS = [
     "contact_angularAcc",
     "contact_angle",
     "contact_height",
-    "relativePosition",
+    "blockPosition",
 ]
 
 #: Keyword arguments accepted by position()/shape() that `run()` will NOT
@@ -180,7 +180,7 @@ def run(
           `slenderness_inertia` (plus their EC8 compliance columns).
         - ``"position"`` -- shorthand for the full position pipeline's
           five columns: ``contact_force``, ``contact_confinementRatio``,
-          ``contact_angularAcc``, ``contact_angle``, ``relativePosition``.
+          ``contact_angularAcc``, ``contact_angle``, ``blockPosition``.
           Any of these five exact names also works on their own and
           triggers the same (atomic -- they're always computed together)
           pipeline run.
