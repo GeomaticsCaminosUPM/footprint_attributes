@@ -686,15 +686,19 @@ def detail_maps(data) -> None:
         )
         sel = sel.reset_index(drop=True)
         edges, res = contact_force_vectors(sel, buffer=0.1)
+        # contact_force_vectors' raw vectors point FROM the subject building
+        # TOWARD the neighbour pressing on it -- flip 180 deg (negative
+        # scale) so the arrow reads as "the push this building receives",
+        # matching docs/prepare_interactive_data.py's own fix.
         if len(edges):
             a = np.stack(edges["anchor"].to_numpy())
-            v = np.stack(edges["vector"].to_numpy()) * 0.3
+            v = -np.stack(edges["vector"].to_numpy()) * 0.3
             arrow_gdf(a, v, sel.crs, centered=False, head_frac=0.3).to_crs(3857).plot(
                 ax=ax, color="#4a5568", linewidth=0.6, zorder=3
             )
         if len(res):
             a = np.stack(res["anchor"].to_numpy())
-            v = np.stack(res["vector"].to_numpy()) * 0.3
+            v = -np.stack(res["vector"].to_numpy()) * 0.3
             arrow_gdf(a, v, sel.crs, centered=False, head_frac=0.3).to_crs(3857).plot(
                 ax=ax, color=INK, linewidth=1.6, zorder=4
             )
@@ -1010,10 +1014,13 @@ def fig_position(data) -> None:
         e0 = edges[edges["geom_id"] == 0]
         r0 = resultants[resultants["geom_id"] == 0]
         vmax = max([np.linalg.norm(v) for v in e0["vector"]] + [1e-9])
+        # contact_force_vectors' raw vectors point FROM the subject building
+        # TOWARD the neighbour pressing on it -- flip 180 deg so the arrow
+        # reads as "the push this building receives".
         if len(e0):
             arrow_gdf(
                 np.stack(e0["anchor"]),
-                np.stack(e0["vector"]) / vmax * scale,
+                -np.stack(e0["vector"]) / vmax * scale,
                 gdf.crs,
                 centered=False,
                 head_frac=0.3,
@@ -1021,7 +1028,7 @@ def fig_position(data) -> None:
         if len(r0) and np.linalg.norm(r0["vector"].iloc[0]) > 1e-6:
             arrow_gdf(
                 np.stack(r0["anchor"]),
-                np.stack(r0["vector"]) / vmax * scale,
+                -np.stack(r0["vector"]) / vmax * scale,
                 gdf.crs,
                 centered=False,
                 head_frac=0.3,

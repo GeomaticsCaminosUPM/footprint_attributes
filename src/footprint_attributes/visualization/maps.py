@@ -43,9 +43,9 @@ _NORM_SPECS = [
         "EC8_radiusRatio",
         "EC8 radius ratio",
         1.0,
-        False,
+        True,
         "",
-        "EC8: radius ratio >= 1.00",
+        "EC8: radius ratio <= 1.00",
         "EC8",
     ),
     (
@@ -81,7 +81,7 @@ _NORM_SPECS = [
         10,
         True,
         "°",
-        "ASCE 7: angle <= 5°",
+        "ASCE 7: angle <= 10° (triangular fails)",
         "ASCE7",
     ),
     (
@@ -90,7 +90,7 @@ _NORM_SPECS = [
         0.4,
         False,
         "",
-        "GNDT-II β1 >= 0.8",
+        "GNDT-II β1 >= 0.4 (grade D fails)",
         "GNDTII",
     ),
     (
@@ -99,7 +99,7 @@ _NORM_SPECS = [
         0.3,
         True,
         "",
-        "GNDT-II β2 <= 0.1",
+        "GNDT-II β2 <= 0.3 (grade D fails)",
         "GNDTII",
     ),
     (
@@ -108,7 +108,7 @@ _NORM_SPECS = [
         0.4,
         True,
         "",
-        "GNDT-II β4 <= 0.2",
+        "GNDT-II β4 <= 0.4 (grade C fails)",
         "GNDTII",
     ),
     (
@@ -117,7 +117,7 @@ _NORM_SPECS = [
         0.25,
         False,
         "",
-        "GNDT-II β6 >= 0.5",
+        "GNDT-II β6 >= 0.25 (grade C fails)",
         "GNDTII",
     ),
     (
@@ -126,7 +126,7 @@ _NORM_SPECS = [
         0.25,
         True,
         "",
-        "CSCR-2010: eccentricity <= 0.05",
+        "CSCR-2010: eccentricity <= 0.25 (high risk fails)",
         "CSCR2010",
     ),
     (

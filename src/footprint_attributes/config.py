@@ -40,10 +40,12 @@ EC8_LIMITS: dict[str, list[dict]] = {
         {"max": 0.30, "label": "regular", "score": 100},
         {"max": math.inf, "label": "irregular", "score": 0},
     ],
-    # radius_ratio  r_t / r_g  ≥ 1.0  (inverted: non-compliance if < 1)
+    # radius_ratio  r_t / r_g  ≤ 1.0 (Ureña-Pliego et al. 2026, Table 1 -- this
+    # package's own dimensionless r_t/r_g proxy is calibrated against this
+    # threshold, not the raw Eurocode 8 stiffness-based r_x >= l_s clause)
     "radiusRatio": [
-        {"max": 1.00, "label": "irregular", "score": 0},  # < 1 → fail
-        {"max": math.inf, "label": "regular", "score": 100},
+        {"max": 1.00, "label": "regular", "score": 100},
+        {"max": math.inf, "label": "irregular", "score": 0},  # > 1 → fail
     ],
     # compactness  ≥ 0.95  (stored as 1 − max_setback/area)
     "compactness": [

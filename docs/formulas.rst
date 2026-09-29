@@ -490,7 +490,7 @@ the building twists instead of translating.
 
    ``EC8_eccentricityRatio``. Green complies with the code limit, red exceeds it; the share of buildings exceeding the limit is given above each region.
 
-**EC8_radiusRatio** (:math:`r_t/r_g`), limit :math:`\ge 1.0`:
+**EC8_radiusRatio** (:math:`r_t/r_g`), limit :math:`\le 1.0` (Ureña-Pliego et al. 2026, Table 1):
 
 .. math::
 
