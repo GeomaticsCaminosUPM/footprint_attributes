@@ -20,8 +20,8 @@ sides is restrained but may pound against its neighbours, and one touched
 asymmetrically (e.g. only at a corner) can twist. Rather than reasoning about
 adjacency qualitatively, this module models every shared wall as if a
 uniform pressure pushed on it from the neighbour's side, then looks at the
-resulting force pattern: how strong it is, how much it cancels itself out
-(confinement), and how unevenly it is distributed around the building
+resulting force pattern: how strong it is, how much of it is opposed by
+walls on the other side (confinement), and how unevenly it is distributed around the building
 (spread/torque).
 
 .. image:: figures/block_position_explanation.jpg
@@ -116,15 +116,32 @@ split by column; the sections below explain each of its outputs in turn.
 .. math::
 
    \text{contact\_confinementRatio}_i =
-   \frac{\left(\sum_{e \in E_i} \lVert \mathbf{f}_e \rVert\right) - \lVert \mathbf{F}_i \rVert}
+   \frac{\sum_{e \in E_i} \operatorname{clip}\!\left(\lVert \mathbf{f}_e \rVert -
+         \mathbf{F}_i \cdot \frac{\mathbf{f}_e}{\lVert \mathbf{f}_e \rVert},\; 0,\;
+         \lVert \mathbf{f}_e \rVert\right)}
         {\left(\sum_{e \in E_i} \lVert \mathbf{f}_e \rVert\right) + \varepsilon}
 
-Ranges :math:`[0, 1]`: 0 when all forces point the same way (nothing cancels,
-fully lateral); tends to 1 when forces cancel almost completely in the vector
-sum (fully enclosed / surrounded on opposing sides). This is the metric that
-captures "opposing-wall cancellation" -- see the note on ``contact_angle``
-below for why that matters. It is height-invariant (ratio of two force sums).
+For each wall force :math:`\mathbf{f}_e` the resultant :math:`\mathbf{F}_i` is
+projected on the wall's own direction. What is left of
+:math:`\lVert \mathbf{f}_e \rVert` after that projection is the part of the
+other forces pushing *against* this wall, clipped to
+:math:`[0, \lVert \mathbf{f}_e \rVert]`. The ratio is the share of the total
+wall force that is opposed by walls on the other side:
 
+- perpendicular walls (a corner) give 0, since each projects fully on itself;
+- several segments on the same side give 0 (their projection exceeds each
+  segment's own force and is clipped, it never goes negative);
+- two opposite walls of lengths :math:`a` and :math:`b` give
+  :math:`2\min(a, b)/(a + b)`, 1 when they are equal;
+- a building touched on three sides (a back wall plus two opposite side
+  walls) keeps the opposed share of the side walls, e.g. 0.46 for a 19 m
+  back wall and 8.6 m and 7.9 m side walls.
+
+It ranges over :math:`[0, 1]` and is height-invariant (ratio of two force
+sums). Before version 1.1 the ratio was
+:math:`(\sum \lVert \mathbf{f}_e \rVert - \lVert \mathbf{F}_i \rVert) / \sum
+\lVert \mathbf{f}_e \rVert`, which also gave 0.29 to two equal perpendicular
+walls and let an unopposed back wall hide a pair of opposite walls.
 
 .. figure:: maps/contact_confinement_ratio.jpg
    :width: 100%
@@ -200,9 +217,16 @@ If either :math:`\mathbf{f}_e` or :math:`\mathbf{F}_i` has near-zero norm
    \text{contact\_angle}_i =
    \frac{2\sum_{e \in E_i} \theta_e \, \lVert \mathbf{f}_e \rVert}{\sum_{e \in E_i} \lVert \mathbf{f}_e \rVert + \varepsilon}
 
-i.e. twice the plain force-weighted mean of :math:`\theta_e` (the factor of
-2 is applied at aggregation time and is a fixed scaling of the module, not
-part of the fold).
+i.e. twice the plain force-weighted mean of :math:`\theta_e`. The factor 2
+turns each wall's deviation from the resultant into the angle between walls:
+two equal walls at an angle :math:`\phi` to each other deviate
+:math:`\phi/2` each from their resultant, so a perfect corner reads
+:math:`\pi/2` and ``minAngle`` :math:`= \pi/4` means "walls more than 45 deg
+apart". With unequal perpendicular walls the resultant leans toward the
+longer one: 19 m and 8 m give 1.26, and the shorter wall must be at least
+about 20 % of the longer one to pass ``minAngle``. With three or more walls
+the value can exceed :math:`\pi/2` and no longer reads as an angle between
+walls; the confinement rule decides those cases.
 
 .. note::
 
@@ -295,7 +319,8 @@ Priority order (later rules override earlier ones):
 3. ``"corner"`` if currently ``"lateral"`` **and** ``contact_angle``
    :math:`> \text{minAngle}`.
 4. ``"confined"`` if ``confinementRatio`` :math:`> \text{minConfinement}`
-   (overrides lateral/corner).
+   (default 0.2; overrides lateral/corner, so a building touched on two
+   opposite sides is confined whatever touches its other sides).
 5. ``"torque"`` if currently ``"corner"`` or ``"confined"`` **and**
    :math:`\tilde{a}_i > \text{minAngularAcc}`.
 

@@ -116,3 +116,63 @@ def test_all_five_position_classes_are_reachable(
     ):
         seen.update(position(gdf)["blockPosition"].tolist())
     assert seen == {"isolated", "lateral", "corner", "confined", "torque"}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Confinement ratio: only opposed walls count
+# ─────────────────────────────────────────────────────────────────────────────
+
+from shapely.geometry import box  # noqa: E402
+
+from footprint_attributes.testing_shapes import gdf_of  # noqa: E402
+
+_CENTRE = box(0, 0, 8, 19)
+_WEST = box(-10, 0, 0, 19)
+_EAST = box(8, 0, 18, 19)
+_NORTH = box(0, 19, 8, 30)
+_SOUTH = box(0, -10, 8, 0)
+
+
+def _centre(*neighbours):
+    return position(gdf_of(_CENTRE, *neighbours)).iloc[0]
+
+
+def test_perpendicular_walls_have_no_confinement():
+    row = _centre(_WEST, _NORTH)
+    assert row["contact_confinementRatio"] == pytest.approx(0.0, abs=1e-9)
+    assert row["blockPosition"] == "corner"
+
+
+def test_wall_split_in_several_neighbours_has_no_confinement():
+    """Segments on the same side push the same way: the projection of the
+    resultant exceeds each segment's own force, which must clip to 0 and
+    never go negative."""
+    row = _centre(box(-10, 0, 0, 9.5), box(-10, 9.5, 0, 19))
+    assert row["contact_confinementRatio"] == pytest.approx(0.0, abs=1e-9)
+    assert row["blockPosition"] == "lateral"
+
+
+def test_equal_opposite_walls_fully_confined():
+    row = _centre(_WEST, _EAST)
+    assert row["contact_confinementRatio"] == pytest.approx(1.0)
+    assert row["blockPosition"] == "confined"
+
+
+def test_unequal_opposite_walls_ratio():
+    """Opposite walls a and b give 2*min(a, b) / (a + b)."""
+    row = _centre(_NORTH, box(0, -10, 3, 0))  # 8 m and 3 m
+    assert row["contact_confinementRatio"] == pytest.approx(2 * 3 / 11, rel=1e-3)
+
+
+def test_u_shaped_contact_is_confined_not_corner():
+    """Back wall plus two opposite side walls: the unopposed back wall must
+    not turn the building into a corner (Zona 1 building 1000003)."""
+    row = _centre(_WEST, _NORTH, _SOUTH)
+    assert row["contact_confinementRatio"] == pytest.approx(16 / 35, rel=1e-3)
+    assert row["blockPosition"] == "confined"
+
+
+def test_small_opposite_slivers_stay_lateral():
+    row = _centre(_WEST, box(0, 19, 1, 25), box(7, -6, 8, 0))
+    assert row["contact_confinementRatio"] < 0.2
+    assert row["blockPosition"] == "lateral"

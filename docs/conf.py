@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.abspath("../src"))
 project = "footprint_attributes"
 copyright = "2026, Ureña-Pliego M., Rodríguez-Saiz J., Núñez-Álvarez G., Marchamalo-Sacristán M., González-Rodrigo B."
 author = "Ureña-Pliego M. et al."
-release = "1.0.0"
+release = "1.1.0"
 
 extensions = [
     "sphinx.ext.autodoc",

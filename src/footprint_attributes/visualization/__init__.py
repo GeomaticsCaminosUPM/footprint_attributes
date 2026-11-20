@@ -3,7 +3,7 @@ footprint_attributes.visualization
 ===================================
 
 Two complementary map builders for this package's outputs (the geometric
-relative-position classification, the 4-category shape index, and the 15
+block-position classification, the 4-category shape index, and the 15
 EC8/ASCE7/GNDT-II/CSCR2010/NTC-23 shape-irregularity metrics):
 
 - :func:`build_map` -- an interactive 3D map (MapLibre + deck.gl,

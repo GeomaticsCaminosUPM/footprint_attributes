@@ -177,13 +177,18 @@ POSITION_DEFAULTS: dict = {
     # Minimum weighted angle (rad) between individual forces and resultant
     # to upgrade lateral → corner. Default: π/4 ≈ 45°.
     "minAngle": 0.78,
-    # Minimum confinement ratio to classify as "confined". Default: 0.5.
-    "minConfinement": 0.5,
+    # Minimum confinement ratio (share of the wall force opposed by walls on
+    # the other side) to classify as "confined". Default: 0.2, e.g. a wall
+    # opposed by one at least ~1/4 of its length, or a U-shaped contact.
+    "minConfinement": 0.2,
     # Minimum angular-acceleration proxy to upgrade corner/confined → torque.
     # Default: a 1×0.5 rectangle with 1/3 of two sides touching in worst case.
     "minAngularAcc": 2.133,
-    # Contact detection buffer (metres).
-    "buffer": 0.0,
+    # Contact detection buffer (metres): walls closer than this count as
+    # shared. Neighbouring footprints that touch rarely have exactly collinear
+    # edges; 0.1 m bridges that digitisation noise (see the buffer
+    # sensitivity figure in the docs).
+    "buffer": 0.1,
     # Minimum radius fraction for conservative momentum counting.
     "minRadius": 0.0,
 }

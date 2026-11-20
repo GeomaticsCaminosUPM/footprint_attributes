@@ -3,9 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>footprint_attributes – Relative Position</title>
-    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" />
-    <link rel="stylesheet" href="style.css" />
+    <title>footprint_attributes – Block Position</title>
+    <meta name="map-title" content="Block position" />
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+    <link rel="stylesheet" href="../common/paper_ui.css" />
   </head>
   <body>
     <div id="app">
@@ -52,7 +53,7 @@
       </aside>
 
       <!-- Left control panel: dataset picker + always-visible legend (this
-           map only ever colors by relativePosition, computed geometrically
+           map only ever colors by blockPosition, computed geometrically
            for every building -- see data/shape_parameters/prepare_shape_data.py). -->
       <aside id="controls" class="glass-panel">
         <button id="controls-toggle" type="button" class="collapsed" aria-label="Show controls" title="Show controls">⟨</button>
@@ -90,7 +91,7 @@
         </div>
       </aside>
 
-      <!-- Right side panel: how many buildings fall in each relative-position
+      <!-- Right side panel: how many buildings fall in each block-position
            category, count + %. -->
       <aside id="charts-panel" class="glass-panel">
         <div id="charts-panel-content">
@@ -111,8 +112,9 @@
       </aside>
     </div>
 
-    <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
-    <script src="https://unpkg.com/deck.gl@9/dist.min.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <script src="https://unpkg.com/deck.gl@9.4.1/dist.min.js"></script>
+    <script src="../common/paper_ui.js"></script>
     <script type="module" src="main.js"></script>
   </body>
 </html>

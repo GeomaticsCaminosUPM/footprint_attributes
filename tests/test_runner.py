@@ -151,3 +151,29 @@ def test_run_forwards_position_kwargs(torque_triplet):
         config={"columns": ["position"], "position": {"minAngularAcc": 100.0}},
     )
     assert stricter["blockPosition"].iloc[0] != "torque"
+
+
+def test_n_jobs_matches_serial_run():
+    """Parallel run (shape in chunks, position by touching groups) gives the
+    same shape indices and classes as the serial run."""
+    import numpy as np
+    from shapely.geometry import box
+
+    from footprint_attributes import run
+    from footprint_attributes.testing_shapes import gdf_of
+
+    geoms = []
+    for k in range(6):  # six separate rows of terraced houses plus a corner piece
+        x0 = k * 100
+        geoms += [box(x0 + 10 * i, 0, x0 + 10 * i + 10, 15 + i) for i in range(5)]
+        geoms.append(box(x0, 15 + 5, x0 + 10, 30))
+    g = gdf_of(*geoms)
+    cfg = {"columns": ["EC8", "polsby_popper", "position"]}
+    serial = run(g, cfg)
+    parallel = run(g, cfg, n_jobs=3)
+    assert serial["blockPosition"].tolist() == parallel["blockPosition"].tolist()
+    for col in ["EC8_compactness", "polsby_popper"]:
+        assert np.array_equal(
+            serial[col].to_numpy(), parallel[col].to_numpy(), equal_nan=True
+        )
+    assert np.allclose(serial["contact_force"], parallel["contact_force"], atol=1e-6)

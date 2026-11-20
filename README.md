@@ -73,14 +73,14 @@ Every map and chart below was computed by this package from nothing but the raw 
 
 ### 1 · Block position within the block — `position`
 
-A building's neighbours change how it behaves in an earthquake: an isolated building sways freely, a confined one is restrained but may pound against its neighbours, and one touched unevenly can twist. A **contact-force analogy** applies a virtual unit pressure to every shared wall; the size of the resultant, how much it cancels out and how much it would twist the building decide the class.
+A building's neighbours change how it behaves in an earthquake: an isolated building sways freely, a confined one is restrained but may pound against its neighbours, and one touched unevenly can twist. A **contact-force analogy** applies a virtual unit pressure to every shared wall; the size of the resultant, how much of the push is opposed by walls on the other side (confinement) and how much it would twist the building decide the class.
 
 | Class | Meaning |
 |---|---|
 | **isolated** | No touching neighbours |
 | **lateral** | Pushed from one side |
-| **corner** | Pushed from two non-opposite sides |
-| **confined** | Pushed from opposite sides that largely cancel |
+| **corner** | Pushed from two perpendicular sides |
+| **confined** | Pushed from two opposite sides, whatever touches its other sides |
 | **torque** | Corner or confined, but unevenly enough to twist |
 
 <p align="center">
@@ -164,10 +164,10 @@ Setback and slenderness parameters are built from a few lengths read off each fo
 
 ## Installation
 
-Pinned to the [v1.0.0 release](https://github.com/GeomaticsCaminosUPM/footprint_attributes/releases/tag/v1.0.0):
+Pinned to the [v1.1.0 release](https://github.com/GeomaticsCaminosUPM/footprint_attributes/releases/tag/v1.1.0):
 
 ```bash
-pip install "footprint-attributes @ git+https://github.com/GeomaticsCaminosUPM/footprint_attributes.git@v1.0.0"
+pip install "footprint-attributes @ git+https://github.com/GeomaticsCaminosUPM/footprint_attributes.git@v1.1.0"
 ```
 
 Dependencies: `geopandas`, `shapely>=2.0`, `numpy`, `pandas`, `scipy`, `scikit-learn`, `statsmodels`, `tabulate`.
@@ -237,7 +237,7 @@ The methodology was validated against hand-labelled building inventories from th
   <img src="docs/figures/confusion_matrix_block_position.jpg" width="42%" alt="Block position confusion matrix"/>&nbsp;&nbsp;
   <img src="docs/figures/block_position_sensibility.jpg" width="48%" alt="Block position accuracy vs contact buffer"/>
 </p>
-<p align="center"><em>Left: relative-position confusion matrix. Right: accuracy vs. contact buffer, peaking near the 0.1 m default.</em></p>
+<p align="center"><em>Left: block-position confusion matrix. Right: accuracy vs. contact buffer, peaking near the 0.1 m default.</em></p>
 
 ---
 
@@ -249,7 +249,7 @@ footprint_attributes/
 │   ├── __init__.py          # public entry points: direction, shape, position, run
 │   ├── direction.py         # building orientation (bbox / inertia methods)
 │   ├── shape.py             # seismic-code shape indices (EC8, ASCE7, GNDTII, CSCR2010, NTC23)
-│   ├── position.py          # contact forces + relative-position classification
+│   ├── position.py          # contact forces + block-position classification
 │   ├── eccentricity.py      # Mohr's-circle worst-case eccentricity optimisation
 │   ├── geometry.py          # shared low-level geometry primitives
 │   ├── config.py            # code limits, compliance grades, default thresholds

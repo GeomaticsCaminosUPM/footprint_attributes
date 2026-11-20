@@ -99,7 +99,7 @@ const DROPDOWN_ATTRIBUTES = [...SHAPE_ATTRIBUTES].sort((a, b) => {
 // Shape index (fsi): a 4-category severity classification built from 3 of
 // the 15 raw metrics (eccentricity, setback/"shape", slenderness), matching
 // the exact thresholds+override order found in the paper's own analysis
-// notebooks (Data/Datasets/paper_results.ipynb, validation_relative_position.ipynb):
+// notebooks (Data/Datasets/paper_results.ipynb, validation_block_position.ipynb):
 // start "regular", eccentricity > 0.3 -> "eccentricity", setback ratio > 0.2
 // -> "shape" (overrides eccentricity), slenderness > 4.0 -> "slenderness"
 // (overrides everything) -- so slenderness always wins if triggered

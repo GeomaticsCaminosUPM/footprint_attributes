@@ -34,6 +34,9 @@ const ARROW_WIDTH = 4;
 const ARROW_DASH = [1.4, 1.2];
 
 const DEFAULT_BUILDING_HEIGHT_M = 8;
+const METRES_PER_FLOOR = 3;
+const HEIGHT_EXAGGERATION = 2;
+const VIEW_3D_PITCH = 55;
 const SHOWCASE_IDLE_RESUME_MS = 30_000;
 
 function hexToRgb(hex) {
@@ -67,6 +70,7 @@ const state = {
   data: { type: "FeatureCollection", features: [] },
   datasetCenter: null,
   colorMethod: "inertia", // "inertia" | "bbox"
+  is3D: false, // the axis arrows read best flat: 2D by default, 3D button to extrude
   selectedBuildingId: null,
   showcaseActive: false,
   bboxData: null,
@@ -103,7 +107,7 @@ const overlay = new MapboxOverlay({ layers: [] });
 map.addControl(overlay);
 map.setMaxPitch(85);
 
-// This map is always 2D -- no middle-drag pitch handler needed.
+// 2D by default (the arrows lie on the ground); the 3D button extrudes the buildings.
 
 // Zoom in past the bounds-fit level so the direction arrows are legible,
 // even if that crops some of the AOI off-screen (same reasoning as the
@@ -141,6 +145,22 @@ function isSelected(feature) {
   return feature.properties?.building_uid === state.selectedBuildingId;
 }
 
+function rawHeightMetres(feature) {
+  const p = feature.properties ?? {};
+  if (typeof p.height === "number") return p.height;
+  if (typeof p.n_floors === "number") return p.n_floors * METRES_PER_FLOOR;
+  return DEFAULT_BUILDING_HEIGHT_M;
+}
+let elevationClamp = Infinity;
+function elevationClampFor(data) {
+  if (data.features.length === 0) return Infinity;
+  const heights = data.features.map(rawHeightMetres).sort((a, b) => a - b);
+  return heights[Math.floor(0.95 * (heights.length - 1))];
+}
+function getElevation(feature) {
+  return Math.min(rawHeightMetres(feature), elevationClamp) * HEIGHT_EXAGGERATION;
+}
+
 function bearingOf(feature) {
   const p = feature.properties ?? {};
   return state.colorMethod === "bbox" ? p.bearing_bbox : p.bearing_inertia;
@@ -174,7 +194,8 @@ function renderLayer() {
     filled: true,
     stroked: true,
     pickable: true,
-    extruded: false,
+    extruded: state.is3D,
+    getElevation,
     getFillColor,
     getLineColor,
     getLineWidth,
@@ -182,6 +203,7 @@ function renderLayer() {
     lineWidthMinPixels: 1,
     updateTriggers: {
       getFillColor: [state.colorMethod],
+      getElevation: [state.is3D],
       getLineColor: [state.selectedBuildingId],
       getLineWidth: [state.selectedBuildingId],
     },
@@ -371,6 +393,7 @@ async function loadDataset(datasetId) {
   const buildings = await fetch(`${dir}/buildings.geojson`).then((r) => r.json());
   state.datasetId = datasetId;
   state.data = buildings;
+  elevationClamp = elevationClampFor(buildings);
 
   try {
     state.bboxData = await fetch(`${dir}/overlays/bbox_axis.geojson`).then((r) => r.json());
@@ -524,8 +547,15 @@ function registerUserInteraction() {
 });
 map.on("click", () => registerUserInteraction());
 
+function toggle3D(forceOn) {
+  state.is3D = forceOn ?? !state.is3D;
+  const nextPitch = state.is3D ? (map.getPitch() > 0 ? map.getPitch() : VIEW_3D_PITCH) : 0;
+  map.easeTo({ pitch: nextPitch, duration: 500 });
+  document.getElementById("view-3d-toggle").classList.toggle("active", state.is3D);
+  renderLayer();
+}
 function resetOrientation() {
-  map.easeTo({ bearing: 0, pitch: 0, duration: 500 });
+  map.easeTo({ bearing: 0, pitch: state.is3D ? VIEW_3D_PITCH : 0, duration: 500 });
 }
 
 async function bootstrap() {
@@ -566,6 +596,10 @@ async function bootstrap() {
     document.getElementById("settings-panel").classList.add("hidden");
   });
   document.getElementById("building-panel-close").addEventListener("click", closeBuildingPanel);
+  document.getElementById("view-3d-toggle").addEventListener("click", () => {
+    toggle3D();
+    registerUserInteraction();
+  });
   document.getElementById("color-method-toggle")?.addEventListener("click", () => {
     setColorMethod(state.colorMethod === "inertia" ? "bbox" : "inertia");
   });

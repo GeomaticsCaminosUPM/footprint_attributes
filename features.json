@@ -39,7 +39,7 @@
     "contact_confinementRatio",
     "contact_angularAcc",
     "contact_angle",
-    "relativePosition"
+    "blockPosition"
   ],
   "direction": [
     "bearing"

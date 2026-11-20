@@ -25,8 +25,8 @@ building sways freely, a confined one is restrained but may pound against
 its neighbours, and one touched unevenly can twist. Each building is
 classified with a **contact-force analogy**: a virtual unit pressure pushes
 on every wall it shares with a neighbour. How strong the resulting push is,
-how much it cancels itself out, and how much it would twist the building
-decide the class.
+how much of it is opposed by walls on the other side (confinement), and how
+much it would twist the building decide the class.
 
 .. image:: figures/block_position_explanation.jpg
    :width: 45%
@@ -43,9 +43,9 @@ decide the class.
    * - ``lateral``
      - pushed from one side
    * - ``corner``
-     - pushed from two non-opposite sides (a corner plot)
+     - pushed from two perpendicular sides (a corner plot)
    * - ``confined``
-     - pushed from opposite sides that largely cancel (hemmed in)
+     - pushed from two opposite sides, whatever touches its other sides (hemmed in)
    * - ``torque``
      - corner/confined, but so unevenly that the building would twist
 

@@ -21,6 +21,7 @@ import geopandas as gpd
 import numpy as np
 
 from . import overlays as _overlays
+from . import style as _style
 from ..position import position
 from ..shape import shape
 
@@ -179,23 +180,11 @@ OVERLAY_IDS = [
     "position_arrows",
 ]
 
-_POSITION_COLORS = {
-    "isolated": "#4299e1",
-    "lateral": "#e2a33f",
-    "corner": "#4fbf8f",
-    "confined": "#8744ad",
-    "torque": "#c0392b",
-    "unlabeled": "#6b7280",
-}
-_POSITION_ORDER = ["isolated", "lateral", "corner", "confined", "torque", "unlabeled"]
-_POSITION_LABELS = {
-    "isolated": "Isolated",
-    "lateral": "Lateral",
-    "corner": "Corner",
-    "confined": "Confined",
-    "torque": "Torque",
-    "unlabeled": "Unlabeled",
-}
+#: Block position colors: the structural-system paper's (see :mod:`.style`),
+#: so the maps, docs figures and paper read the same.
+_POSITION_COLORS = dict(_style.POSITION_COLORS)
+_POSITION_ORDER = list(_style.POSITION_ORDER)
+_POSITION_LABELS = dict(_style.POSITION_LABELS)
 
 _FSI_COLORS = {
     "regular": "#4fbf8f",
@@ -216,7 +205,7 @@ _OVERLAY_STYLE = {
     "bounding_box": ("Bounding box", "#e2a33f", "polygon"),
     "inertia_axis": ("Inertia axis", "#e2938a", "line"),
     "basic_lengths": ("Building lengths (L1/L2/a1/a2/b/c)", "#111111", "line"),
-    "position_arrows": ("Position force arrows", "#8744ad", "line"),
+    "position_arrows": ("Position force arrows", _style.INK, "line"),
 }
 
 
@@ -357,3 +346,65 @@ def build_map(
         default_dataset=default_dataset,
         title=title,
     )
+    apply_paper_ui(output_dir)
+
+
+#: The shared map chrome (paper-style panels, basemap selector, button row,
+#: presentation mode): ``paper_ui.css`` and ``paper_ui.js``.
+WEB_DIR = Path(__file__).resolve().parent / "web"
+WEB_ASSETS = ("paper_ui.css", "paper_ui.js")
+#: Exact library versions the pages load (as the paper's map does).
+MAPLIBRE_VERSION = "4.7.1"
+DECKGL_VERSION = "9.4.1"
+
+_PAGE_PATCHES = [
+    (
+        "https://unpkg.com/maplibre-gl@4/",
+        f"https://unpkg.com/maplibre-gl@{MAPLIBRE_VERSION}/",
+    ),
+    ("https://unpkg.com/deck.gl@9/", f"https://unpkg.com/deck.gl@{DECKGL_VERSION}/"),
+    (
+        '<link rel="stylesheet" href="style.css" />',
+        '<link rel="stylesheet" href="paper_ui.css" />',
+    ),
+    (
+        '<script type="module" src="main.js"></script>',
+        '<script src="paper_ui.js"></script>\n    <script type="module" src="main.js"></script>',
+    ),
+]
+
+
+def copy_paper_ui(dest: str | Path) -> None:
+    """Copy the shared map chrome (:data:`WEB_ASSETS`) into *dest*."""
+    dest = Path(dest)
+    dest.mkdir(parents=True, exist_ok=True)
+    for name in WEB_ASSETS:
+        (dest / name).write_bytes((WEB_DIR / name).read_bytes())
+
+
+def apply_paper_ui(output_dir: str | Path) -> None:
+    """Restyle a page written by :func:`FancyFolium.deck3d.build_interactive_map`
+    in the look of the structural-system paper's web map: white panels,
+    light/dark/satellite basemap, one row of map buttons, presentation mode
+    and pinned library versions. Rewrites ``index.html`` and replaces the
+    template's ``style.css`` by ``paper_ui.css``.
+
+    Raises:
+        RuntimeError: If the template changed and an anchor is missing, so
+            a FancyFolium update fails loudly instead of half-applying.
+    """
+    output_dir = Path(output_dir)
+    index = output_dir / "index.html"
+    html = index.read_text(encoding="utf-8")
+    for old, new in _PAGE_PATCHES:
+        if new in html:
+            continue
+        if old not in html:
+            raise RuntimeError(
+                f"{index}: {old!r} not found -- FancyFolium.deck3d's template "
+                "changed; update _PAGE_PATCHES in footprint_attributes.visualization.maps"
+            )
+        html = html.replace(old, new)
+    index.write_text(html, encoding="utf-8")
+    copy_paper_ui(output_dir)
+    (output_dir / "style.css").unlink(missing_ok=True)

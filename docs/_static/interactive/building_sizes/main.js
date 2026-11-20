@@ -1,4 +1,4 @@
-// Sevilla pilot-region "building sizes" map -- based on maps/relative_position
+// Sevilla pilot-region "building sizes" map -- based on maps/block_position
 // (same visual language / no-backend approach), but showing the basic-length
 // dimension arrows (L1/L2/a1/a2/b/c) computed by
 // footprint_attributes.notebook_utils.basic_length_axis /

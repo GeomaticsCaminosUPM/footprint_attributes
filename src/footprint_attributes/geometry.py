@@ -1423,12 +1423,23 @@ def select_touching_edges(gdf: gpd.GeoDataFrame, buffer: float = 0) -> gpd.GeoDa
     # separate union/buffer calls. Do not "optimise" this into a per-row loop.
     # `prepare()` is kept because it is free, though it mainly accelerates
     # predicates rather than overlay results.
+    if not union.is_valid:  # mitre-joined buffers of a city-sized union can self-touch
+        union = shapely.make_valid(union)
     shapely.prepare(union)
-    out.geometry = (
+    boundaries = (
         out.geometry.buffer(max(buffer, 0.001), cap_style="square", join_style="mitre")
         .buffer(min(-buffer, -0.001), cap_style="square", join_style="mitre")
-        .boundary.intersection(union)
+        .boundary
     )
+    try:
+        out.geometry = boundaries.intersection(union)
+    except shapely.errors.GEOSException:
+        # Floating-point overlay can still fail ("side location conflict") on
+        # nearly coincident edges; snap-rounding overlay on a 1 micrometre grid
+        # is robust and only used when needed, so other results are unchanged.
+        out.geometry = shapely.intersection(
+            boundaries.to_numpy(), union, grid_size=1e-6
+        )
     return out
 
 

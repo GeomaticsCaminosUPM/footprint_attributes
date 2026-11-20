@@ -28,7 +28,7 @@ _CODE_INDEPENDENT_DESCRIPTIONS = {
 
 _POSITION_DESCRIPTIONS = {
     "contact_force": "Magnitude of the net contact-force resultant from touching neighbours",
-    "contact_confinementRatio": "How evenly touching neighbours surround the building (0-1)",
+    "contact_confinementRatio": "Share of the wall contact force opposed by walls on the other side (0-1)",
     "contact_angularAcc": (
         "Angular acceleration from an uneven (off-centre) contact-force distribution"
     ),

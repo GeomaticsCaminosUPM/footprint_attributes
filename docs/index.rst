@@ -111,7 +111,7 @@ Quick start
 
 .. code-block:: bash
 
-   pip install "footprint-attributes @ git+https://github.com/GeomaticsCaminosUPM/footprint_attributes.git@v1.0.0"
+   pip install "footprint-attributes @ git+https://github.com/GeomaticsCaminosUPM/footprint_attributes.git@v1.1.0"
 
 .. code-block:: python
 

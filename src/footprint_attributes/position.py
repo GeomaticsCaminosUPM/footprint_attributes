@@ -1,10 +1,11 @@
 """
 Building position within the urban block.
 
-This module classifies each building footprint into one of five relative-position
+This module classifies each building footprint into one of five block-position
 categories based on a "contact force" analogy: forces proportional to the shared
 wall area are computed for every touching pair of footprints, and their resultant
-magnitude, confinement ratio, and weighted angle are used to assign the class.
+magnitude, confinement ratio (share of the force opposed by walls on the other
+side), and weighted angle are used to assign the class.
 
 The public ``position`` object is both callable (runs the full pipeline) and
 exposes sub-functions as attributes:
@@ -120,9 +121,13 @@ def contact_forces_df(
 
     - **force** – magnitude of the resultant contact force, normalised by the
       square root of the footprint area.
-    - **confinementRatio** – fraction of the total force that is
-      "cancelled out" by opposing forces (0 = fully lateral, 1 = fully
-      enclosed).
+    - **confinementRatio** – share of the total force that is opposed by
+      other forces.  For each wall force ``f_i`` the resultant ``R`` is
+      projected on its direction and ``|f_i| - R·f_i/|f_i|`` (the part of the
+      other forces pushing against it) is clipped to ``[0, |f_i|]``.  The
+      clipped values are summed and divided by ``sum |f_i|``.  Perpendicular
+      walls and wall segments on the same side contribute 0, two equal
+      opposite walls give 1 (0 = no opposed walls, 1 = fully opposed).
     - **angularAcc** – angular acceleration proxy (momentum × area / I_z).
     - **angle** – force-weighted mean angle between individual forces and the
       resultant (in radians).
@@ -226,7 +231,28 @@ def contact_forces_df(
 
     # Angle between each force and the resultant
     geoms = resultant_angle(geoms, vector_column="normal_vector", id_column="geom_id")
-    geoms["angle"] = geoms["angle"] * 2 * geoms["abs_force"]  # weighted contribution
+    # Weighted contribution.  The factor 2 turns each wall's deviation from
+    # the resultant into the angle between walls: two equal walls at an
+    # angle theta deviate theta/2 each from their resultant, so a perfect
+    # corner reads pi/2 and minAngle = pi/4 means "walls more than 45 deg apart".
+    geoms["angle"] = geoms["angle"] * 2 * geoms["abs_force"]
+
+    # Opposed part of each force: the resultant projected on the force's own
+    # direction is |f_i| minus what the other forces push against it.  Clipped
+    # to [0, |f_i|] so that perpendicular walls (projection |f_i|) and several
+    # segments on the same side (projection > |f_i|) do not count as opposed.
+    vectors = np.array(geoms["normal_vector"].tolist(), dtype=float).reshape(-1, 2)
+    resultant_per_edge = (
+        pd.DataFrame(vectors, index=geoms.index)
+        .groupby(geoms["geom_id"].to_numpy())
+        .transform("sum")
+        .to_numpy()
+    )
+    norms = np.linalg.norm(vectors, axis=1)
+    projection = np.einsum("ij,ij->i", resultant_per_edge, vectors) / np.where(
+        norms > 0, norms, 1.0
+    )
+    geoms["opposed_force"] = np.clip(norms - projection, 0.0, norms)
 
     # ------------------------------------------------------------------
     # Aggregate per building
@@ -236,6 +262,7 @@ def contact_forces_df(
         normal_vector=("normal_vector", "sum"),
         abs_force=("abs_force", "sum"),
         angle=("angle", "sum"),
+        opposed_force=("opposed_force", "sum"),
         momentum=("momentum", "sum"),
         inertia=("inertia", "first"),
         area=("area", "first"),
@@ -243,9 +270,7 @@ def contact_forces_df(
 
     res_force = agg["normal_vector"].apply(np.linalg.norm)
     agg["force"] = res_force / np.sqrt(agg["area"] + 1e-12)
-    agg["confinementRatio"] = (agg["abs_force"] - res_force) / (
-        agg["abs_force"] + 1e-12
-    )
+    agg["confinementRatio"] = agg["opposed_force"] / (agg["abs_force"] + 1e-12)
     agg["momentum_mag"] = agg["momentum"].apply(
         lambda m: np.abs(m).min() if isinstance(m, np.ndarray) else abs(m)
     )
@@ -474,7 +499,7 @@ class _Position:
         height_column: str | None = None,
         minRadius: float = POSITION_DEFAULTS["minRadius"],
     ) -> list[str]:
-        """Classify each building into a relative-position category.
+        """Classify each building into a block-position category.
 
         Pre-computed force columns are reused when available, avoiding an
         expensive re-computation.  Two column naming conventions are accepted:
@@ -492,10 +517,13 @@ class _Position:
 
         1. **"torque"** – Confined or corner building with high angular
            acceleration, indicating potentially damaging torsional response.
-        2. **"confined"** – Touches neighbours on both lateral sides
-           (high confinement ratio).
+        2. **"confined"** – Touches neighbours on two opposite sides
+           (confinement ratio, the share of opposed wall force, above
+           ``minConfinement``), whatever touches the other sides.
         3. **"corner"** – Touches at two perpendicular sides (high resultant
-           force AND high weighted angle).
+           force AND weighted angle above ``minAngle``, i.e. walls more than
+           45 deg apart; with perpendicular walls the shorter one must be at
+           least ~20 % of the longer one).
         4. **"lateral"** – Touches on one side (high resultant force only).
         5. **"isolated"** – No touching neighbours.
 

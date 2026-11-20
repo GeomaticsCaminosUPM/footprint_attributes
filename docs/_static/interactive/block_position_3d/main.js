@@ -1,4 +1,4 @@
-// Santo Domingo relative-position map -- based on maps/template (same
+// Santo Domingo block-position map -- based on maps/template (same
 // visual language / no-backend approach). Single fixed categorical
 // attribute (blockPosition: isolated/lateral/corner/confined/torque),
 // computed geometrically for every building via footprint_attributes'
@@ -46,12 +46,13 @@ const FORCE_ARROWS_EDGE_WIDTH = 2.5;
 const FORCE_ARROWS_RESULTANT_WIDTH = 5;
 
 const POSITION_COLORS = {
-  isolated: "#4299e1",
-  lateral: "#e2a33f",
-  corner: "#4fbf8f",
-  confined: "#8744ad",
-  torque: "#c0392b",
-  unlabeled: "#6b7280",
+  // the structural-system paper's colors (footprint_attributes.visualization.style)
+  isolated: "#E4E4E4",
+  lateral: "#A8CBE6",
+  corner: "#BCA9D8",
+  confined: "#7DBBAE",
+  torque: "#DE95A3",
+  unlabeled: "#FFFFFF",
 };
 const POSITION_ORDER = ["isolated", "lateral", "corner", "confined", "torque", "unlabeled"];
 const POSITION_LABELS = {
@@ -207,7 +208,7 @@ let onBuildingClick = () => {};
 function buildingTooltip({ object, layer }) {
   if (!object || !layer?.id?.startsWith("buildings-")) return null;
   const label = POSITION_LABELS[positionKey(object)];
-  return { html: `<div><strong>Relative position:</strong> ${label}</div><div class="hint" style="margin-top:4px">Click for full details</div>`, className: "deck-tooltip" };
+  return { html: `<div><strong>Block position:</strong> ${label}</div><div class="hint" style="margin-top:4px">Click for full details</div>`, className: "deck-tooltip" };
 }
 
 function renderLayer() {
@@ -360,7 +361,7 @@ function renderLegend() {
   const container = document.getElementById("legend");
   container.innerHTML = "";
   const heading = document.createElement("h2");
-  heading.textContent = "Relative position";
+  heading.textContent = "Block position";
   container.appendChild(heading);
 
   const counts = {};
@@ -450,7 +451,7 @@ function renderPositionChart() {
 }
 
 // ---------------------------------------------------------------------------
-// Building popup -- this map is about relative_position, so that's the only
+// Building popup -- this map is about block_position, so that's the only
 // column shown.
 function renderBuildingPanel(id, properties) {
   const panel = document.getElementById("building-panel");
@@ -465,7 +466,7 @@ function renderBuildingPanel(id, properties) {
   const tbody = document.createElement("tbody");
   const row = document.createElement("tr");
   const th = document.createElement("th");
-  th.textContent = "Relative position";
+  th.textContent = "Block position";
   const td = document.createElement("td");
   td.textContent = POSITION_LABELS[positionKey({ properties })];
   row.append(th, td);
@@ -581,7 +582,7 @@ function createDropdown(container, options, onChange) {
 // Showcase mode: this map's video mode is always 3D, orbiting the dataset
 // center at a fixed inclined pitch (SHOWCASE_PITCH, not a straight-down
 // cenital view) so the blockPosition coloring stays readable in depth.
-// The force-arrows overlay (2D-only, see maps/relative_position/arrows) is
+// The force-arrows overlay (2D-only, see maps/block_position/arrows) is
 // a separate map, not part of this one's video mode.
 let showcaseRotateFrame = null;
 let showcaseIdleTimer = null;

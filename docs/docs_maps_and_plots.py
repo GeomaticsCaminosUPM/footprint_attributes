@@ -57,7 +57,8 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from matplotlib import colors as mcolors  # noqa: E402
 from matplotlib.lines import Line2D  # noqa: E402
-from matplotlib.patches import Circle, Patch, Rectangle  # noqa: E402
+from matplotlib import patheffects  # noqa: E402
+from matplotlib.patches import Circle, Patch  # noqa: E402
 from PIL import Image  # noqa: E402
 from scipy.spatial import cKDTree  # noqa: E402
 
@@ -97,6 +98,7 @@ from footprint_attributes.testing_shapes import (  # noqa: E402
     torque_triplet_gdf,
     x_shape_polygon,
 )
+from footprint_attributes.visualization import style  # noqa: E402
 from footprint_attributes.visualization.maps import (  # noqa: E402
     _FSI_COLORS,
     _FSI_LABELS,
@@ -130,9 +132,9 @@ CITIES = {
     ),
 }
 CITY_COLORS = {
-    "guatemala": "#2b6cb0",
-    "san_jose": "#dd6b20",
-    "santo_domingo": "#2f855a",
+    "guatemala": "#1F4E79",
+    "san_jose": "#B24A2A",
+    "santo_domingo": "#2E7D6B",
 }
 POSITION_ORDER = ["isolated", "lateral", "corner", "confined", "torque"]
 EXTRA_SHAPE_COLUMNS = [
@@ -141,34 +143,23 @@ EXTRA_SHAPE_COLUMNS = [
     "inertia_circle_ratio",
 ]
 
-INK = "#1a202c"
-MUTED = "#718096"
-FILL = "#e2e8f0"
-HULL = "#3182ce"
-BBOX = "#dd6b20"
+INK = style.INK
+MUTED = style.MUTED
+FILL = style.LIGHT
+HULL = style.ACCENT
+BBOX = "#B24A2A"
 ATTRIBUTION = "© OpenStreetMap contributors"
 
+# The paper's figure style (footprint_attributes.visualization.style): one
+# sans-serif font, dark-gray ink, no grid, frameless legends. The docs images
+# are wider than the paper's 5.3 in text width, so the base size is larger.
+style.apply_style(font_size=11)
 plt.rcParams.update(
     {
         "figure.dpi": 110,
         "savefig.dpi": 150,
         "savefig.bbox": "tight",
         "savefig.pad_inches": 0.15,
-        "font.size": 10,
-        "axes.titlesize": 11,
-        "axes.titleweight": "bold",
-        "axes.labelcolor": INK,
-        "axes.edgecolor": "#a0aec0",
-        "axes.spines.top": False,
-        "axes.spines.right": False,
-        "axes.grid": True,
-        "grid.color": "#edf2f7",
-        "grid.linewidth": 0.8,
-        "xtick.color": "#4a5568",
-        "ytick.color": "#4a5568",
-        "legend.frameon": False,
-        "figure.titlesize": 13,
-        "figure.titleweight": "bold",
     }
 )
 
@@ -306,7 +297,7 @@ def add_basemap(ax, xmin, ymin, xmax, ymax, panel_px: int) -> None:
     rgb = mosaic.astype(float)
     grey = rgb @ np.array([0.299, 0.587, 0.114])
     rgb = 0.25 * rgb + 0.75 * grey[..., None]
-    mosaic = (255 - 0.45 * (255 - rgb)).clip(0, 255).astype(np.uint8)
+    mosaic = (255 - 0.32 * (255 - rgb)).clip(0, 255).astype(np.uint8)
     extent = (
         xs.start * size - WEB_MERCATOR_HALF,
         (xs.stop) * size - WEB_MERCATOR_HALF,
@@ -323,83 +314,41 @@ def add_basemap(ax, xmin, ymin, xmax, ymax, panel_px: int) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def _nice(x: float) -> float:
-    for n in [5, 10, 20, 25, 50, 100, 150, 200, 250, 500, 1000]:
-        if n >= x:
-            return n
-    return 1000
-
-
 def decorate_map(ax, lat: float, *, scale: bool = True) -> None:
-    """North arrow, scale bar, attribution, thin frame."""
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.grid(False)
-    for s in ax.spines.values():
-        s.set_visible(True)
-        s.set_color("#a0aec0")
-        s.set_linewidth(0.8)
-    ax.annotate(
-        "N",
-        xy=(0.07, 0.95),
-        xytext=(0.07, 0.83),
-        xycoords="axes fraction",
-        ha="center",
-        va="center",
-        fontsize=11,
-        fontweight="bold",
-        color=INK,
-        arrowprops=dict(
-            facecolor=INK, edgecolor=INK, width=3, headwidth=10, headlength=9
-        ),
-        zorder=10,
-    )
-    ax.text(
-        0.01,
-        0.01,
-        ATTRIBUTION,
-        transform=ax.transAxes,
-        fontsize=5.5,
-        color="#4a5568",
-        ha="left",
-        va="bottom",
-        zorder=10,
-        bbox=dict(facecolor="white", edgecolor="none", alpha=0.7, pad=1),
-    )
-    if not scale:
-        return
-    xmin, xmax = ax.get_xlim()
-    ymin, ymax = ax.get_ylim()
-    k = math.cos(math.radians(lat))  # web-mercator units -> ground metres
-    ground = _nice((xmax - xmin) * k / 5)
-    length = ground / k
-    x1 = xmax - 0.05 * (xmax - xmin)
-    x0 = x1 - length
-    y0 = ymin + 0.06 * (ymax - ymin)
-    h = 0.012 * (ymax - ymin)
-    ax.add_patch(
-        Rectangle(
-            (x0 - 0.02 * (xmax - xmin), y0 - 0.035 * (ymax - ymin)),
-            length + 0.04 * (xmax - xmin),
-            0.09 * (ymax - ymin),
-            facecolor="white",
-            edgecolor="none",
-            alpha=0.8,
-            zorder=9,
-        )
-    )
-    ax.add_patch(
-        Rectangle((x0, y0), length, h, facecolor=INK, edgecolor=INK, zorder=10)
-    )
-    ax.text(
-        (x0 + x1) / 2,
-        y0 + 2.2 * h,
-        f"{ground:g} m",
-        ha="center",
+    """Paper-style map furniture: thin light frame, small north arrow and a
+    plain line scale bar (the basemap credit goes once per figure, see
+    :func:`basemap_credit`)."""
+    style.map_frame(ax)
+    style.north_arrow(ax, fontsize=10)
+    if scale:
+        k = math.cos(math.radians(lat))  # web-mercator units -> ground metres
+        style.scale_bar(ax, units_per_metre=1 / k, fraction=0.25, fontsize=10)
+
+
+def basemap_credit(fig) -> None:
+    fig.text(
+        0.99,
+        0.005,
+        f"Basemap {ATTRIBUTION}",
+        ha="right",
         va="bottom",
         fontsize=8,
-        color=INK,
-        zorder=10,
+        color=MUTED,
+    )
+
+
+def building_count(ax, n: int, extra: str = "") -> None:
+    """Number of buildings in the lower right corner, as in the paper's maps."""
+    ax.text(
+        0.97,
+        0.05,
+        f"n = {n:,}{extra}",
+        transform=ax.transAxes,
+        ha="right",
+        va="bottom",
+        fontsize=10,
+        zorder=20,
+        path_effects=style.halo(),
     )
 
 
@@ -453,7 +402,7 @@ def save(fig, path: Path, **kw) -> None:
 def _draw_region(ax, gdf3857, colors, lat, extent=None, panel_px=640, lw=0.25):
     extent = extent or square_extent(gdf3857.total_bounds)
     add_basemap(ax, *extent, panel_px=panel_px)
-    gdf3857.plot(ax=ax, color=colors, edgecolor="#2d3748", linewidth=lw, zorder=2)
+    gdf3857.plot(ax=ax, color=colors, edgecolor=INK, linewidth=lw, zorder=2)
     decorate_map(ax, lat)
 
 
@@ -461,17 +410,16 @@ def region_map_categorical(data, column, palette, labels, order, title, path):
     fig, axes, lax = region_panels()
     for ax, (city, gdf) in zip(axes, data.items()):
         g = gdf.to_crs(3857)
-        colors = g[column].map(palette).fillna("#a0aec0")
+        colors = g[column].map(palette).fillna(style.LIGHT)
         _draw_region(ax, g, colors.values, gdf.to_crs(4326).geometry.centroid.y.mean())
-        ax.set_title(f"{CITIES[city][0]}\n{len(g)} buildings", fontsize=10.5)
-    handles = [
-        Patch(facecolor=palette[k], edgecolor="#2d3748", linewidth=0.5, label=labels[k])
-        for k in order
-    ]
+        ax.set_title(CITIES[city][0])
+        building_count(ax, len(g))
+    handles = style.category_handles(palette, labels, order)
     lax.legend(
-        handles=handles, loc="center", ncol=len(handles), fontsize=10, handlelength=1.6
+        handles=handles, loc="center", ncol=len(handles), fontsize=11, **style.LEGEND_KW
     )
-    fig.suptitle(title, y=0.98)
+    fig.suptitle(title, x=0.01, ha="left", y=0.97)
+    basemap_credit(fig)
     save(fig, path)
 
 
@@ -501,13 +449,15 @@ def region_map_continuous(
     for ax, (city, gdf) in zip(axes, data.items()):
         g = gdf.to_crs(3857)
         v = g[column].to_numpy(dtype=float)
-        colors = [cmap(norm(x)) if np.isfinite(x) else (0.63, 0.68, 0.75, 1) for x in v]
+        nodata = mcolors.to_rgba(style.LIGHT)
+        colors = [cmap(norm(x)) if np.isfinite(x) else nodata for x in v]
         _draw_region(ax, g, colors, gdf.to_crs(4326).geometry.centroid.y.mean())
-        sub = f"{CITIES[city][0]}"
+        extra = ""
         if limit is not None:
             ok = is_compliant(g[column], column)
-            sub += f"\n{100 * (1 - ok.mean()):.0f}% of buildings exceed the code limit"
-        ax.set_title(sub, fontsize=10.5)
+            extra = f"\n{100 * (1 - ok.mean()):.0f}% exceed the code limit"
+        ax.set_title(CITIES[city][0])
+        building_count(ax, len(g), extra)
     cax = lax.inset_axes([0.3, 0.35, 0.4, 0.3])
     cb = fig.colorbar(
         plt.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax, orientation="horizontal"
@@ -518,11 +468,11 @@ def region_map_continuous(
     label = unit
     if limit is not None:
         cax.axvline(limit, color=INK, lw=2)
-        label = (
-            f"code limit ({criteria(column)}) marked ▮ — green complies, red exceeds"
-        )
-    cb.set_label(label, fontsize=9, color="#4a5568")
-    fig.suptitle(title, y=0.98)
+        label = f"code limit ({criteria(column)}) marked by the black line: green complies, red exceeds"
+    cb.set_label(label, fontsize=10, color=MUTED)
+    cb.ax.tick_params(labelsize=10, width=0.6)
+    fig.suptitle(title, x=0.01, ha="left", y=0.97)
+    basemap_credit(fig)
     save(fig, path)
 
 
@@ -568,15 +518,16 @@ def detail_maps(data) -> None:
             ax.set_xlim(ext[0], ext[2])
             ax.set_ylim(ext[1], ext[3])
             decorate_map(ax, gdf.to_crs(4326).geometry.centroid.y.mean())
-            ax.set_title(CITIES[city][0], fontsize=10.5)
+            ax.set_title(CITIES[city][0])
         lax.legend(
             handles=legend_handles,
             loc="center",
             ncol=ncol or len(legend_handles),
-            fontsize=9.5,
-            handlelength=2.6,
+            fontsize=10.5,
+            **{**style.LEGEND_KW, "handlelength": 2.6},
         )
-        fig.suptitle(title, y=0.98)
+        fig.suptitle(title, x=0.01, ha="left", y=0.97)
+        basemap_credit(fig)
         save(fig, path)
 
     # -- direction: bounding boxes + inertia axes, buildings coloured by bearing
@@ -589,7 +540,7 @@ def detail_maps(data) -> None:
             ax=ax,
             color=colors,
             alpha=0.55,
-            edgecolor="#2d3748",
+            edgecolor="#262626",
             linewidth=0.4,
             zorder=2,
         )
@@ -628,9 +579,9 @@ def detail_maps(data) -> None:
         g = sel.to_crs(3857)
         g.plot(
             ax=ax,
-            color="#edf2f7",
+            color="#E6E6E6",
             alpha=0.85,
-            edgecolor="#2d3748",
+            edgecolor="#262626",
             linewidth=0.5,
             zorder=2,
         )
@@ -647,7 +598,7 @@ def detail_maps(data) -> None:
         sel = sel[inner.values]
         sel = sel.loc[sel.area.sort_values(ascending=False).index[:10]]
         sel.to_crs(3857).plot(
-            ax=ax, color="#fefcbf", edgecolor=INK, linewidth=0.9, zorder=3
+            ax=ax, color="#F6E7B8", edgecolor=INK, linewidth=0.9, zorder=3
         )
         L1, d1, L2, d2 = min_bounding_box(sel)
         axis = basic_length_axis(sel, L1, d1, L2, d2)
@@ -666,7 +617,7 @@ def detail_maps(data) -> None:
         draw_lengths,
         [
             *dimension_legend_handles(),
-            Patch(facecolor="#fefcbf", edgecolor=INK, label="measured building"),
+            Patch(facecolor="#F6E7B8", edgecolor=INK, label="measured building"),
         ],
         MAPS / "detail_basic_lengths.jpg",
         zoom=0.6,
@@ -675,12 +626,11 @@ def detail_maps(data) -> None:
     # -- contact forces: per-wall arrows + resultant, coloured by class
     def draw_position(ax, sel):
         g = sel.to_crs(3857)
-        colors = sel["blockPosition"].map(_POSITION_COLORS).fillna("#a0aec0")
+        colors = sel["blockPosition"].map(_POSITION_COLORS).fillna(style.LIGHT)
         g.plot(
             ax=ax,
             color=colors.values,
-            alpha=0.75,
-            edgecolor="#2d3748",
+            edgecolor=INK,
             linewidth=0.4,
             zorder=2,
         )
@@ -694,27 +644,22 @@ def detail_maps(data) -> None:
             a = np.stack(edges["anchor"].to_numpy())
             v = -np.stack(edges["vector"].to_numpy()) * 0.3
             arrow_gdf(a, v, sel.crs, centered=False, head_frac=0.3).to_crs(3857).plot(
-                ax=ax, color="#4a5568", linewidth=0.6, zorder=3
+                ax=ax, color=MUTED, linewidth=0.6, zorder=3
             )
         if len(res):
             a = np.stack(res["anchor"].to_numpy())
             v = -np.stack(res["vector"].to_numpy()) * 0.3
             arrow_gdf(a, v, sel.crs, centered=False, head_frac=0.3).to_crs(3857).plot(
-                ax=ax, color=INK, linewidth=1.6, zorder=4
+                ax=ax, color=INK, linewidth=1.6, zorder=4, path_effects=style.halo(2.6)
             )
 
     panels(
         "Block position — contact force on every shared wall and its resultant",
         draw_position,
         [
-            *(
-                Patch(
-                    facecolor=_POSITION_COLORS[k], alpha=0.8, label=_POSITION_LABELS[k]
-                )
-                for k in POSITION_ORDER
-            ),
-            Line2D([0], [0], color="#4a5568", lw=0.8, label="wall contact force"),
-            Line2D([0], [0], color=INK, lw=1.8, label="resultant"),
+            *style.category_handles(_POSITION_COLORS, _POSITION_LABELS, POSITION_ORDER),
+            Line2D([0], [0], color=MUTED, lw=0.8, label="Wall contact force"),
+            Line2D([0], [0], color=INK, lw=1.8, label="Net push from neighbors"),
         ],
         MAPS / "detail_contact_forces.jpg",
     )
@@ -726,11 +671,11 @@ def detail_maps(data) -> None:
             sel["ASCE7_setbackRatio"].to_numpy(float), "ASCE7_setbackRatio"
         )
         colors = [
-            cmap(norm(x)) if np.isfinite(x) else "#cbd5e0"
+            cmap(norm(x)) if np.isfinite(x) else "#BDBDBD"
             for x in sel["ASCE7_setbackRatio"]
         ]
         g.plot(
-            ax=ax, color=colors, alpha=0.7, edgecolor="#2d3748", linewidth=0.4, zorder=2
+            ax=ax, color=colors, alpha=0.7, edgecolor="#262626", linewidth=0.4, zorder=2
         )
         hulls = sel.geometry.convex_hull
         gaps = gpd.GeoSeries(hulls.difference(sel.geometry), crs=sel.crs)
@@ -890,7 +835,7 @@ def fig_direction(data) -> None:
     ax0.set_axis_off()
     ax0.set_title("20 × 10 m rectangle at known angles")
     ax.plot(
-        angles, -angles, color="#e53e3e", lw=6, alpha=0.25, label="expected (−angle)"
+        angles, -angles, color="#C0392B", lw=6, alpha=0.25, label="expected (−angle)"
     )
     ax.plot(angles, bb, "o-", color=BBOX, label="bbox", ms=5)
     ax.plot(angles, ine, "s--", color=INK, label="inertia", ms=4, mfc="white")
@@ -939,7 +884,7 @@ def fig_direction(data) -> None:
     fig, axes = plt.subplots(1, 3, figsize=(13, 4.2), sharey=True)
     for ax, (city, gdf) in zip(axes, data.items()):
         diff = np.abs(((gdf["bearing_bbox"] - gdf["bearing_inertia"]) + 90) % 180 - 90)
-        ax.plot([-90, 90], [-90, 90], color="#e53e3e", lw=1, ls="--", zorder=1)
+        ax.plot([-90, 90], [-90, 90], color="#C0392B", lw=1, ls="--", zorder=1)
         ax.scatter(
             gdf["bearing_bbox"],
             gdf["bearing_inertia"],
@@ -985,7 +930,7 @@ def fig_direction(data) -> None:
         ax.set_theta_direction(-1)
         ax.set_yticklabels([])
         ax.set_title(CITIES[city][0], fontsize=10, pad=14)
-        ax.grid(color="#e2e8f0")
+        ax.grid(color="#EDEDED")
     fig.suptitle(
         "Orientation of the short axis (inertia bearing) — the street grid shows through"
     )
@@ -1005,7 +950,7 @@ def fig_position(data) -> None:
         gdf = gdf.reset_index(drop=True)
         res = position(gdf)
         cls = res["blockPosition"].iloc[0]
-        gdf.iloc[1:].plot(ax=ax, facecolor=FILL, edgecolor="#a0aec0", lw=1)
+        gdf.iloc[1:].plot(ax=ax, facecolor=FILL, edgecolor="#BDBDBD", lw=1)
         gdf.iloc[[0]].plot(
             ax=ax, facecolor=_POSITION_COLORS[cls], edgecolor=INK, lw=1.3, alpha=0.85
         )
@@ -1024,7 +969,7 @@ def fig_position(data) -> None:
                 gdf.crs,
                 centered=False,
                 head_frac=0.3,
-            ).plot(ax=ax, color="#4a5568", lw=1.2)
+            ).plot(ax=ax, color="#6B6B6B", lw=1.2)
         if len(r0) and np.linalg.norm(r0["vector"].iloc[0]) > 1e-6:
             arrow_gdf(
                 np.stack(r0["anchor"]),
@@ -1036,7 +981,7 @@ def fig_position(data) -> None:
         ax.set_aspect("equal")
         ax.set_axis_off()
         r = res.iloc[0]
-        ax.set_title(f"{name}  →  {cls}", color=_POSITION_COLORS[cls], fontsize=11)
+        ax.set_title(f"{name}  →  {cls}", fontsize=11)
         ax.text(
             0.5,
             -0.04,
@@ -1046,19 +991,19 @@ def fig_position(data) -> None:
             ha="center",
             va="top",
             fontsize=8.5,
-            color="#4a5568",
+            color="#6B6B6B",
         )
     fig.legend(
         handles=[
             Line2D(
                 [0],
                 [0],
-                color="#4a5568",
+                color="#6B6B6B",
                 lw=1.2,
                 label="unit pressure on each shared wall",
             ),
             Line2D([0], [0], color=INK, lw=2.4, label="resultant contact force"),
-            Patch(facecolor=FILL, edgecolor="#a0aec0", label="neighbours"),
+            Patch(facecolor=FILL, edgecolor="#BDBDBD", label="neighbours"),
         ],
         loc="lower center",
         ncol=3,
@@ -1074,7 +1019,9 @@ def fig_position(data) -> None:
         left = 0
         for k in POSITION_ORDER:
             w = share.get(k, 0) * 100
-            ax.barh(i, w, left=left, color=_POSITION_COLORS[k], edgecolor="white")
+            ax.barh(
+                i, w, left=left, color=_POSITION_COLORS[k], edgecolor=INK, linewidth=0.4
+            )
             if w > 4:
                 ax.text(
                     left + w / 2,
@@ -1082,9 +1029,8 @@ def fig_position(data) -> None:
                     f"{w:.0f}%",
                     ha="center",
                     va="center",
-                    color="white",
-                    fontsize=9,
-                    fontweight="bold",
+                    color=INK,
+                    fontsize=9.5,
                 )
             left += w
     ax.set_yticks(range(len(data)), [CITIES[c][0] for c in data])
@@ -1092,10 +1038,9 @@ def fig_position(data) -> None:
     ax.set_xlim(0, 100)
     ax.set_xlabel("share of buildings (%)")
     ax.legend(
-        handles=[
-            Patch(color=_POSITION_COLORS[k], label=_POSITION_LABELS[k])
-            for k in POSITION_ORDER
-        ],
+        handles=style.category_handles(
+            _POSITION_COLORS, _POSITION_LABELS, POSITION_ORDER
+        ),
         loc="upper center",
         bbox_to_anchor=(0.5, 1.28),
         ncol=5,
@@ -1110,19 +1055,21 @@ def fig_position(data) -> None:
         axes[0].scatter(
             s["contact_confinementRatio"],
             s["contact_force"],
-            s=7,
-            alpha=0.5,
+            s=9,
+            alpha=0.85,
             color=_POSITION_COLORS[k],
             label=_POSITION_LABELS[k],
-            edgecolor="none",
+            edgecolor=INK,
+            linewidth=0.2,
         )
         axes[1].scatter(
             s["contact_angle"],
             s["contact_angularAcc"],
-            s=7,
-            alpha=0.5,
+            s=9,
+            alpha=0.85,
             color=_POSITION_COLORS[k],
-            edgecolor="none",
+            edgecolor=INK,
+            linewidth=0.2,
         )
     axes[0].set_xlabel("contact_confinementRatio")
     axes[0].set_ylabel("contact_force")
@@ -1183,7 +1130,7 @@ def _shape_sweep(buf: float) -> dict[str, float]:
 
 def fig_sensitivity() -> None:
     buffers = np.round(np.arange(0.0, 2.0 + 1e-9, 0.1), 2)
-    with ProcessPoolExecutor(min(8, os.cpu_count() or 1)) as pool:
+    with ProcessPoolExecutor(min(4, os.cpu_count() or 1)) as pool:
         pos = list(pool.map(_position_sweep, buffers))
         shp = list(pool.map(_shape_sweep, buffers))
 
@@ -1196,6 +1143,11 @@ def fig_sensitivity() -> None:
             color=_POSITION_COLORS[k],
             label=_POSITION_LABELS[k],
             lw=2,
+            # the paper's position colors are light: a thin dark casing keeps them readable
+            path_effects=[
+                patheffects.Stroke(linewidth=3.4, foreground=INK),
+                patheffects.Normal(),
+            ],
         )
     axes[0].axvline(0.1, color=MUTED, ls=":", lw=1)
     axes[0].text(
@@ -1214,7 +1166,7 @@ def fig_sensitivity() -> None:
         buffers,
         [p["force"] for p in pos],
         marker=".",
-        color="#805ad5",
+        color="#7B68A6",
         lw=2,
         label="mean contact_force",
     )
@@ -1222,7 +1174,7 @@ def fig_sensitivity() -> None:
         buffers,
         [p["confinement"] for p in pos],
         marker=".",
-        color="#38a169",
+        color="#2E7D6B",
         lw=2,
         label="mean contact_confinementRatio",
     )
@@ -1233,9 +1185,9 @@ def fig_sensitivity() -> None:
 
     fig, ax = plt.subplots(figsize=(7.5, 4.2))
     for key, color, label in [
-        ("polsby_popper", "#3182ce", "polsby_popper"),
-        ("convex_hull_irregularity", "#dd6b20", "convex_hull_irregularity"),
-        ("EC8_compactness", "#38a169", "EC8_compactness"),
+        ("polsby_popper", "#1F4E79", "polsby_popper"),
+        ("convex_hull_irregularity", "#B24A2A", "convex_hull_irregularity"),
+        ("EC8_compactness", "#2E7D6B", "EC8_compactness"),
     ]:
         ax.plot(
             buffers, [s[key] for s in shp], marker=".", lw=2, color=color, label=label
@@ -1272,7 +1224,7 @@ def fig_shape(data) -> None:
             )
         x, y, r = max_inscribed_circle(poly)
         ax.add_patch(
-            Circle((x, y), r, facecolor="none", edgecolor="#d53f8c", lw=1.1, zorder=4)
+            Circle((x, y), r, facecolor="none", edgecolor="#B5527A", lw=1.1, zorder=4)
         )
         pp = shape.polsby_popper(g)[0]
         ch = shape.convex_hull_irregularity(g)[0]
@@ -1292,7 +1244,7 @@ def fig_shape(data) -> None:
             Patch(
                 facecolor="none", edgecolor=HULL, hatch="////", label="hull − footprint"
             ),
-            Line2D([0], [0], color="#d53f8c", label="largest inscribed circle"),
+            Line2D([0], [0], color="#B5527A", label="largest inscribed circle"),
         ],
         loc="lower center",
         ncol=3,
@@ -1305,13 +1257,13 @@ def fig_shape(data) -> None:
     x = np.arange(len(df))
     for i, (col, color) in enumerate(
         [
-            ("polsby_popper", "#3182ce"),
-            ("inertia_circle_ratio", "#805ad5"),
-            ("convex_hull_irregularity", "#dd6b20"),
+            ("polsby_popper", "#1F4E79"),
+            ("inertia_circle_ratio", "#7B68A6"),
+            ("convex_hull_irregularity", "#B24A2A"),
         ]
     ):
         bars = ax.bar(x + (i - 1) * 0.26, df[col], width=0.26, color=color, label=col)
-        ax.bar_label(bars, fmt="%.2f", fontsize=7.5, padding=2, color="#4a5568")
+        ax.bar_label(bars, fmt="%.2f", fontsize=7.5, padding=2, color="#6B6B6B")
     ax.set_xticks(x, df.index)
     ax.set_ylim(0, 1.15)
     ax.set_title("Code-independent indices on the idealised shapes")
@@ -1330,8 +1282,8 @@ def fig_shape(data) -> None:
         g = gdf_of(poly)
         _shape_ax(ax, g)
         cm, cs = centre_of_mass_and_stiffness(g)
-        ax.plot(*cm[0], "o", color="#e53e3e", ms=8, zorder=5)
-        ax.plot(*cs[0], "X", color="#3182ce", ms=9, zorder=5)
+        ax.plot(*cm[0], "o", color="#C0392B", ms=8, zorder=5)
+        ax.plot(*cs[0], "X", color="#1F4E79", ms=9, zorder=5)
         ax.plot([cm[0][0], cs[0][0]], [cm[0][1], cs[0][1]], color=INK, lw=1, zorder=4)
         ec8 = shape.EC8(g)["EC8_eccentricityRatio"].iloc[0]
         cscr = shape.CSCR2010(g)["CSCR2010_eccentricityRatio"].iloc[0]
@@ -1342,7 +1294,7 @@ def fig_shape(data) -> None:
                 [0],
                 [0],
                 marker="o",
-                color="#e53e3e",
+                color="#C0392B",
                 lw=0,
                 ms=8,
                 label="centre of mass (slab + walls)",
@@ -1351,7 +1303,7 @@ def fig_shape(data) -> None:
                 [0],
                 [0],
                 marker="X",
-                color="#3182ce",
+                color="#1F4E79",
                 lw=0,
                 ms=9,
                 label="centre of stiffness (walls)",
@@ -1389,7 +1341,7 @@ def fig_shape(data) -> None:
         ax.axvspan(
             limit,
             hi,
-            color="#fed7d7" if worse_high else "#c6f6d5",
+            color="#F2D4CF" if worse_high else "#D3EBE5",
             alpha=0.5,
             zorder=0,
             lw=0,
@@ -1397,7 +1349,7 @@ def fig_shape(data) -> None:
         ax.axvspan(
             lo,
             limit,
-            color="#c6f6d5" if worse_high else "#fed7d7",
+            color="#D3EBE5" if worse_high else "#F2D4CF",
             alpha=0.5,
             zorder=0,
             lw=0,
@@ -1414,7 +1366,7 @@ def fig_shape(data) -> None:
             ha="right",
             va="top",
             fontsize=7.5,
-            color="#4a5568",
+            color="#6B6B6B",
             bbox=dict(facecolor="white", edgecolor="none", alpha=0.8, pad=1),
         )
     for ax in list(axes.flat)[len(cols) :]:
@@ -1425,8 +1377,8 @@ def fig_shape(data) -> None:
                 Line2D([0], [0], color=CITY_COLORS[c], lw=2, label=CITIES[c][0])
                 for c in data
             ),
-            Patch(facecolor="#c6f6d5", label="complies"),
-            Patch(facecolor="#fed7d7", label="exceeds the code limit"),
+            Patch(facecolor="#D3EBE5", label="complies"),
+            Patch(facecolor="#F2D4CF", label="exceeds the code limit"),
         ],
         loc="lower center",
         ncol=5,
@@ -1519,7 +1471,7 @@ def fig_basic_lengths(data) -> None:
             ):
                 gpd.GeoSeries([piece]).plot(
                     ax=ax,
-                    facecolor="#bee3f8",
+                    facecolor="#D6E4F0",
                     edgecolor=HULL,
                     lw=0.6,
                     hatch="///",
@@ -1528,7 +1480,7 @@ def fig_basic_lengths(data) -> None:
             x, y, r = max_inscribed_circle(poly)
             ax.add_patch(
                 Circle(
-                    (x, y), r, facecolor="none", edgecolor="#d53f8c", lw=0.9, zorder=3
+                    (x, y), r, facecolor="none", edgecolor="#B5527A", lw=0.9, zorder=3
                 )
             )
             axis = basic_length_axis(g, L1, d1, L2, d2)
@@ -1550,9 +1502,9 @@ def fig_basic_lengths(data) -> None:
         handles = [
             *dimension_legend_handles(),
             Patch(
-                facecolor="#bee3f8", edgecolor=HULL, hatch="///", label="setback piece"
+                facecolor="#D6E4F0", edgecolor=HULL, hatch="///", label="setback piece"
             ),
-            Line2D([0], [0], color="#d53f8c", label="inscribed circle"),
+            Line2D([0], [0], color="#B5527A", label="inscribed circle"),
         ]
         fig.legend(
             handles=handles,
@@ -1599,7 +1551,7 @@ def fig_basic_lengths(data) -> None:
             ha="right",
             va="top",
             fontsize=8,
-            color="#4a5568",
+            color="#6B6B6B",
         )
         ax.set_yticks([])
     axes[0].legend(loc="upper left", fontsize=8)
@@ -1613,6 +1565,11 @@ def fig_basic_lengths(data) -> None:
 
 def interactive_map() -> None:
     from footprint_attributes.visualization import build_map
+    from footprint_attributes.visualization.maps import copy_paper_ui
+
+    # The hand-written single-topic maps under docs/_static/interactive/ load
+    # the same paper-style chrome from interactive/common/.
+    copy_paper_ui(DOCS / "_static" / "interactive" / "common")
 
     datasets = {
         city: gpd.read_file(DATA / fname) for city, (_, fname) in CITIES.items()
@@ -1642,7 +1599,9 @@ def interactive_map() -> None:
 #              inertia_axis, basic_lengths, position_arrows)
 #   zoom       MapLibre zoom level (default: fit the whole dataset)
 #   view       2d to start flat (ground-level overlays are hidden by 3D
-#              extrusions at street zoom)
+#              extrusions at street zoom). position_arrows always starts
+#              flat: the force arrows lie on the ground. The 3D button still
+#              extrudes the buildings.
 #   tour       1 to auto-play the tour; default 1 without parameters, 0 with
 #
 # FancyFolium.deck3d's viewer has no such hook, so it is appended to the
@@ -1677,7 +1636,10 @@ async function applyEmbedParams() {
   }
   const zoom = parseFloat(URL_PARAMS.get("zoom"));
   if (Number.isFinite(zoom)) map.jumpTo({ zoom });
-  if (URL_PARAMS.get("view") === "2d") toggle3D(false);
+  if (URL_PARAMS.get("view") === "2d" || overlays.includes("position_arrows")) {
+    map.jumpTo({ pitch: 0 });
+    toggle3D(false);
+  }
   if (EMBED.tour) startShowcase();
   else renderLayer();
 }

@@ -7,7 +7,15 @@ having to know which submodule produces them.
 
 from __future__ import annotations
 
+import os
+from concurrent.futures import ProcessPoolExecutor
+
 import geopandas as gpd
+import numpy as np
+import pandas as pd
+import shapely
+from scipy.sparse import coo_matrix
+from scipy.sparse.csgraph import connected_components
 
 from .geometry import ensure_projected, to_gdf
 from .shape import shape as _shape, EC8, ASCE7, GNDTII, CSCR2010, NTC23, slenderness
@@ -125,10 +133,87 @@ def _expand_columns(columns: list[str]) -> tuple[set[str], bool, bool]:
     return shape_columns, want_position, want_bearing
 
 
+def _n_workers(n_jobs: int | None, n_items: int) -> int:
+    """Number of worker processes: ``n_jobs`` (``-1`` or ``None`` = every core),
+    never more than the number of items."""
+    if n_jobs is None or n_jobs < 0:
+        n_jobs = os.cpu_count() or 1
+    return max(1, min(int(n_jobs), n_items))
+
+
+def _shape_chunk(args):
+    chunk, columns, kwargs = args
+    return _shape(chunk, columns=columns, **kwargs)
+
+
+def _position_chunk(args):
+    chunk, kwargs = args
+    return _position(chunk, **kwargs)
+
+
+def _touching_groups(gdf: gpd.GeoDataFrame, buffer: float) -> np.ndarray:
+    """Label of the group of mutually touching footprints of each row.
+
+    Two footprints are linked when they are closer than the contact
+    detection distance (twice the buffer used by ``select_touching_edges``,
+    plus a margin), so every contact of a building lies inside its group.
+    """
+    distance = 2 * max(buffer, 1e-4) + 0.01
+    geoms = gdf.geometry.to_numpy()
+    left, right = shapely.STRtree(geoms).query(
+        geoms, predicate="dwithin", distance=distance
+    )
+    n = len(geoms)
+    graph = coo_matrix((np.ones(len(left), dtype=np.int8), (left, right)), shape=(n, n))
+    return connected_components(graph, directed=False)[1]
+
+
+def _balanced_chunks(labels: np.ndarray, n_chunks: int) -> list[np.ndarray]:
+    """Row positions split into ``n_chunks`` lists of similar size without
+    splitting any group (largest groups are placed first)."""
+    sizes = np.bincount(labels)
+    load = np.zeros(n_chunks)
+    chunk_of_group = np.empty(len(sizes), dtype=int)
+    for g in np.argsort(-sizes):
+        k = int(np.argmin(load))
+        chunk_of_group[g] = k
+        load[k] += sizes[g]
+    chunk_of_row = chunk_of_group[labels]
+    return [np.flatnonzero(chunk_of_row == k) for k in range(n_chunks)]
+
+
+def _parallel_shape(gdf, columns, kwargs, n_jobs):
+    n = _n_workers(n_jobs, len(gdf))
+    if n == 1:
+        return _shape(gdf, columns=columns, **kwargs)
+    parts = [gdf.iloc[idx] for idx in np.array_split(np.arange(len(gdf)), n)]
+    with ProcessPoolExecutor(n) as pool:
+        out = list(pool.map(_shape_chunk, [(p, columns, kwargs) for p in parts]))
+    return pd.concat(out)
+
+
+def _parallel_position(gdf, kwargs, n_jobs):
+    n = _n_workers(n_jobs, len(gdf))
+    if n == 1:
+        return _position(gdf, **kwargs)
+    from .config import POSITION_DEFAULTS
+
+    labels = _touching_groups(gdf, kwargs.get("buffer", POSITION_DEFAULTS["buffer"]))
+    chunks = [idx for idx in _balanced_chunks(labels, n) if len(idx)]
+    with ProcessPoolExecutor(len(chunks)) as pool:
+        out = list(
+            pool.map(_position_chunk, [(gdf.iloc[idx], kwargs) for idx in chunks])
+        )
+    order = np.concatenate(chunks)
+    result = pd.concat(out)
+    return result.iloc[np.argsort(order)]
+
+
 def run(
     footprints_gdf: gpd.GeoDataFrame,
     config: dict | None = None,
     overwrite: bool = False,
+    n_jobs: int = 1,
 ) -> gpd.GeoDataFrame:
     """Compute a requested set of footprint attributes in one call.
 
@@ -153,6 +238,17 @@ def run(
             a GeoDataFrame you're incrementally building up. If ``True``,
             every requested column is recomputed and replaced, even if
             already present.
+        n_jobs: Number of worker processes. ``1`` (default) runs in the
+            current process, ``-1`` uses every CPU core. Shape indices are
+            split into equal chunks of buildings and position into groups of
+            touching buildings (a building's contacts never leave its group),
+            so the shape indices and position classes are identical to a serial
+            run (contact values can differ by ~1e-6 from floating-point
+            rounding of the smaller unions). Worth it from a few
+            thousand buildings on; each worker holds a copy of its chunk.
+            Most of the time goes into pure-Python geometry loops (e.g. the
+            Polylabel search behind the GNDT-II inscribed circle), which a
+            GPU does not speed up, so parallelism is on CPU cores.
 
     Config dict shape
     ------------------
@@ -270,7 +366,9 @@ def run(
             cols_to_compute = {c for c in shape_columns if c not in result.columns}
 
         if cols_to_compute:
-            computed = _shape(working, columns=list(cols_to_compute), **shape_kwargs)
+            computed = _parallel_shape(
+                working, list(cols_to_compute), shape_kwargs, n_jobs
+            )
             for col in cols_to_compute:
                 if col in computed.columns:
                     result[col] = computed[col].values
@@ -278,7 +376,7 @@ def run(
     if want_position:
         already_present = all(c in result.columns for c in _POSITION_COLUMNS)
         if overwrite or not already_present:
-            pos_result = _position(result, **position_kwargs)
+            pos_result = _parallel_position(result, position_kwargs, n_jobs)
             for col in _POSITION_COLUMNS:
                 result[col] = pos_result[col].values
 

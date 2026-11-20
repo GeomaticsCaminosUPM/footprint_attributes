@@ -1,0 +1,191 @@
+/* Map chrome of footprint_attributes' MapLibre + deck.gl pages, in the look
+   of the structural-system paper's web map: white panels with a soft shadow,
+   system font, one blue accent, the map buttons in one row at the top right,
+   a light/dark/satellite basemap and a presentation mode (legend and plots
+   only). Shared by every page; paper_ui.js adds the buttons and selectors. */
+:root {
+  --bg: #ffffff;
+  --fg: #000000;
+  --muted: #5f6b76;
+  --line: #d8dde2;
+  --accent: #1f4e79;
+  --hover: rgba(31, 78, 121, 0.08);
+  --shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+  color-scheme: light;
+}
+/* Dark mode (moon/sun button, or ?theme=dark). */
+body.dark {
+  --bg: #161b22;
+  --fg: #e6edf3;
+  --muted: #9aa7b3;
+  --line: #30363d;
+  --accent: #6f9cc3;
+  --hover: rgba(111, 156, 195, 0.14);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body, #app { margin: 0; height: 100%; width: 100%; background: var(--bg); color: var(--fg);
+  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+#map { position: absolute; inset: 0; }
+.hidden { display: none !important; }
+
+/* ---------------------------------------------------------------- panels */
+.glass-panel {
+  position: absolute; z-index: 10; overflow-y: auto;
+  background: var(--bg); color: var(--fg); border-radius: 8px; box-shadow: var(--shadow);
+  padding: 14px 16px;
+}
+#controls { top: 12px; left: 12px; width: 300px; max-height: calc(100% - 24px);
+  display: flex; flex-direction: column; }
+#controls-body { display: flex; flex-direction: column; gap: 9px; }
+#controls-fields { display: flex; flex-direction: column; gap: 9px; }
+#charts-panel, #building-panel { right: 10px; top: 56px; width: 300px; max-height: calc(100% - 96px); }
+#building-panel { z-index: 12; }
+#settings-panel, #settings-toggle, #controls-toggle, #legend-toggle { display: none !important; }
+
+h1, .map-title { font-size: 17px; margin: 0; font-weight: 650; }
+.panel-title-row { display: flex; flex-direction: column; gap: 2px; }
+.panel-title-row h1.subtitle { font-size: 13px; font-weight: 400; color: var(--muted); margin: 0; }
+h2 { font-size: 14px; margin: 0; }
+h3 { font-size: 12px; margin: 6px 0 4px; color: var(--muted); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.03em; }
+.hint { font-size: 12px; color: var(--muted); margin: 4px 0 0; }
+.error { color: #c0392b; font-size: 12px; }
+
+/* "Dataset", "Color by" ... labels above their selectors */
+#controls-fields > label:not(.overlay-checkbox-row), label.ctl, #overlays-section > label {
+  display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); margin: 0;
+}
+#controls-fields > label:not(.overlay-checkbox-row) { margin-bottom: -6px; }
+.panel-select, .glass-panel select {
+  font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 5px; padding: 5px 6px; width: 100%;
+}
+.glass-panel select:hover { border-color: var(--accent); }
+
+/* custom dropdowns of the pages, drawn like a native select */
+.dropdown { position: relative; }
+.dropdown-toggle {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 5px; padding: 5px 6px; cursor: pointer; text-align: left;
+}
+.dropdown-toggle:hover, .dropdown[data-open] .dropdown-toggle { border-color: var(--accent); }
+.dropdown-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dropdown-caret { color: var(--muted); font-size: 11px; transition: transform 0.15s; }
+.dropdown[data-open] .dropdown-caret { transform: rotate(180deg); }
+.dropdown-list {
+  position: absolute; left: 0; right: 0; top: calc(100% + 3px); z-index: 30; margin: 0; padding: 4px 0;
+  list-style: none; background: var(--bg); border: 1px solid var(--line); border-radius: 5px;
+  box-shadow: var(--shadow); max-height: 300px; overflow-y: auto;
+}
+.dropdown-list[hidden] { display: none; }
+.dropdown-list li { padding: 5px 8px; cursor: pointer; font-size: 13px; }
+.dropdown-list li:hover { background: var(--hover); }
+.dropdown-list li.selected { color: var(--accent); font-weight: 600; }
+
+/* overlay checkboxes */
+#overlays-section { display: flex; flex-direction: column; gap: 3px; }
+.overlay-checkbox-row { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--fg);
+  cursor: pointer; padding: 2px 0; }
+.overlay-checkbox-row input[type="checkbox"] { margin: 0; accent-color: var(--accent); flex: none; }
+.overlay-checkbox-row .legend-swatch { width: 12px; height: 12px; }
+
+/* ---------------------------------------------------------------- legend */
+#legend { border-top: 1px solid var(--line); padding-top: 8px; display: flex; flex-direction: column; gap: 2px; }
+#legend h2 { margin: 0 0 4px; }
+#legend h2 + * { margin-top: 0; }
+.legend-list { list-style: none; margin: 0 0 4px; padding: 0; }
+.legend-list li { display: flex; align-items: center; gap: 7px; font-size: 12px; margin: 3px 0; }
+.legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0, 0, 0, 0.25); flex: none; }
+body.dark .legend-swatch { border-color: rgba(255, 255, 255, 0.3); }
+.legend-line { flex: none; display: inline-flex; align-items: center; }
+.legend-line-icon { display: block; }
+/* arrow icons drawn in near-black: follow the text color in dark mode */
+body.dark .legend-line-icon [stroke="#111111"] { stroke: var(--fg); }
+body.dark .legend-line-icon [fill="#111111"] { fill: var(--fg); }
+.norm-gradient { height: 10px; border-radius: 3px; margin: 4px 0 2px; border: none; }
+.norm-gradient-ticks { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+.raster-legend { margin-top: 8px; }
+.raster-legend-bar { height: 10px; border-radius: 3px; }
+.raster-legend-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+
+/* ---------------------------------------------------------------- plots */
+#charts-panel-content h2 { margin: 0 0 8px; }
+#charts-body { display: flex; flex-direction: column; gap: 12px; }
+.chart-card { width: 100%; }
+.chart-card:not(.hidden) ~ .chart-card { border-top: 1px solid var(--line); padding-top: 8px; }
+.chart-card h3 { margin-top: 0; }
+.chart-card svg { width: 100%; height: auto; overflow: visible; display: block; }
+.chart-axis-label { font-size: 10px; fill: var(--muted); }
+.chart-bar-label { font-size: 10px; fill: var(--fg); font-variant-numeric: tabular-nums; }
+/* axis lines and curves the pages draw for a dark panel */
+#charts-panel svg [stroke^="rgba(255"] { stroke: var(--line); }
+#charts-panel svg [stroke="#edf1f3"] { stroke: var(--fg); }
+#norm-chart-caption { font-size: 12px; }
+.chart-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; }
+.chart-legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.chart-legend-swatch { width: 14px; height: 3px; border-radius: 2px; flex: none; }
+
+/* ---------------------------------------------------------------- building details */
+.panel-actions { position: absolute; top: 8px; right: 8px; }
+.panel-actions button { border: none; background: none; color: var(--muted); font-size: 18px; line-height: 1;
+  cursor: pointer; padding: 0 4px; }
+.panel-actions button:hover { color: var(--fg); }
+#building-panel-content h2 { margin: 0 24px 6px 0; }
+#building-panel-content .building-subtitle { color: var(--muted); font-size: 12px; margin: 0 0 6px; }
+.building-summary { border-collapse: collapse; width: 100%; font-size: 12px; font-variant-numeric: tabular-nums; }
+.building-summary th, .building-summary td { padding: 2px 4px; border-bottom: 1px solid var(--line); }
+.building-summary th { text-align: left; color: var(--muted); font-weight: 400; }
+.building-summary td { text-align: right; font-weight: 600; }
+.building-summary .non-compliant { color: #c0392b; }
+body.dark .building-summary .non-compliant { color: #f08a7e; }
+
+/* deck.gl hover tooltip */
+.deck-tooltip {
+  background: var(--bg) !important; color: var(--fg) !important; border-radius: 6px !important;
+  box-shadow: var(--shadow); padding: 6px 9px !important; font: 12px/1.4 system-ui, sans-serif !important;
+  max-width: 280px;
+}
+
+/* ---------------------------------------------------------------- map buttons */
+/* One horizontal row at the top right, as in the paper's map. */
+.maplibregl-ctrl-top-right { display: flex; flex-direction: row; gap: 8px; margin: 10px 10px 0 0; }
+.maplibregl-ctrl-top-right .maplibregl-ctrl { margin: 0; }
+.maplibregl-ctrl-top-right .maplibregl-ctrl-group { display: flex; flex-direction: row; }
+.maplibregl-ctrl-top-right .maplibregl-ctrl-group button + button { border-top: none; border-left: 1px solid #ddd; }
+.maplibregl-ctrl-group button.toggle { font: 600 12px system-ui, sans-serif; color: #333; width: auto; min-width: 29px;
+  padding: 0 6px; white-space: nowrap; }
+.maplibregl-ctrl-group button.toggle.on, .maplibregl-ctrl-group button.toggle.active { background: #1f4e79; color: #fff; }
+.maplibregl-ctrl-group button.toggle svg { width: 17px; height: 17px; display: block; margin: auto; }
+/* original page buttons moved into the row */
+.maplibregl-ctrl-group button.icon-button { position: static; border-radius: 0; box-shadow: none; backdrop-filter: none; }
+
+.maplibregl-ctrl-attrib { font-size: 11px; }
+body.dark .maplibregl-ctrl-attrib { background: rgba(22, 27, 34, 0.75) !important; }
+body.dark .maplibregl-ctrl-attrib a { color: var(--fg) !important; }
+
+/* ---------------------------------------------------------------- presentation mode */
+/* Only the legend (with its title) and the plots; larger text. The legend sits at
+   the bottom left, raised to leave room for a footer below it. */
+body.presentation #controls-fields, body.presentation .panel-title-row { display: none !important; }
+body.presentation #controls { top: auto; bottom: 90px; width: auto; min-width: 260px; max-width: 380px; }
+body.presentation #legend { border-top: none; padding-top: 0; }
+body.presentation #legend .legend-list li, body.presentation #legend h2 { font-size: 15px; }
+body.presentation .legend-swatch { width: 18px; height: 18px; }
+body.presentation #charts-panel { width: 360px; }
+body.presentation .chart-card h3 { font-size: 14px; }
+
+/* Docs iframes are often 700-800 px wide: narrower panels, same layout. */
+@media (max-width: 800px) {
+  #controls { width: 250px; padding: 12px 14px; }
+  #charts-panel, #building-panel { width: 240px; padding: 12px 14px; }
+  body.presentation #controls { min-width: 0; }
+}
+@media (max-width: 560px) {
+  .glass-panel { left: 8px; right: 8px; width: auto !important; }
+  #controls { top: auto; bottom: 8px; max-height: 45vh; }
+  #charts-panel, #building-panel { max-height: 35vh; }
+  body.presentation #controls { bottom: 8px; }
+}

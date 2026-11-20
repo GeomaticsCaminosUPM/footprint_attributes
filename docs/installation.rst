@@ -1,12 +1,12 @@
 Installation
 ============
 
-Pinned to the `v1.0.0 release
-<https://github.com/GeomaticsCaminosUPM/footprint_attributes/releases/tag/v1.0.0>`_:
+Pinned to the `v1.1.0 release
+<https://github.com/GeomaticsCaminosUPM/footprint_attributes/releases/tag/v1.1.0>`_:
 
 .. code-block:: bash
 
-    pip install "footprint-attributes @ git+https://github.com/GeomaticsCaminosUPM/footprint_attributes.git@v1.0.0"
+    pip install "footprint-attributes @ git+https://github.com/GeomaticsCaminosUPM/footprint_attributes.git@v1.1.0"
 
 Dependencies: ``geopandas``, ``shapely>=2.0``, ``numpy``, ``pandas``,
 ``scipy``, ``scikit-learn``, ``statsmodels``, ``tabulate``.

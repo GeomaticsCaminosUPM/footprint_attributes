@@ -1,9 +1,9 @@
-// Sevilla pilot-region "relative position -- force arrows" map. Identical
-// data and controls to maps/relative_position, but dedicated to the
+// Sevilla pilot-region "block position -- force arrows" map. Identical
+// data and controls to maps/block_position, but dedicated to the
 // contact-force overlay: defaults to a flat 2D view with the force arrows
 // already on (2D reads the vectors far better than an extruded 3D view),
 // and its video mode holds that 2D+arrows view still rather than orbiting
-// (see maps/relative_position for the plain 3D orbiting video mode).
+// (see maps/block_position for the plain 3D orbiting video mode).
 const { GeoJsonLayer } = deck;
 const { ScatterplotLayer } = deck;
 const { MapboxOverlay } = deck;
@@ -43,12 +43,13 @@ const FORCE_ARROWS_EDGE_WIDTH = 2.5;
 const FORCE_ARROWS_RESULTANT_WIDTH = 5;
 
 const POSITION_COLORS = {
-  isolated: "#4299e1",
-  lateral: "#e2a33f",
-  corner: "#4fbf8f",
-  confined: "#8744ad",
-  torque: "#c0392b",
-  unlabeled: "#6b7280",
+  // the structural-system paper's colors (footprint_attributes.visualization.style)
+  isolated: "#E4E4E4",
+  lateral: "#A8CBE6",
+  corner: "#BCA9D8",
+  confined: "#7DBBAE",
+  torque: "#DE95A3",
+  unlabeled: "#FFFFFF",
 };
 const POSITION_ORDER = ["isolated", "lateral", "corner", "confined", "torque", "unlabeled"];
 const POSITION_LABELS = {
@@ -218,7 +219,7 @@ let onBuildingClick = () => {};
 function buildingTooltip({ object, layer }) {
   if (!object || !layer?.id?.startsWith("buildings-")) return null;
   const label = POSITION_LABELS[positionKey(object)];
-  return { html: `<div><strong>Relative position:</strong> ${label}</div><div class="hint" style="margin-top:4px">Click for full details</div>`, className: "deck-tooltip" };
+  return { html: `<div><strong>Block position:</strong> ${label}</div><div class="hint" style="margin-top:4px">Click for full details</div>`, className: "deck-tooltip" };
 }
 
 function renderLayer() {
@@ -371,7 +372,7 @@ function renderLegend() {
   const container = document.getElementById("legend");
   container.innerHTML = "";
   const heading = document.createElement("h2");
-  heading.textContent = "Relative position";
+  heading.textContent = "Block position";
   container.appendChild(heading);
 
   const counts = {};
@@ -461,7 +462,7 @@ function renderPositionChart() {
 }
 
 // ---------------------------------------------------------------------------
-// Building popup -- this map is about relative_position, so that's the only
+// Building popup -- this map is about block_position, so that's the only
 // column shown.
 function renderBuildingPanel(id, properties) {
   const panel = document.getElementById("building-panel");
@@ -476,7 +477,7 @@ function renderBuildingPanel(id, properties) {
   const tbody = document.createElement("tbody");
   const row = document.createElement("tr");
   const th = document.createElement("th");
-  th.textContent = "Relative position";
+  th.textContent = "Block position";
   const td = document.createElement("td");
   td.textContent = POSITION_LABELS[positionKey({ properties })];
   row.append(th, td);
