@@ -9,7 +9,7 @@
   <a href="https://footprint-attributes.readthedocs.io/en/latest/"><img src="https://readthedocs.org/projects/footprint-attributes/badge/?version=latest" alt="docs"/></a>
   <a href="https://doi.org/10.1186/s40323-026-00323-y"><img src="https://img.shields.io/badge/DOI-10.1186%2Fs40323--026--00323--y-blue" alt="DOI"/></a>
   <img src="https://img.shields.io/badge/python-%E2%89%A53.10-blue" alt="Python ≥ 3.10"/>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-green" alt="GPL-3.0"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-EUPL--1.2-green" alt="EUPL-1.2"/></a>
 </p>
 
 <p align="center">
@@ -324,4 +324,4 @@ This research was supported by the Industrial Doctorates of the Community of Mad
 
 ## License
 
-[GPL-3.0](LICENSE).
+[EUPL-1.2](LICENSE).

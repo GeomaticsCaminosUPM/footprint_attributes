@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- License changed from GPL-3.0-or-later to the European Union Public Licence
+  v1.2 (EUPL-1.2), the license of the other repositories of the project.
+
 ## 1.1.0
 
 Changes the values of `contact_confinementRatio` and some `blockPosition`

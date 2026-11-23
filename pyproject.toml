@@ -3,7 +3,7 @@ name = "footprint-attributes"
 version = "1.1.0"
 description = "Compute seismic related attributes of building footprints about position and regularity based on international codes"
 readme = "README.md"
-license = "GPL-3.0-or-later"
+license = "EUPL-1.2"
 license-files = ["LICENSE"]
 requires-python = ">=3.10"
 dependencies = [
