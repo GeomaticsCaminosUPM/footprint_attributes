@@ -20,14 +20,14 @@ dependencies = [
 [project.optional-dependencies]
 # Mirrors [dependency-groups].docs below -- kept as a real pip extra (not
 # just a uv-only dependency-group) so `pip install .[docs]` works for
-# non-uv consumers, notably Read the Docs (see .readthedocs.yaml). Keep
+# non-uv consumers, and the GitHub Pages docs workflow. Keep
 # the two lists in sync by hand if either changes.
 docs = [
     "ipython>=8.18.0",
     "myst-parser>=3.0.1",
     "nbsphinx>=0.9.8",
     "sphinx>=7.4.7",
-    "sphinx-rtd-theme>=3.1.0",
+    "furo>=2024.8.6",
 ]
 # Mirrors [dependency-groups].visualization below -- kept as a real pip
 # extra so `pip install .[visualization]` works for non-uv consumers. Keep
@@ -73,7 +73,7 @@ docs = [
     "myst-parser>=3.0.1",
     "nbsphinx>=0.9.8",
     "sphinx>=7.4.7",
-    "sphinx-rtd-theme>=3.1.0",
+    "furo>=2024.8.6",
 ]
 visualization = [
     "folium>=0.20.0",

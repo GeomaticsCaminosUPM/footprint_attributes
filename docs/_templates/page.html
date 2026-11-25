@@ -1,0 +1,6 @@
+{% extends "!page.html" %}
+{% block extrahead %}
+{{ super() }}
+{# Single light theme: ignore the system preference and any saved choice. #}
+<script>try { localStorage.setItem("theme", "light"); } catch (e) {}</script>
+{% endblock %}

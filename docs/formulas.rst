@@ -4,7 +4,7 @@ Formulas
 This page gives the exact mathematical formula behind every parameter the
 package can produce, together with the source code that implements it and
 the reasoning behind each design choice. Formulas are transcribed directly
-from the implementation (not textbook restatements) -- the code blocks below
+from the implementation (not textbook restatements); the code blocks below
 are pulled live from the source via Sphinx's ``literalinclude``, so they
 always match the installed version of the package. Notation follows the
 source code: :math:`\varepsilon` denotes a small constant (typically
@@ -23,11 +23,6 @@ uniform pressure pushed on it from the neighbour's side, then looks at the
 resulting force pattern: how strong it is, how much of it is opposed by
 walls on the other side (confinement), and how unevenly it is distributed around the building
 (spread/torque).
-
-.. image:: figures/block_position_explanation.jpg
-   :width: 45%
-   :align: center
-   :alt: Contact-force diagram: force vectors on each touching wall and their resultant
 
 
 .. figure:: figures/position_scenarios.png
@@ -146,9 +141,9 @@ walls and let an unopposed back wall hide a pair of opposite walls.
 .. figure:: maps/contact_confinement_ratio.jpg
    :width: 100%
    :align: center
-   :alt: ``contact_confinementRatio``: near 0 for buildings pushed from one side, near 1 for buildings whose shared walls face each other and cancel out -- the long rows of terraced houses stand out
+   :alt: ``contact_confinementRatio``: near 0 for buildings pushed from one side, near 1 for buildings whose shared walls face each other and cancel out, the long rows of terraced houses stand out
 
-   ``contact_confinementRatio``: near 0 for buildings pushed from one side, near 1 for buildings whose shared walls face each other and cancel out -- the long rows of terraced houses stand out.
+   ``contact_confinementRatio``: near 0 for buildings pushed from one side, near 1 for buildings whose shared walls face each other and cancel out, the long rows of terraced houses stand out.
 
 ``contact_angularAcc``
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -191,7 +186,7 @@ classification divides by ``height`` before comparing to its threshold.
 ``contact_angle`` is the force-weighted mean deviation of each touching
 edge's own force from the building's resultant force.
 
-**Step 1 -- per-edge unfolded angle to the resultant:**
+**Step 1, per-edge unfolded angle to the resultant:**
 
 .. math::
 
@@ -201,7 +196,7 @@ edge's own force from the building's resultant force.
    \right), \qquad
    \theta_e^{\text{raw}} = \arccos(\cos\theta_e) \in [0, \pi]
 
-**Step 2 -- fold to** :math:`[0, \pi/2]`:
+**Step 2, fold to** :math:`[0, \pi/2]`:
 
 .. math::
 
@@ -210,7 +205,7 @@ edge's own force from the building's resultant force.
 If either :math:`\mathbf{f}_e` or :math:`\mathbf{F}_i` has near-zero norm
 (:math:`< 10^{-12}`), :math:`\theta_e = 0` by convention.
 
-**Step 3 -- force-weighted aggregation:**
+**Step 3, force-weighted aggregation:**
 
 .. math::
 
@@ -234,7 +229,7 @@ walls; the confinement rule decides those cases.
    Previously, ``contact_angle`` used the unfolded :math:`\theta_e^{\text{raw}}
    \in [0, \pi]` directly. This produced invalid averages whenever a building
    was touched on two *opposite* sides by neighbours of very unequal wall
-   length -- e.g. a full 10 m wall on the North side and only a 3 m wall on
+   length, e.g. a full 10 m wall on the North side and only a 3 m wall on
    the South side. The resultant :math:`\mathbf{F}_i` points mostly toward
    the larger (North) force, so the *minority* South edge's own force vector
    is nearly anti-parallel to :math:`\mathbf{F}_i`
@@ -242,12 +237,12 @@ walls; the confinement rule decides those cases.
    South neighbour sits directly *opposite* the North one, not
    perpendicular/corner-like at all. Averaging an angle near 0 deg with one
    near 180 deg does not sensibly represent "how spread out are these
-   forces" -- the mean is not meaningful for angles measured in that way.
+   forces", the mean is not meaningful for angles measured in that way.
 
    Without the fold, that near-:math:`\pi` angle inflated the force-weighted
    mean by exactly as much as a genuinely perpendicular (corner-like)
    neighbour would, making "opposite, unequal walls" and "true corner"
-   indistinguishable via ``contact_angle`` alone -- and buildings like this
+   indistinguishable via ``contact_angle`` alone, and buildings like this
    were misclassified as ``"corner"`` instead of ``"lateral"``/``"confined"``.
 
    Opposition/cancellation between unequal opposing forces is already
@@ -256,11 +251,11 @@ walls; the confinement rule decides those cases.
    \theta_e^{\text{raw}})` treats a near-180 deg deviation the same as a
    near-0 deg one, removing the double-counting of the same cancellation
    effect across two different statistics. Only genuinely lateral spread
-   (forces pointing in different, non-opposite directions -- the true
+   (forces pointing in different, non-opposite directions, the true
    "corner" signature) now drives ``contact_angle`` up. This is the same
    fold used by ``angle_between_0_90`` in :mod:`footprint_attributes.geometry`
-   for undirected-axis comparisons (e.g. ``bearing``, and -- applied twice,
-   to also collapse rectangle symmetry -- inside
+   for undirected-axis comparisons (e.g. ``bearing``, and, applied twice
+   to also collapse rectangle symmetry, inside
    ``own_edge_orthogonality_deviation`` for ``ASCE7_parallelityAngle``).
 
 .. literalinclude:: ../src/footprint_attributes/position.py
@@ -293,7 +288,7 @@ The four numeric outputs above are combined into a single categorical label
 per building. Conceptually: no contact force means ``isolated``; enough
 force on one side means ``lateral``; if that force is also spread across
 non-opposite directions (a real corner condition, not just an unequal
-opposing pair -- see the note above) it becomes ``corner``; heavy
+opposing pair, see the note above) it becomes ``corner``; heavy
 cancellation of forces means the building is boxed in on multiple sides
 (``confined``); and any of the touching cases with a large uneven moment
 about the centroid escalates to ``torque``, the case most associated with
@@ -359,7 +354,7 @@ Shape irregularity indices (:mod:`footprint_attributes.shape`)
 ------------------------------------------------------------------
 
 **Concept.** Seismic codes penalise plan shapes that depart from a compact,
-symmetric rectangle -- setbacks, holes, elongated wings, and mass/stiffness
+symmetric rectangle, setbacks, holes, elongated wings, and mass/stiffness
 offsets all concentrate stress or induce torsion during an earthquake. Each
 code below expresses that departure as one or more dimensionless ratios
 computed from the footprint's geometry (its own outline, its convex hull,
@@ -367,7 +362,7 @@ its bounding box, and its principal axes of inertia). The three
 code-independent indices further down give a code-agnostic summary of
 "how irregular is this shape" for comparison across regions/codes.
 
-Every code metric below, live on the pilot regions -- switch "Color by" to any of them; the chart on the right shows how many buildings exceed the code limit:
+Every code metric below is live on the pilot regions: switch "Color by" to any of them; the chart on the right shows how many buildings exceed the code limit:
 
 .. raw:: html
 
@@ -480,7 +475,7 @@ principal-inertia computation below, plus the Mohr's-circle worst-case
 optimisation described in *Eccentricity optimisation*. The building is
 idealised as a hollow box (uniform perimeter walls + one slab); the
 eccentricity :math:`e` between its centre of mass and centre of stiffness is
-what drives torsional response under lateral (seismic) loading -- the
+what drives torsional response under lateral (seismic) loading: the
 farther apart they are relative to the building's torsional radius, the more
 the building twists instead of translating.
 
@@ -545,7 +540,7 @@ the building twists instead of translating.
    \end{cases}
 
 :math:`A_{\text{gap}}` is the area of the single largest connected component
-of ``hull(filled).difference(filled)`` -- not the sum of all setback pieces.
+of ``hull(filled).difference(filled)``: not the sum of all setback pieces.
 
 .. literalinclude:: ../src/footprint_attributes/shape.py
    :pyobject: EC8Compactness
@@ -562,9 +557,9 @@ of ``hull(filled).difference(filled)`` -- not the sum of all setback pieces.
 ASCE 7
 ~~~~~~~~
 
-**ASCE7_setbackRatio** -- how deep is the largest re-entrant corner (a
+**ASCE7_setbackRatio**: how deep is the largest re-entrant corner (a
 protruding "wing" or notch) relative to the building's own footprint
-dimensions -- limit :math:`\le 0.20`:
+dimensions, limit :math:`\le 0.20`:
 
 .. math::
 
@@ -595,8 +590,8 @@ using the dominant setback piece and bounding-box directions (see
 
    ``ASCE7_setbackRatio``. Green complies with the code limit, red exceeds it; the share of buildings exceeding the limit is given above each region.
 
-**ASCE7_holeRatio** -- how large is the biggest interior courtyard/hole
-relative to the filled footprint -- limit :math:`\le 0.25`:
+**ASCE7_holeRatio**: how large is the biggest interior courtyard/hole
+relative to the filled footprint, limit :math:`\le 0.25`:
 
 .. math::
 
@@ -617,9 +612,9 @@ area are ignored).
 .. figure:: maps/ASCE7_holeRatio.jpg
    :width: 100%
    :align: center
-   :alt: ``ASCE7_holeRatio`` -- courtyards are rare in these regions, so nearly every building complies
+   :alt: ``ASCE7_holeRatio``: courtyards are rare in these regions, so nearly every building complies
 
-   ``ASCE7_holeRatio`` -- courtyards are rare in these regions, so nearly every building complies. Green complies with the code limit, red exceeds it; the share of buildings exceeding the limit is given above each region.
+   ``ASCE7_holeRatio``: courtyards are rare in these regions, so nearly every building complies. Green complies with the code limit, red exceeds it; the share of buildings exceeding the limit is given above each region.
 
 **ASCE7_parallelityAngle**, limit :math:`\le 5°`:
 
@@ -628,7 +623,7 @@ forming a rectilinear frame (two directions 90° apart), computed by
 :func:`~footprint_attributes.geometry.own_edge_orthogonality_deviation`.
 Every edge of every ring (exterior plus holes), weighted by length, votes on
 the polygon's own dominant edge direction :math:`\hat{d}` via an
-angle-doubling circular mean (:math:`4\theta` -- once for the 180°
+angle-doubling circular mean (:math:`4\theta`: once for the 180°
 undirected-edge fold, once for the 90° rectangle-symmetry fold, undone by
 dividing the resulting angle by 4):
 
@@ -653,7 +648,7 @@ length-weighted:
 directions (a rectangle, or any orthogonal L/T/U-shape); higher means the
 edges are mutually skewed (e.g. a trapezoidal or rhomboid footprint). This
 needs no bounding box, neighbour, block, or dataset-wide reference
-direction -- unlike an earlier revision that compared each building against
+direction, unlike an earlier revision that compared each building against
 the raw +X (map-projection) axis, and a later one against the dataset's own
 dominant orientation, both of which broke down at city scale (see the class
 docstring below for the full rationale).
@@ -682,7 +677,7 @@ GNDTII (Italian GNDT Level II)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The GNDT parameters need a robust definition of the building's "main
-rectangular element" that works even for very irregular plans -- the
+rectangular element" that works even for very irregular plans, the
 inscribed-circle construction below finds it by inscribing the largest
 circle that fits in the footprint, then using where that circle touches the
 boundary to infer the width of the solid mass around it.
@@ -701,8 +696,8 @@ boundary; project them onto the principal axes; circumscribe the
 main-element rectangle* :math:`a_1 \times a_2`.
 
 
-The same construction on four prototype plans -- L, T, cross-like (Q) and
-L-with-a-diagonal-wing (LT) -- showing the resulting :math:`L_1, L_2`,
+The same construction on four prototype plans, L, T, cross-like (Q) and
+L-with-a-diagonal-wing (LT), showing the resulting :math:`L_1, L_2`,
 :math:`a_1, a_2` and setback :math:`b` dimensions:
 
 .. image:: figures/L_3.jpg
@@ -875,13 +870,13 @@ NTC-23 (Mexico)
 .. figure:: maps/NTC23_setbackRatio.jpg
    :width: 100%
    :align: center
-   :alt: ``NTC23_setbackRatio`` -- same ratio as ASCE 7 against the more lenient 0
+   :alt: ``NTC23_setbackRatio``: same ratio as ASCE 7 against the more lenient 0
 
-   ``NTC23_setbackRatio`` -- same ratio as ASCE 7 against the more lenient 0.40 limit. Green complies with the code limit, red exceeds it; the share of buildings exceeding the limit is given above each region.
+   ``NTC23_setbackRatio``: same ratio as ASCE 7 against the more lenient 0.40 limit. Green complies with the code limit, red exceeds it; the share of buildings exceeding the limit is given above each region.
 
-**NTC23_holeRatio** -- how large the hole is relative to the building's own
+**NTC23_holeRatio**: how large the hole is relative to the building's own
 cross-section through it (rather than relative to the whole footprint area,
-as ``ASCE7_holeRatio`` does) -- limit :math:`\le 0.40`:
+as ``ASCE7_holeRatio`` does), limit :math:`\le 0.40`:
 
 .. math::
 
@@ -952,9 +947,9 @@ dimension for the selected method.
 .. figure:: maps/slenderness_bbox.jpg
    :width: 100%
    :align: center
-   :alt: ``slenderness_bbox`` -- same limit, bounding-box dimensions
+   :alt: ``slenderness_bbox``: same limit, bounding-box dimensions
 
-   ``slenderness_bbox`` -- same limit, bounding-box dimensions.
+   ``slenderness_bbox``: same limit, bounding-box dimensions.
 
 
 .. figure:: figures/shape_metric_distributions.png
@@ -1035,9 +1030,9 @@ from the exact minimum rotated bounding rectangle (rotating calipers), with
 .. figure:: figures/direction_rectangle_bearing.png
    :width: 100%
    :align: center
-   :alt: Validation: a 20 × 10 m rectangle rotated by a known angle -- both methods return ``bearing = −angle``
+   :alt: Validation: a 20 × 10 m rectangle rotated by a known angle, both methods return ``bearing = −angle``
 
-   Validation: a 20 × 10 m rectangle rotated by a known angle -- both methods return ``bearing = −angle``.
+   Validation: a 20 × 10 m rectangle rotated by a known angle, both methods return ``bearing = −angle``.
 
 **bearing** column:
 
@@ -1057,7 +1052,7 @@ from the exact minimum rotated bounding rectangle (rotating calipers), with
    \end{cases}
    \; \in [-90°, 90°]
 
-Applied to :math:`\text{dir}_2` -- the weak (shorter-dimension) axis.
+Applied to :math:`\text{dir}_2`: the weak (shorter-dimension) axis.
 Clockwise from geographic North (+y in UTM); folded to :math:`\pm 90°` since
 an axis is undirected (same fold family as ``contact_angle`` and
 ``ASCE7_parallelityAngle`` above).
@@ -1213,7 +1208,7 @@ area & perimeter) geometries fall back to the slab centroid.
    :pyobject: centre_of_mass_and_stiffness
    :language: python
 
-**Principal second moment of area** -- exact closed form per polygon about
+**Principal second moment of area**: exact closed form per polygon about
 its own centroid, via the shoelace/Green's-theorem identity over polygon
 edges:
 
