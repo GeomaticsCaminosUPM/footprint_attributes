@@ -20,7 +20,7 @@ Interactive map
 ----------------
 
 Runs entirely client-side (MapLibre + deck.gl, no backend) and computes
-nothing itself -- everything it shows is precomputed from the pilot-region
+nothing itself; everything it shows is precomputed from the pilot-region
 footprints by :func:`footprint_attributes.visualization.build_map` (see
 ``docs/docs_maps_and_plots.py``), using this package's own
 :func:`~footprint_attributes.shape.shape` and
@@ -67,7 +67,7 @@ Static maps
 
 Every static map and plot in these docs is generated from the same
 pilot-region footprints by ``docs/docs_maps_and_plots.py`` (see
-:doc:`concepts` and :doc:`formulas` for all of them). Two examples -- the
+:doc:`concepts` and :doc:`formulas` for all of them). Two examples: the
 contact forces behind ``blockPosition`` and the convex-hull setback
 pieces behind the shape indices, drawn on real buildings:
 

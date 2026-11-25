@@ -13,7 +13,7 @@ Main modules
                  inertia_circle_ratio)
 - **position**:  Block position within urban block (isolated / lateral /
                  corner / confined / torque)
-- **run**:       Single entry point -- request columns by name (or by norm)
+- **run**:       Single entry point, request columns by name (or by norm)
                  across direction/shape/position in one call.
 
 Intended import style
@@ -37,7 +37,7 @@ Example usage
 >>>
 >>> footprints = gpd.read_file("footprints.gpkg")
 >>>
->>> # Building direction — several methods
+>>> # Building direction, several methods
 >>> bearings = direction.inertia(footprints)
 >>> L1, dir1, L2, dir2, bearings = direction.bbox(footprints, mode="all")
 >>>
@@ -57,7 +57,7 @@ Example usage
 >>> result = shape.slenderness(footprints)          # all methods → gdf
 >>> vals   = shape.slenderness.inertia(footprints)  # single method → list
 >>>
->>> # Batch call — any mix of columns, shared work computed once
+>>> # Batch call, any mix of columns, shared work computed once
 >>> result = shape(footprints, ["EC8_eccentricityRatio", "slenderness_bbox"])
 >>>
 >>> # Position classification with contact forces

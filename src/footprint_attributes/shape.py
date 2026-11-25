@@ -1,5 +1,5 @@
 """
-Shape irregularity indices — code-independent and seismic-code-specific.
+Shape irregularity indices, code-independent and seismic-code-specific.
 
 Access pattern
 --------------
@@ -24,9 +24,9 @@ Seismic codes supported
 
 Code-independent indices
 ------------------------
-- polsby_popper          — 4π A / P²  (compactness, 0–1)
-- convex_hull_irregularity — momentum-weighted deviation from convex hull
-- inertia_circle_ratio   — I_z(circle) / I_z(footprint)
+- polsby_popper, 4π A / P²  (compactness, 0–1)
+- convex_hull_irregularity, momentum-weighted deviation from convex hull
+- inertia_circle_ratio, I_z(circle) / I_z(footprint)
 """
 
 from __future__ import annotations
@@ -296,7 +296,7 @@ class ASCE7ParalelityAngle(Parameter):
     """ASCE 7 – parallelity angle (degrees)  (≤ 5° for regular).
 
     A purely **per-building** measure of how far a polygon's own edges are
-    from forming a rectilinear frame (two directions 90° apart) -- see
+    from forming a rectilinear frame (two directions 90° apart), see
     :func:`footprint_attributes.geometry.own_edge_orthogonality_deviation`.
     0° means the building's edges (all rings, length-weighted) genuinely
     reduce to two perpendicular directions (a rectangle, or any orthogonal
@@ -304,21 +304,21 @@ class ASCE7ParalelityAngle(Parameter):
     trapezoidal or rhomboid footprint).
 
     Rationale (twice revised): this originally compared each building's
-    bounding-box long axis against a hardcoded ``[1, 0]`` -- the raw +X
+    bounding-box long axis against a hardcoded ``[1, 0]``: the raw +X
     (East) axis of whatever projected CRS the data was in, a property of
     the map projection, not the structure (confirmed wrong on real
     SantoDomingo/EnsancheQuisquella data, where a rotated-but-mutually-
     parallel street grid scored every building as ~35° irregular). That was
     then changed to compare against the *dataset's own* dominant
-    orientation -- better for a single compact urban block, but still wrong
+    orientation, better for a single compact urban block, but still wrong
     at city scale: a dataset spanning multiple neighbourhoods with
     genuinely different street-grid orientations (confirmed on Guatemala
-    Zona10, SanJose Esquivel, SantoDomingo Naco -- their per-building
+    Zona10, SanJose Esquivel, SantoDomingo Naco, their per-building
     orientation histograms are multi-modal, not a single peak) has no one
     "dominant orientation" for any external reference to be meaningful
     against. ASCE 7's nonparallel-systems irregularity is fundamentally
     about whether *a building's own* lateral-force-resisting elements are
-    mutually orthogonal -- a property of that one polygon, needing no
+    mutually orthogonal, a property of that one polygon, needing no
     neighbour, block, or dataset-wide reference at all.
     """
 
@@ -364,7 +364,7 @@ def _gndt_dominant_a(
             bbox/inertia axes when a caller already has them cached.
 
     Returns:
-        ``(a_dom, L_dom, dir1, dir2)`` -- the winning a and L per building,
+        ``(a_dom, L_dom, dir1, dir2)``: the winning a and L per building,
         plus the L1/L2 axis vectors (kept for callers that also need them).
     """
     L1, dir1, L2, dir2 = _basic if _basic is not None else _basic_lengths(gdf, method)
@@ -422,7 +422,7 @@ class _SharedGeometryCache:
     def inertia(self) -> dict:
         """Raw ``calc_principal_inertia`` output (I1/dir1 <-> larger
         eigenvalue), the convention EC8's eccentricity/radius-ratio
-        parameters expect -- NOT the physical-length ``dir1`` swap that
+        parameters expect, NOT the physical-length ``dir1`` swap that
         :func:`direction.inertia` applies (see :meth:`bearing`, which
         applies that swap itself when deriving the bearing from this same
         cached computation).
@@ -434,7 +434,7 @@ class _SharedGeometryCache:
 
     def basic_lengths(self, method: str) -> tuple:
         """``(L1, dir1, L2, dir2)`` for *method*, from the cached bbox/inertia
-        computation -- matches :func:`_basic_lengths` but never triggers a
+        computation, matches :func:`_basic_lengths` but never triggers a
         second ``calc_principal_inertia`` call for the inertia method.
         """
         if method == "bbox":
@@ -767,7 +767,7 @@ def convex_hull_irregularity(
     (hull == footprint); higher values indicate deeper and/or larger
     setbacks relative to the footprint's own area. Interior holes are
     filled before computing both areas, since this index is about plan
-    *shape* (setbacks), not holes -- see ``ASCE7_holeRatio`` /
+    *shape* (setbacks), not holes, see ``ASCE7_holeRatio`` /
     ``NTC23_holeRatio`` for hole-specific metrics.
 
     Args:
@@ -1123,7 +1123,7 @@ class _ShapeModule:
         GNDT inscribed-circle 'a' construction, the GNDT dual-configuration
         setback construction) are each computed at most once for the whole
         call via one shared :class:`_SharedGeometryCache`, no matter how
-        many norms/columns need them -- e.g. requesting ``"ASCE7"``,
+        many norms/columns need them, e.g. requesting ``"ASCE7"``,
         ``"GNDTII"``, and ``"NTC23_setbackRatio"`` together (a realistic
         combination) used to run the setback construction 3 times over;
         now it runs once.

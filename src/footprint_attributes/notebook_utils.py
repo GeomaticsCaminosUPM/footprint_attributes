@@ -3,12 +3,12 @@ the core attribute-computation pipeline).
 
 Every notebook that loads one of the pilot-region files, or draws L1/L2/
 a1/a2/b/c as arrows on a plot or an interactive map, does it through the
-functions here instead of redefining its own copy -- keeps the notebooks
+functions here instead of redefining its own copy, keeps the notebooks
 short and guarantees all of them treat "loading a city" and "drawing a
 dimension" the same way.
 
 Drawing convention (deliberately black-only, distinguished by line style,
-not by colour -- easy to read on a busy satellite basemap and in print):
+not by colour, easy to read on a busy satellite basemap and in print):
 
 - ``L1``/``L2`` (and a building's own axis ``dir1``/``dir2``) are *directed*
   quantities -> drawn as a real arrow (one arrowhead at the tip).
@@ -107,7 +107,7 @@ def load_city(path: str, fill_height_column: str | None = None) -> gpd.GeoDataFr
 
     Always explodes multi-part geometries, then drops (with a warning) any
     row that is null/empty or fails a validity check, instead of silently
-    repairing it -- ``footprint_attributes`` functions reject invalid/
+    repairing it, ``footprint_attributes`` functions reject invalid/
     multi-part geometries outright, so bad rows must be removed here, not
     patched. Finally reprojects to a projected (metric) CRS via
     :func:`footprint_attributes.geometry.ensure_projected`, since every
@@ -166,7 +166,7 @@ def dimension_arrow_gdfs(
             vectors), ``L1``, ``L2``, ``a1``, ``a2`` (lengths),
             ``centroids`` (anchor for L1/L2), ``a_centers`` (anchor for
             a1/a2), and ``b_start``/``b_vector``, ``c_start``/``c_vector``
-            (b's and c's own exact, non-centered spans -- see
+            (b's and c's own exact, non-centered spans, see
             :func:`_setback_b_extent`/:func:`_setback_c_extent`).
 
     Returns:
@@ -260,8 +260,8 @@ def add_dimension_layers(
 def plot_dimension_arrows(
     ax: "matplotlib.axes.Axes", gdf: gpd.GeoDataFrame, axis: dict[str, np.ndarray]
 ) -> None:
-    """Draw L1/L2/a1/a2/b/c on an existing matplotlib ``ax`` -- the Part 1
-    "idealized shapes" plots -- one linestyle per kind, all black except
+    """Draw L1/L2/a1/a2/b/c on an existing matplotlib ``ax``, the Part 1
+    "idealized shapes" plots, one linestyle per kind, all black except
     ``c`` (see :data:`MPL_COLOR`).
 
     Args:
@@ -280,7 +280,7 @@ def plot_dimension_arrows(
 
 def dimension_legend_handles() -> list:
     """``Line2D`` handles for L1/L2/a1/a2/b/c, matching :func:`plot_dimension_arrows`'s
-    styling -- pass to ``ax.legend(handles=...)`` on any plot built with it.
+    styling, pass to ``ax.legend(handles=...)`` on any plot built with it.
     """
     from matplotlib.lines import Line2D
 
@@ -305,7 +305,7 @@ def direction_arrow_gdfs(
     L2: np.ndarray,
 ) -> dict[str, gpd.GeoDataFrame]:
     """Build the ``{"L1": gdf, "L2": gdf}`` pair of direction-arrow GeoDataFrames
-    used throughout ``direction.ipynb`` -- one real arrow per axis, anchored
+    used throughout ``direction.ipynb``: one real arrow per axis, anchored
     at each footprint's centroid.
 
     Args:
@@ -436,12 +436,12 @@ def _setback_b_extent(
     """For each row, find the dominant setback piece (matched to *b1*/*b2*
     from :func:`footprint_attributes.geometry.setback_gndt_metrics`) and
     return ``(start, vector)`` so the ``b`` bar spans *exactly* that piece's
-    true projected extent along *b_dir* -- no more, no less -- while passing
+    true projected extent along *b_dir*, no more, no less, while passing
     through *centroids* (the same point :func:`setback_gndt_metrics` casts
     its ``c`` ray through), at whatever position along *b_dir* that point
     projects to.
 
-    This -- not a symmetric "anchor +/- b/2" bar -- is required for
+    This (not a symmetric "anchor +/- b/2" bar) is required for
     correctness: the true setback centroid is generally *not* at the
     midpoint of the piece's own bounding box (e.g. a triangular hull-gap
     piece), so centering a length-``b`` bar there would make the bar
@@ -492,18 +492,18 @@ def _setback_c_extent(
 ) -> tuple[np.ndarray, np.ndarray]:
     """For each row, replicate :func:`footprint_attributes.geometry.setback_gndt_metrics`'s
     own ray-cast for ``c`` and return ``(start, vector)`` for the *actual*
-    solid segment it measures -- not a segment centered on the setback
+    solid segment it measures, not a segment centered on the setback
     centroid.
 
     ``c`` is the length of whichever solid-footprint segment a ray through
     the setback centroid, cast along *c_dir*, happens to hit closest to
     that centroid. That segment is generally **not** centered on (and may
-    not even contain) the centroid itself -- the centroid sits in the empty
+    not even contain) the centroid itself, the centroid sits in the empty
     setback piece, not on the solid material being measured, so a ray
     through it can land anywhere along the solid segment it eventually
     crosses. Drawing ``c`` as a length-``c`` segment centered on the
     centroid (an earlier version of this function) draws the right
-    *length* at the wrong *place* -- this recovers the true segment
+    *length* at the wrong *place*: this recovers the true segment
     directly instead.
     """
     from .geometry import fill_holes
@@ -557,7 +557,7 @@ def basic_length_axis(
     configuration (whichever of ``b1``/``b2`` actually set ``beta2`` --
     see :func:`footprint_attributes.geometry.setback_gndt_metrics`), each
     anchored at the setback's own centroid and pointing along its own
-    axis -- drawing both ``b1`` and ``b2`` unconditionally, as earlier
+    axis, drawing both ``b1`` and ``b2`` unconditionally, as earlier
     versions of this notebook did, mislabels the non-winning one as if it
     were also a real, used dimension.
 
@@ -572,7 +572,7 @@ def basic_length_axis(
         Dict with ``dir1``, ``dir2``, ``L1``, ``L2``, ``a1``, ``a2``,
         ``b``, ``c``, ``ratio``, ``centroids``, ``a_centers``,
         ``setback_centroids``, ``b_start``, ``b_vector``, ``c_start``,
-        ``c_vector``, ``b_dir``, ``c_dir`` -- see :func:`dimension_arrow_gdfs`
+        ``c_vector``, ``b_dir``, ``c_dir``: see :func:`dimension_arrow_gdfs`
         for how these are turned into drawable geometries.
     """
     from .geometry import main_element_a_lengths_batch, setback_gndt_metrics

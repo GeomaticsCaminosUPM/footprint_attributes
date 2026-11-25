@@ -39,20 +39,18 @@ def arrow_gdf(
 
     Args:
         anchors: ``(N, 2)`` array-like of (x, y) anchor points.
-        vectors: ``(N, 2)`` array-like of (vx, vy) vectors -- direction
+        vectors: ``(N, 2)`` array-like of (vx, vy) vectors, direction
             *and* length are both encoded here (unlike a unit direction
             vector, magnitude matters: it sets the arrow's length).
         crs: CRS to assign to the output GeoDataFrame (should match the
             CRS *anchors*/*vectors* are expressed in).
         centered: If ``True`` (default), the anchor is the arrow's
-            midpoint (spans ``anchor - vector/2`` to ``anchor + vector/2``)
-            -- natural for a building's own axis. If ``False``, the anchor
-            is the arrow's tail (spans ``anchor`` to ``anchor + vector``)
-            -- natural for a force/vector "pushing" from a point.
+            midpoint (spans ``anchor - vector/2`` to ``anchor + vector/2``), natural for a building's own axis. If ``False``, the anchor
+            is the arrow's tail (spans ``anchor`` to ``anchor + vector``), natural for a force/vector "pushing" from a point.
         caps: ``"arrow"`` (default) draws one arrowhead at the tip --
             use this for a true *direction* (e.g. ``L1``/``L2``/``dir1``).
             ``"bar"`` draws a plain shaft with a perpendicular tick at each
-            end, like a dimension line -- use this for a *measurement*
+            end, like a dimension line, use this for a *measurement*
             that has no direction of its own (e.g. ``a1``, ``a2``, ``b``,
             ``c``).
         head_frac: Arrowhead barb length (``caps="arrow"``) or end-tick

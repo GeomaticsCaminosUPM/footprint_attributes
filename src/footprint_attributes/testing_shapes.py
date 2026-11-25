@@ -2,7 +2,7 @@
 
 Plain functions (not pytest fixtures), so they can be shared between the
 pytest suite (via thin wrappers in ``conftest.py``) and the example
-notebooks under ``examples/`` -- both exercise the exact same synthetic
+notebooks under ``examples/``: both exercise the exact same synthetic
 geometries, and the notebooks import these rather than re-defining their
 own copies.
 """
@@ -55,7 +55,7 @@ def l_shape_polygon() -> Polygon:
 
 def asymmetric_l_shape_polygon() -> Polygon:
     """30x20 rectangle minus a 20x8 notch (L1 != L2, notch off-centre and
-    not symmetric under any axis swap) -- catches bugs a symmetric L-shape
+    not symmetric under any axis swap), catches bugs a symmetric L-shape
     (L1==L2) would hide, e.g. confusing c/L1 with min(b1/L1, b2/L2)."""
     return box(0, 0, 30, 20).difference(box(10, 12, 30, 20))
 
@@ -77,7 +77,7 @@ def square_with_hole_polygon() -> Polygon:
 
 
 def rotated_hole_building_polygon() -> Polygon:
-    """30x20 rectangle with an 8x4 rectangular hole rotated 25deg -- the
+    """30x20 rectangle with an 8x4 rectangular hole rotated 25deg, the
     hole is deliberately NOT parallel to the building's own sides."""
     building = box(0, 0, 30, 20)
     hole = rotate(box(11, 7, 19, 11), 25, origin="centroid")
@@ -126,8 +126,8 @@ def corner_triplet_gdf() -> gpd.GeoDataFrame:
 
 def confined_quartet_gdf() -> gpd.GeoDataFrame:
     """Centre square touched on 3 of its 4 sides (N, S, E; W left open) ->
-    'confined'. Both members of one opposite pair (N/S) touch -- which is
-    what confinement actually requires -- so the 4th side is deliberately
+    'confined'. Both members of one opposite pair (N/S) touch (which is
+    what confinement actually requires) so the 4th side is deliberately
     left open to confirm the classifier doesn't need every side occupied,
     just one fully cancelling opposite pair."""
     c = box(10, 10, 20, 20)
@@ -156,7 +156,7 @@ def torque_triplet_gdf(frac: float = 0.34) -> gpd.GeoDataFrame:
     """Centre 20x10 rectangle (slenderness 2, matching POSITION_DEFAULTS'
     minAngularAcc derivation) touched on opposite long sides by structures
     covering ~34% of each side, positioned at OPPOSITE ends (top-left and
-    bottom-right) to maximise net torque -- the two forces nearly cancel
+    bottom-right) to maximise net torque, the two forces nearly cancel
     (reads as 'confined') but their offset produces enough angular
     acceleration to be upgraded to 'torque'."""
     center = box(0, 0, 20, 10)

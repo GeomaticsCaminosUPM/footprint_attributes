@@ -234,7 +234,7 @@ def run(
             CRS/index normalisation).
         overwrite: If ``False`` (default), any requested column that
             already exists in ``footprints_gdf`` is left untouched (not
-            recomputed) -- this makes ``run()`` safe to call repeatedly on
+            recomputed), this makes ``run()`` safe to call repeatedly on
             a GeoDataFrame you're incrementally building up. If ``True``,
             every requested column is recomputed and replaced, even if
             already present.
@@ -272,15 +272,15 @@ def run(
         - A **norm name** as shorthand for all of that norm's own columns
           (including its compliance columns): ``"EC8"``, ``"ASCE7"``,
           ``"GNDTII"``, ``"CSCR2010"``, or ``"NTC23"``.
-        - ``"slenderness"`` -- shorthand for both `slenderness_bbox` and
+        - ``"slenderness"``: shorthand for both `slenderness_bbox` and
           `slenderness_inertia` (plus their EC8 compliance columns).
-        - ``"position"`` -- shorthand for the full position pipeline's
+        - ``"position"``: shorthand for the full position pipeline's
           five columns: ``contact_force``, ``contact_confinementRatio``,
           ``contact_angularAcc``, ``contact_angle``, ``blockPosition``.
           Any of these five exact names also works on their own and
-          triggers the same (atomic -- they're always computed together)
+          triggers the same (atomic, they're always computed together)
           pipeline run.
-        - ``"bearing"`` -- the building direction bearing (degrees from
+        - ``"bearing"``: the building direction bearing (degrees from
           geographic North), via ``direction.inertia()``.
 
     ``config["position"]`` (optional dict)
@@ -302,7 +302,7 @@ def run(
 
         **Note:** ``method`` (``"bbox"`` vs. ``"inertia"``, i.e. which
         principal-axis convention underlies setback/GNDT constructions) is
-        **not** configurable through `run()` -- each parameter always uses
+        **not** configurable through `run()`: each parameter always uses
         its own package default (`"bbox"` for setback/GNDT parameters,
         `"inertia"`-only for eccentricity parameters). Any `"method"` key
         found in `config["shape"]` is silently ignored. If you need a

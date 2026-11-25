@@ -17,11 +17,11 @@ Typical usage
 >>>
 >>> footprints = gpd.read_file("footprints.gpkg")
 >>>
->>> # Full pipeline — computes forces and classifies
+>>> # Full pipeline, computes forces and classifies
 >>> result = position(footprints)
 >>> result[['blockPosition', 'contact_force', 'contact_confinementRatio']]
 >>>
->>> # Classification only — reuses pre-computed force columns when present
+>>> # Classification only, reuses pre-computed force columns when present
 >>> labels = position.block_position(result)          # fast: columns exist
 >>> labels = position.block_position(footprints)      # slow: recomputes forces
 """
@@ -308,7 +308,7 @@ def contact_force_vectors(
 
     Same underlying computation as :func:`contact_forces_df`, but returns the
     actual 2-D force vectors (not just their aggregated magnitude/angle), so
-    callers can draw them -- e.g. as literal arrows on a map.
+    callers can draw them, e.g. as literal arrows on a map.
 
     Args:
         geoms: GeoDataFrame of building footprints (any CRS).
@@ -325,7 +325,7 @@ def contact_force_vectors(
           ``vector`` (the edge's own contact-force vector, ``(vx, vy)``).
         - ``resultants``: one row per building that has at least one
           touching edge, with ``geom_id``, ``anchor`` (building centroid)
-          and ``vector`` (sum of that building's edge vectors -- the net
+          and ``vector`` (sum of that building's edge vectors, the net
           resultant force).
     """
     geoms = to_gdf(geoms)

@@ -51,7 +51,7 @@ def mohr_params(I1: np.ndarray, I2: np.ndarray) -> tuple[np.ndarray, np.ndarray]
 def _signed_angle(dir1: np.ndarray, e_vec: np.ndarray) -> np.ndarray:
     """Signed angle (radians) from *dir1* to *e_vec*, one building per row.
 
-    Plain vectorised ``arctan2`` over the whole array -- the earlier version
+    Plain vectorised ``arctan2`` over the whole array, the earlier version
     of this built the same cross/dot products but fed them into
     ``arctan2`` one building at a time inside a Python list comprehension,
     which is pure overhead: cross/dot/arctan2 are already elementwise
@@ -72,7 +72,7 @@ def _golden_section_max(
 
     ``f`` is called with an ``(N,)`` array of candidate angles and must
     return an ``(N,)`` array of objective values (elementwise NumPy ops
-    only -- no Python-level per-row branching). Every building is refined
+    only, no Python-level per-row branching). Every building is refined
     in lockstep: each of the ``iters`` rounds is exactly 1-2 vectorised
     function evaluations over *all* buildings at once, instead of the
     previous ``scipy.optimize.fmin`` (Nelder-Mead) called once per
@@ -81,7 +81,7 @@ def _golden_section_max(
     smooth 1-D optimisation. Assumes ``f`` is unimodal on ``[lo, hi]``,
     which holds here because ``lo``/``hi`` bracket one cell of the coarse
     grid search that seeds them (see :func:`optimise_ec8`/
-    :func:`optimise_cscr`) -- narrow enough that the objective's known
+    :func:`optimise_cscr`), narrow enough that the objective's known
     smooth, low-frequency shape can't have a second local max inside it.
 
     Returns:
@@ -107,12 +107,12 @@ def _maximize_periodic(
     """Maximise a period-π objective ``f`` for every one of *n* buildings at once.
 
     Coarse vectorised grid search (all buildings, all grid angles, in one
-    ``(n_grid,) x (n,)`` broadcast -- no per-building work) picks which
+    ``(n_grid,) x (n,)`` broadcast, no per-building work) picks which
     grid cell each building's maximum falls in, then
     :func:`_golden_section_max` polishes every building's estimate inside
     its own cell in lockstep. Both stages are pure array ops, so the whole
     search across an entire GeoDataFrame costs a fixed, small number of
-    vectorised objective evaluations regardless of *n* -- unlike the
+    vectorised objective evaluations regardless of *n*: unlike the
     previous implementation's ``scipy.optimize.fmin`` call issued
     separately for every building inside a Python ``for`` loop, where
     per-call SciPy/Python dispatch overhead (not the trivial trig math
@@ -188,8 +188,7 @@ def optimise_ec8(
         I2:    (N,) array of smaller principal moments.
         e_vec: (N,2) eccentricity vectors (CM − CS).
         area:  (N,) footprint areas.
-        chunk_size: Buildings processed per vectorised grid-search batch
-            -- bounds peak memory (see :data:`_DEFAULT_CHUNK_SIZE`)
+        chunk_size: Buildings processed per vectorised grid-search batch, bounds peak memory (see :data:`_DEFAULT_CHUNK_SIZE`)
             independent of the total number of buildings.
 
     Returns:

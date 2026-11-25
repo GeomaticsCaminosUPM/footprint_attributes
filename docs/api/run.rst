@@ -144,11 +144,11 @@ Code-independent shape indices
    * - Column
      - Description
    * - ``convex_hull_irregularity``
-     - (hull_area - footprint_area) / footprint_area -- 0 = convex
+     - (hull_area - footprint_area) / footprint_area, 0 = convex
    * - ``inertia_circle_ratio``
      - I_z(equal-area circle) / I_z(footprint)
    * - ``polsby_popper``
-     - 4π A / P² -- compactness, 1.0 = perfect circle
+     - 4π A / P², compactness, 1.0 = perfect circle
 
 No compliance columns (these are not tied to a specific code's limit).
 

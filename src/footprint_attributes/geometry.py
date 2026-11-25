@@ -129,7 +129,7 @@ def polygon_edge_orientations(geom) -> list[tuple[float, float]]:
 
 def own_edge_orthogonality_deviation(geom) -> float | None:
     """Per-building measure of how far a polygon's own edges are from
-    forming a rectilinear frame (two directions 90 degrees apart) -- ASCE 7
+    forming a rectilinear frame (two directions 90 degrees apart), ASCE 7
     "nonparallel systems" irregularity is about a building's own
     lateral-force-resisting elements not being mutually orthogonal, which is
     a property of the building's shape alone, not of its neighbours or the
@@ -138,7 +138,7 @@ def own_edge_orthogonality_deviation(geom) -> float | None:
     Method: take every edge of the polygon (all rings), weighted by length
     (a real long wall segment says more about the building's frame than a
     tiny digitization-noise edge). Find the polygon's own dominant edge
-    direction via an angle-doubling trick (`4*theta` circular mean -- once
+    direction via an angle-doubling trick (`4*theta` circular mean, once
     for the 180° undirected-edge fold, once for the 90° rectangle-symmetry
     fold, folded back by dividing by 4), then report the
     length-weighted mean deviation of every edge from that dominant
@@ -146,7 +146,7 @@ def own_edge_orthogonality_deviation(geom) -> float | None:
     orthogonal L/T/U-shape; higher = edges genuinely skewed relative to each
     other, e.g. a trapezoidal or rhomboid footprint).
 
-    This is purely a function of the one polygon -- no dataset-wide or
+    This is purely a function of the one polygon, no dataset-wide or
     neighbourhood reference direction is used or needed.
 
     Args:
@@ -423,7 +423,7 @@ def calc_principal_inertia(
 
     Uses the exact closed-form polygon second-moment-of-area formulas
     (``Ixx = ∫y²dA``, ``Iyy = ∫x²dA``, ``Pxy = ∫xy dA``, via the shoelace
-    identity -- the same family as :func:`ring_inertia_z`'s polar moment),
+    identity, the same family as :func:`ring_inertia_z`'s polar moment),
     evaluated about the polygon's own centroid. This is *exact* for any
     simple polygon, not an approximation: a previous version summed
     ``x²``/``y²``/``xy`` over the polygon's *vertices* (a discrete
@@ -509,7 +509,7 @@ def min_bounding_box(
     true wall direction. That's enough, over a long/thin footprint, to
     make a hull-vs-footprint "setback" gap (see :func:`setback_gndt_metrics`)
     balloon into a many-metres-wide sliver running almost the whole
-    building length -- most visible on elongated buildings, and only in
+    building length, most visible on elongated buildings, and only in
     this ``bbox`` axis convention, since :func:`inertia_side_lengths`'s
     principal-axis calculation is closed-form and has no such grid to snap
     to.
@@ -600,7 +600,7 @@ def inertia_side_lengths(
     """Average plan side lengths from principal moments (paper eqs. 2-3).
 
     ``slenderness = sqrt(I1 / I2)``; the side length perpendicular to the I1
-    axis (i.e. running along the I2 eigenvector -- the geometrically longer
+    axis (i.e. running along the I2 eigenvector, the geometrically longer
     side) is ``sqrt(area * slenderness)``; the other side is ``area`` divided
     by that length. For a true rectangle with sides ``a > b``,
     ``I1 = (1/12) b a^3``, ``I2 = (1/12) a b^3``, so this reduces exactly to
@@ -626,7 +626,7 @@ def largest_convex_hull_gap_area(geoms: gpd.GeoSeries | gpd.GeoDataFrame) -> np.
 
     Per the paper: compactness is found by taking the set difference between
     the (hole-filled) footprint and its convex hull, measuring the area of
-    each resulting disconnected piece, and keeping the *largest* one -- not
+    each resulting disconnected piece, and keeping the *largest* one, not
     the sum of all of them.
 
     Args:
@@ -719,7 +719,7 @@ def setback_gndt_metrics(
     possible configurations: either (L1, a1, b1) or (L2, a2, b2). For
     beta2 = b/L, use the minimum between b1/L1 and b2/L2."* This function
     picks, across all setback pieces, whichever single piece/configuration
-    minimises ``b/L``, and additionally measures ``c`` -- the true
+    minimises ``b/L``, and additionally measures ``c``: the true
     protrusion width of the *solid* footprint (not just the setback piece)
     measured perpendicular to that winning ``b``, via a ray cast through
     the piece's centroid.
@@ -734,7 +734,7 @@ def setback_gndt_metrics(
         min_area_fraction: Minimum fractional setback area to be considered.
         full_output: If ``True``, additionally return the dominant setback
             piece's own ``b1``, ``b2`` (both configurations, not just the
-            winning one) and its centroid ``(cx, cy)`` -- useful for
+            winning one) and its centroid ``(cx, cy)``: useful for
             visualising both candidate setback rectangles, e.g. as arrows.
 
     Returns:
@@ -899,14 +899,14 @@ _SQRT2 = math.sqrt(2.0)
 
 def _polygon_ring_edges(polygon: Polygon) -> list[tuple[float, float, float, float]]:
     """``(x1, y1, x2, y2)`` for every edge of every ring (exterior + holes)
-    of *polygon*, as a plain list of Python-float tuples -- computed once
+    of *polygon*, as a plain list of Python-float tuples, computed once
     per polygon so the inner search loop of :func:`max_inscribed_circle`
     never touches Shapely (or builds a ``Point``) again.
 
     Plain Python floats/tuples, not a NumPy array: building footprints
     typically have well under a hundred vertices, and at that size NumPy's
     per-call dispatch overhead costs more than it saves versus a plain
-    Python loop -- confirmed by direct benchmarking (~5x faster on the
+    Python loop, confirmed by direct benchmarking (~5x faster on the
     San Jose pilot dataset), which is why this isn't vectorised.
     """
     rings = [list(polygon.exterior.coords)]
@@ -929,7 +929,7 @@ def _signed_dist_to_boundary(
     A plain point-to-segment distance (minimised over every edge) for the
     magnitude, and the standard even-odd ray-casting rule (which handles
     holes correctly when every ring's edges are tested together) for the
-    sign -- computed from the precomputed edge list, with no Shapely
+    sign, computed from the precomputed edge list, with no Shapely
     object allocated per query.
     """
     best_dist_sq = math.inf
@@ -965,7 +965,7 @@ def max_inscribed_circle(
     Uses Mapbox's "Polylabel" algorithm: a quadtree search that always
     expands the most promising cell (highest possible remaining distance,
     ``d + h*sqrt(2)`` for a cell of half-size ``h``), so nearly every
-    distance query it makes narrows the search -- unlike a fixed coarse
+    distance query it makes narrows the search, unlike a fixed coarse
     grid (this function's previous implementation) followed by a
     general-purpose ``scipy.optimize.minimize`` polish, which spends most
     of its budget on grid cells nowhere near the true optimum and needs
@@ -988,7 +988,7 @@ def max_inscribed_circle(
             reverted: :func:`circle_tangent_points` matches tangent points
             against this circle within a *fixed* fraction of its radius,
             so a less-precisely-centred circle can miss real tangent
-            points entirely -- not just shift lengths by ~1%, but flip an
+            points entirely, not just shift lengths by ~1%, but flip an
             asymmetric footprint (e.g. a T-shape) into the <=2-tangent-
             point "treat as a plain rectangle" fallback, silently
             discarding its real asymmetry. Confirmed by
@@ -997,10 +997,10 @@ def max_inscribed_circle(
             fixture.
         grid_n: Accepted for backward compatibility with the previous
             grid-search implementation; unused (Polylabel has no
-            equivalent parameter -- it adapts its own resolution).
+            equivalent parameter, it adapts its own resolution).
 
     Returns:
-        ``(cx, cy, r)`` -- centre and radius of the largest inscribed circle.
+        ``(cx, cy, r)``: centre and radius of the largest inscribed circle.
         ``r=0.0`` (centred on the centroid) for a degenerate (zero-area)
         polygon.
     """
@@ -1146,7 +1146,7 @@ def main_element_a_lengths(
     Implements the paper's 3-step process (fig. 7): (1) inscribe the
     largest possible circle; (2) find its tangent points with the footprint
     boundary; (3) measure the extent of those tangent points along the
-    footprint's own principal axes -- this is the circumscribed rectangle
+    footprint's own principal axes, this is the circumscribed rectangle
     "with sides parallel to the directions of the minimum bounding box of
     the footprint" the paper describes.
 
@@ -1154,8 +1154,8 @@ def main_element_a_lengths(
     (collinear tangent points, degenerate along the other axis), so with
     <=2 tangent points both configurations collapse to the circle diameter
     directly rather than projecting (a numerically safer choice than
-    projecting near-collinear points, which -- especially for the inertia
-    method, whose axes are not always exactly axis-aligned -- can pick up a
+    projecting near-collinear points, which (especially for the inertia
+    method, whose axes are not always exactly axis-aligned) can pick up a
     small spurious nonzero extent instead of a clean zero).
 
     Args:
@@ -1168,7 +1168,7 @@ def main_element_a_lengths(
         ``(a1, a2, center)``: a1 pairs with L1 (measured along dir2,
         perpendicular to dir1); a2 pairs with L2 (measured along dir1);
         ``center`` is the world-coordinate centre of the (a1 x a2)
-        rectangle -- the midpoint of the tangent points' projected bounds,
+        rectangle, the midpoint of the tangent points' projected bounds,
         which is generally NOT the inscribed circle's own centre (that's
         only true when the tangent points happen to be symmetric about it,
         e.g. for a plain rectangle).
@@ -1244,7 +1244,7 @@ def setback_pieces(
 
     A setback is a connected component of ``hull.difference(footprint)``
     (paper fig. 8a). Each piece's own circumscribed-rectangle extents along
-    *dir1* and *dir2* are computed -- these are the GNDT-style "sides of the
+    *dir1* and *dir2* are computed, these are the GNDT-style "sides of the
     circumscribed rectangle" (fig. 8b) for that individual piece.
 
     This is the per-piece building block: :func:`setback_gndt_metrics` uses
@@ -1306,7 +1306,7 @@ def hole_h_over_l(
     side of that box. ``L`` is the length of the building's cross-section
     through the hole's centroid, measured along the hole's longer axis.
     This is a distinct construction from ASCE7's area-based hole_ratio
-    (``A_hole / A_filled``) -- the two must not be confused.
+    (``A_hole / A_filled``), the two must not be confused.
 
     Args:
         gdf: GeoDataFrame of building footprints (projected CRS).
@@ -1455,7 +1455,7 @@ def explode_edges(gdf: gpd.GeoDataFrame, min_length: float = 0.0) -> gpd.GeoData
         original (pre-split) geometry column is dropped: leaving it in
         place is a footgun for any later ``.apply(..., axis=1)`` call,
         since a plain row ``Series`` resolves ``r.geometry`` by column
-        label, not by the GeoDataFrame's active-geometry column -- it
+        label, not by the GeoDataFrame's active-geometry column, it
         would silently return the stale, un-split geometry instead of the
         two-point ``edges`` segment.
     """
@@ -1485,8 +1485,8 @@ def centre_of_mass_and_stiffness(
     whose mass is distributed like the footprint polygon's own area, plus
     perimeter walls of height *wall_height*, whose mass is distributed along
     the polygon boundary (exterior + interior/hole rings). CM is the
-    area/perimeter-weighted average of the two centroids; CS -- the centre of
-    the lateral-force-resisting elements (the walls) -- is the boundary
+    area/perimeter-weighted average of the two centroids; CS, the centre of
+    the lateral-force-resisting elements (the walls), is the boundary
     centroid alone.
 
     Args:
