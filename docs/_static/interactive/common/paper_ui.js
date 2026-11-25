@@ -159,12 +159,33 @@
     map.once("load", placePanels);
   }
 
+  // The basemap style comes from a remote server. If it cannot be fetched
+  // (offline, a VPN or a blocker in the way), "load" never fires and the page
+  // would stay empty. After a few seconds, fall back to a plain background so
+  // the buildings still show, and fire "load" for the page's own bootstrap.
+  const PLAIN_STYLE = {
+    version: 8,
+    sources: {},
+    layers: [{ id: "plain-bg", type: "background", paint: { "background-color": "#f2f2f0" } }],
+  };
+  function keepWorkingOffline(map) {
+    let loaded = false;
+    map.once("load", () => { loaded = true; });
+    setTimeout(() => {
+      if (loaded) return;
+      console.warn("Basemap style did not load; using a plain background.");
+      map.setStyle(PLAIN_STYLE);
+      map.once("styledata", () => { if (!loaded) { loaded = true; map.fire("load"); } });
+    }, 6000);
+  }
+
   // The page creates its map after this script: give it this basemap and the chrome.
   const BaseMap = maplibregl.Map;
   class PaperMap extends BaseMap {
     constructor(options) {
       super({ ...options, style: BASEMAPS[ui.basemap].style });
       setup(this);
+      keepWorkingOffline(this);
     }
   }
   maplibregl.Map = PaperMap;
