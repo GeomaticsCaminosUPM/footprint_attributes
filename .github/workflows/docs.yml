@@ -28,7 +28,8 @@ jobs:
       # nbsphinx renders the notebooks' markdown cells with pandoc.
       - run: sudo apt-get update && sudo apt-get install -y pandoc
       - run: uv sync --locked --group docs
-      - run: uv run --no-sync sphinx-build -b html docs site
+      # Keep Sphinx's doctree cache (hundreds of MB) out of the published site.
+      - run: uv run --no-sync sphinx-build -b html -d "$RUNNER_TEMP/doctrees" docs site
       - run: touch site/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:
